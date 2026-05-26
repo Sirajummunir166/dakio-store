@@ -17,7 +17,7 @@ export default function MinimalTemplate(props) {
     view, setView, form, setForm, formErr, placing, placeOrder, orderNum,
     couponCode, setCouponCode, couponDiscount, couponErr, appliedCoupon, couponLoading, applyCoupon, removeCoupon,
     email, setEmail, subscribed, setSubscribed,
-    isFiltered, catSections, uncategorised,
+    isFiltered, catSections, uncategorised, slug,
   } = props
 
   const accent      = store?.accentColor || '#111111'

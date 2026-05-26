@@ -15,7 +15,7 @@ export default function TechTemplate(props) {
     quickView, setQuickView, detail, setDetail,
     view, setView, form, setForm, formErr, placing, placeOrder, orderNum,
     email, setEmail, subscribed, setSubscribed,
-    isFiltered, catSections, uncategorised, heroBg,
+    isFiltered, catSections, uncategorised, heroBg, slug,
   } = props
 
   const accent = store?.accentColor || '#3b82f6'
