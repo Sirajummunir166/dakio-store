@@ -22,6 +22,14 @@ export default function FashionTemplate(props) {
   } = props
 
   const accent   = store?.accentColor || '#8B5E3C'
+  const ts       = store?.themeSettings || {}
+  const hero     = ts.hero     || {}
+  const banner   = ts.banner   || {}
+  const sections = ts.sections || {}
+  const showTrustBar   = sections.showTrustBar   !== false
+  const showBanner     = sections.showBanner     !== false
+  const showNewsletter = sections.showNewsletter !== false
+
   const demoMode = products.length === 0 && !isFiltered
   const showProds = products.length > 0 ? products : D.products
   const heroImg  = products[0]?.imageUrl || D.hero
@@ -109,15 +117,15 @@ export default function FashionTemplate(props) {
             <div style={{ animation: 'fadeUp 0.8s ease both' }}>
               <p style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.32em', textTransform: 'uppercase', color: '#d4b896', marginBottom: '18px' }}>New Season · 2025</p>
               <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(38px, 6vw, 76px)', fontWeight: 700, lineHeight: 1.03, color: '#fff', marginBottom: '20px' }}>
-                {D.heroTitle}
+                {hero.headline || D.heroTitle}
               </h1>
               <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.72)', marginBottom: '40px', maxWidth: '380px', lineHeight: 1.75, fontFamily: SERIF, fontStyle: 'italic' }}>
-                {store?.description || D.heroSub}
+                {hero.subtext || store?.description || D.heroSub}
               </p>
               <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
                 <button onClick={() => document.getElementById('fa-shop')?.scrollIntoView({ behavior: 'smooth' })}
                   style={{ padding: '15px 44px', background: '#fff', color: '#1a1a1a', border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.22em', textTransform: 'uppercase', fontFamily: SANS }}>
-                  Shop Collection
+                  {hero.btnText || 'Shop Collection'}
                 </button>
                 <button style={{ padding: '15px 44px', background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.5)', fontSize: '11px', fontWeight: 600, cursor: 'pointer', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: SANS }}>
                   Lookbook
@@ -141,7 +149,7 @@ export default function FashionTemplate(props) {
       )}
 
       {/* Trust Bar */}
-      {!isFiltered && (
+      {!isFiltered && showTrustBar && (
         <div style={{ background: '#f7f0e6', borderBottom: '1px solid #e8e0d5', padding: '12px 24px' }}>
           <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'flex', justifyContent: 'center', gap: '48px', flexWrap: 'wrap' }}>
             {[[Truck, 'Free Delivery on Tk 1,500+'], [RotateCcw, '7-Day Easy Returns'], ['✦', 'Premium Quality Only']].map(([Icon, t]) => (
@@ -205,8 +213,29 @@ export default function FashionTemplate(props) {
         )}
       </main>
 
+      {/* Feature Banner */}
+      {showBanner && (
+        <div style={{ margin: '0 0 0 0', background: '#1a1a1a', display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: '280px', overflow: 'hidden' }}>
+          <div style={{ padding: 'clamp(32px,5vw,64px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.24em', textTransform: 'uppercase', color: accent, marginBottom: '14px' }}>Limited Collection</p>
+            <h2 style={{ fontFamily: SERIF, fontSize: 'clamp(26px,4vw,44px)', fontWeight: 700, color: '#fff', lineHeight: 1.1, marginBottom: '14px' }}>{banner.title || 'New Season Edit'}</h2>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, marginBottom: '28px', maxWidth: '340px' }}>{banner.desc || 'Explore our latest collection of curated fashion pieces.'}</p>
+            <button onClick={() => document.getElementById('fa-shop')?.scrollIntoView({ behavior: 'smooth' })}
+              style={{ width: 'fit-content', padding: '13px 32px', background: '#fff', color: '#1a1a1a', border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: SANS }}>
+              {banner.btnText || 'Explore Collection'}
+            </button>
+          </div>
+          <div style={{ background: '#2a2a2a', overflow: 'hidden', minHeight: '280px' }}>
+            {banner.image
+              ? <img src={banner.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
+              : <div style={{ width: '100%', height: '100%', minHeight: '280px', background: 'linear-gradient(135deg,#2a2416,#1a1a1a)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '64px', opacity: 0.4 }}>✦</div>
+            }
+          </div>
+        </div>
+      )}
+
       {/* Newsletter */}
-      <div style={{ background: '#1a1a1a', padding: '88px 24px' }}>
+      {showNewsletter && <div style={{ background: '#1a1a1a', padding: '88px 24px' }}>
         <div style={{ maxWidth: '500px', margin: '0 auto', textAlign: 'center' }}>
           <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.3em', textTransform: 'uppercase', color: accent, marginBottom: '18px' }}>The Edit</p>
           <h3 style={{ fontFamily: SERIF, fontSize: '30px', fontWeight: 700, color: '#fff', marginBottom: '12px', lineHeight: 1.3 }}>Stay ahead of the season</h3>
@@ -218,7 +247,7 @@ export default function FashionTemplate(props) {
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* Footer */}
       <footer style={{ background: '#f7f0e6', borderTop: '1px solid #e8e0d5', padding: '52px 32px 28px' }}>
