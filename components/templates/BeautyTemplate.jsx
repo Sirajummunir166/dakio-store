@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { ShoppingBag, Search, X, Menu, Heart, ChevronRight, Sparkles } from 'lucide-react'
 import { fmt } from '../../lib/storefront'
-import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage } from '../StoreOverlays'
+import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage, AnnouncementBar, SocialFooter } from '../StoreOverlays'
 import { DEMO } from './demoData'
 
 const FONT = "'Inter', sans-serif"
@@ -43,10 +43,7 @@ export default function BeautyTemplate(props) {
         @keyframes shimmer { 0%{opacity:0.7} 50%{opacity:1} 100%{opacity:0.7} }
       `}</style>
 
-      {/* Ribbon */}
-      <div style={{ background: `linear-gradient(90deg, ${accent}, #f97316, ${accent})`, backgroundSize: '200% 100%', color: '#fff', textAlign: 'center', padding: '8px 16px', fontSize: '12px', fontWeight: 500, letterSpacing: '0.04em' }}>
-        {D.announce}
-      </div>
+      <AnnouncementBar message={store?.announcementBar} accent={accent} />
 
       {/* Header */}
       <header style={{ background: '#fff', borderBottom: '1px solid #fde4ef', position: 'sticky', top: 0, zIndex: 100 }}>
@@ -243,6 +240,7 @@ export default function BeautyTemplate(props) {
           <p style={{ fontSize: '12px', color: '#ccc' }}>© {new Date().getFullYear()} {store?.name}</p>
           <p style={{ fontSize: '12px', color: '#ccc' }}>Powered by <strong style={{ color: '#999' }}>LenDen</strong></p>
         </div>
+              <SocialFooter store={store} accent={accent} />
       </footer>
 
       {detail    && <ProductDetailPage product={detail} store={store} accent={accent} onAdd={addToCart} onClose={() => setDetail(null)} />}

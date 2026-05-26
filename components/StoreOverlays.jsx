@@ -3,6 +3,46 @@ import { useState } from 'react'
 import { X, ChevronRight, ShoppingBag } from 'lucide-react'
 import { fmt } from '../lib/storefront'
 
+/* ── Announcement Bar ────────────────────────────────────── */
+export function AnnouncementBar({ message, accent = '#111' }) {
+  const [visible, setVisible] = useState(true)
+  if (!message || !visible) return null
+  return (
+    <div style={{ background: accent, color: '#fff', fontSize: '12px', fontWeight: 600, textAlign: 'center', padding: '8px 40px', position: 'relative', letterSpacing: '0.03em' }}>
+      {message}
+      <button onClick={() => setVisible(false)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+    </div>
+  )
+}
+
+/* ── Social Links Footer ─────────────────────────────────── */
+export function SocialFooter({ store, accent = '#111' }) {
+  const { facebookUrl, instagramUrl, whatsappNumber } = store || {}
+  if (!facebookUrl && !instagramUrl && !whatsappNumber) return null
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', padding: '20px', borderTop: '1px solid #e5e7eb' }}>
+      {facebookUrl && (
+        <a href={facebookUrl} target="_blank" rel="noreferrer" style={{ color: '#6b7280', textDecoration: 'none', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+          Facebook
+        </a>
+      )}
+      {instagramUrl && (
+        <a href={instagramUrl} target="_blank" rel="noreferrer" style={{ color: '#6b7280', textDecoration: 'none', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          Instagram
+        </a>
+      )}
+      {whatsappNumber && (
+        <a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noreferrer" style={{ color: '#16a34a', textDecoration: 'none', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          WhatsApp
+        </a>
+      )}
+    </div>
+  )
+}
+
 /* ── Cart Drawer ─────────────────────────────────────────── */
 export function CartDrawer({ cart, products, store, cartCount, cartTotal, cartOpen, setCartOpen, changeQty, removeFromCart, setView, accent = '#111' }) {
   if (!cartOpen) return null

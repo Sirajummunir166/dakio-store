@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { ShoppingBag, Search, X, Menu, ChevronRight, Truck, RotateCcw, Star } from 'lucide-react'
 import { fmt } from '../../lib/storefront'
-import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage } from '../StoreOverlays'
+import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage, AnnouncementBar, SocialFooter } from '../StoreOverlays'
 import { DEMO } from './demoData'
 
 const SERIF = "'Georgia', 'Times New Roman', serif"
@@ -43,10 +43,7 @@ export default function FashionTemplate(props) {
         @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
 
-      {/* Ribbon */}
-      <div style={{ background: '#1a1a1a', color: '#d4b896', textAlign: 'center', padding: '9px 16px', fontSize: '11px', fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
-        {D.announce}
-      </div>
+      <AnnouncementBar message={store?.announcementBar} accent='#1a1a1a' />
 
       {/* Header */}
       <header style={{ background: '#fffdf9', borderBottom: '1px solid #e8e0d5', position: 'sticky', top: 0, zIndex: 100 }}>
@@ -249,6 +246,7 @@ export default function FashionTemplate(props) {
           <p style={{ fontSize: '11px', color: '#bbb', fontFamily: SERIF, fontStyle: 'italic' }}>© {new Date().getFullYear()} {store?.name || 'My Store'}. All rights reserved.</p>
           <p style={{ fontSize: '11px', color: '#bbb' }}>Powered by <strong style={{ color: '#999' }}>LenDen</strong></p>
         </div>
+              <SocialFooter store={store} accent={accent} />
       </footer>
 
       {detail    && <ProductDetailPage product={detail} store={store} accent={accent} onAdd={addToCart} onClose={() => setDetail(null)} />}

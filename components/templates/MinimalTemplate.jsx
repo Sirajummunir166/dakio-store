@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { ShoppingBag, Search, X, ChevronRight, Menu, Star, Truck, RotateCcw, Shield } from 'lucide-react'
 import { fmt } from '../../lib/storefront'
-import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage } from '../StoreOverlays'
+import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage, AnnouncementBar, SocialFooter } from '../StoreOverlays'
 import { DEMO } from './demoData'
 
 const FONT = "'Helvetica Neue', Arial, sans-serif"
@@ -43,10 +43,7 @@ export default function MinimalTemplate(props) {
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
 
-      {/* Announcement */}
-      <div style={{ background: accent, color: '#fff', textAlign: 'center', padding: '9px 16px', fontSize: '12px', fontWeight: 500, letterSpacing: '0.04em' }}>
-        {D.announce}
-      </div>
+      <AnnouncementBar message={store?.announcementBar} accent={accent} />
 
       {/* Header */}
       <header style={{ background: '#fff', borderBottom: '1px solid #e8e8e8', position: 'sticky', top: 0, zIndex: 100 }}>
@@ -239,6 +236,7 @@ export default function MinimalTemplate(props) {
           <p style={{ fontSize: '12px', color: '#bbb' }}>© {new Date().getFullYear()} {store?.name || 'My Store'}. All rights reserved.</p>
           <p style={{ fontSize: '12px', color: '#bbb' }}>Powered by <strong style={{ color: '#888' }}>LenDen</strong></p>
         </div>
+              <SocialFooter store={store} accent={accent} />
       </footer>
 
       {/* Overlays */}

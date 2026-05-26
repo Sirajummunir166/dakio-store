@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { ShoppingCart, Search, X, Menu, ChevronRight, Zap } from 'lucide-react'
 import { fmt } from '../../lib/storefront'
-import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage } from '../StoreOverlays'
+import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage, AnnouncementBar, SocialFooter } from '../StoreOverlays'
 import { DEMO } from './demoData'
 
 const FONT = "'Inter', 'Segoe UI', sans-serif"
@@ -43,12 +43,7 @@ export default function BoldTemplate(props) {
         @keyframes slideIn { from{transform:translateX(-20px);opacity:0} to{transform:translateX(0);opacity:1} }
       `}</style>
 
-      {/* Marquee banner */}
-      <div style={{ background: accent, overflow: 'hidden', padding: '8px 0', whiteSpace: 'nowrap' }}>
-        <div style={{ display: 'inline-block', animation: 'none', fontSize: '11px', fontWeight: 900, color: '#111', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-          {Array(6).fill(`${D.announce} `).join('')}
-        </div>
-      </div>
+      <AnnouncementBar message={store?.announcementBar} accent={accent} />
 
       {/* Header */}
       <header style={{ background: '#000', borderBottom: '1px solid #222', position: 'sticky', top: 0, zIndex: 100 }}>
@@ -234,6 +229,7 @@ export default function BoldTemplate(props) {
           <p style={{ fontSize: '12px', color: '#333' }}>© {new Date().getFullYear()} {store?.name?.toUpperCase()}</p>
           <p style={{ fontSize: '12px', color: '#333' }}>Powered by <strong style={{ color: '#555' }}>LenDen</strong></p>
         </div>
+              <SocialFooter store={store} accent={accent} />
       </footer>
 
       {detail    && <ProductDetailPage product={detail} store={store} accent={accent} onAdd={addToCart} onClose={() => setDetail(null)} />}

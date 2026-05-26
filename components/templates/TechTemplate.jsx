@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { ShoppingCart, Search, X, Menu, ChevronRight, Zap, Star } from 'lucide-react'
 import { fmt } from '../../lib/storefront'
-import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage } from '../StoreOverlays'
+import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage, AnnouncementBar, SocialFooter } from '../StoreOverlays'
 import { DEMO } from './demoData'
 
 const FONT = "'Inter', 'Segoe UI', sans-serif"
@@ -42,12 +42,7 @@ export default function TechTemplate(props) {
         @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
       `}</style>
 
-      {/* Top bar */}
-      <div style={{ background: accent, color: '#fff', textAlign: 'center', padding: '8px 16px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-        <Zap size={12} />
-        {D.announce}
-        <Zap size={12} />
-      </div>
+      <AnnouncementBar message={store?.announcementBar} accent={accent} />
 
       {/* Header */}
       <header style={{ background: '#1e293b', borderBottom: '1px solid #334155', position: 'sticky', top: 0, zIndex: 100 }}>
@@ -224,6 +219,7 @@ export default function TechTemplate(props) {
           <p style={{ fontSize: '12px', color: '#475569' }}>© {new Date().getFullYear()} {store?.name}. All rights reserved.</p>
           <p style={{ fontSize: '12px', color: '#475569' }}>Powered by <strong style={{ color: '#64748b' }}>LenDen</strong></p>
         </div>
+              <SocialFooter store={store} accent={accent} />
       </footer>
 
       {detail    && <ProductDetailPage product={detail} store={store} accent={accent} onAdd={addToCart} onClose={() => setDetail(null)} />}

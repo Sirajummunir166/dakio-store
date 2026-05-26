@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { ShoppingBag, Search, X, Menu, Phone, Plus, ChevronRight } from 'lucide-react'
 import { fmt } from '../../lib/storefront'
-import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage } from '../StoreOverlays'
+import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage, AnnouncementBar, SocialFooter } from '../StoreOverlays'
 import { DEMO } from './demoData'
 
 const F = "'Inter', 'Noto Sans Bengali', sans-serif"
@@ -79,10 +79,7 @@ export default function OrganicTemplate(props) {
         .cat-tile:hover .cat-circle{border-color:${1}px!important}
       `}</style>
 
-      {/* Announcement bar */}
-      <div style={{ background: accent, color: '#fff', textAlign: 'center', padding: '9px 16px', fontSize: '12px', fontWeight: 600 }}>
-        🌿 {D.announce}
-      </div>
+      <AnnouncementBar message={store?.announcementBar} accent={accent} />
 
       {/* ═══ HEADER ═══ */}
       <header style={{ background: '#fff', borderBottom: '1px solid #deeede', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 8px rgba(0,0,0,.06)' }}>
@@ -402,6 +399,7 @@ export default function OrganicTemplate(props) {
           <p style={{ fontSize: '12px', color: '#4a7a56' }}>© {new Date().getFullYear()} {store?.name}</p>
           <p style={{ fontSize: '12px', color: '#4a7a56' }}>Powered by <strong style={{ color: '#6b9e78' }}>LenDen</strong></p>
         </div>
+              <SocialFooter store={store} accent={accent} />
       </footer>
 
       {detail    && <ProductDetailPage product={detail} store={store} accent={accent} onAdd={addToCart} onClose={() => setDetail(null)} />}
