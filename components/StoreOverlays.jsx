@@ -79,8 +79,9 @@ export function CartDrawer({ cart, products, store, cartCount, cartTotal, cartOp
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
               {cart.map(item => {
                 const prod = products.find(x => x.id === item.productId)
+                const itemKey = item.key || item.productId
                 return (
-                  <div key={item.productId} style={{ display: 'flex', gap: '12px', paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f5f5f5' }}>
+                  <div key={itemKey} style={{ display: 'flex', gap: '12px', paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f5f5f5' }}>
                     <div style={{ width: '64px', height: '80px', background: '#f0f0f0', flexShrink: 0, overflow: 'hidden' }}>
                       {prod?.imageUrl ? <img src={prod.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📦</div>}
                     </div>
@@ -88,13 +89,13 @@ export function CartDrawer({ cart, products, store, cartCount, cartTotal, cartOp
                       <div style={{ fontSize: '13px', fontWeight: 600, lineHeight: 1.3, marginBottom: '4px', color: '#111' }}>{item.name}</div>
                       <div style={{ fontSize: '12px', color: '#999', marginBottom: '10px' }}>{fmt(item.unitPrice, store?.currency)}</div>
                       <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #e0e0e0', width: 'fit-content' }}>
-                        <button onClick={() => changeQty(item.productId, -1)} style={{ width: '28px', height: '28px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>−</button>
+                        <button onClick={() => changeQty(itemKey, -1)} style={{ width: '28px', height: '28px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>−</button>
                         <span style={{ fontSize: '13px', fontWeight: 700, width: '28px', textAlign: 'center', borderLeft: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0', lineHeight: '28px' }}>{item.qty}</span>
-                        <button onClick={() => changeQty(item.productId, 1)} style={{ width: '28px', height: '28px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>+</button>
+                        <button onClick={() => changeQty(itemKey, 1)} style={{ width: '28px', height: '28px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>+</button>
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-                      <button onClick={() => removeFromCart(item.productId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc' }}><X size={13} /></button>
+                      <button onClick={() => removeFromCart(itemKey)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc' }}><X size={13} /></button>
                       <span style={{ fontSize: '13px', fontWeight: 700, color: '#111' }}>{fmt(item.qty * item.unitPrice, store?.currency)}</span>
                     </div>
                   </div>
@@ -121,7 +122,13 @@ export function CartDrawer({ cart, products, store, cartCount, cartTotal, cartOp
 /* ── Quick Add Modal ─────────────────────────────────────── */
 export function QuickAddModal({ product, store, accent = '#111', onAdd, onClose, onFull }) {
   const [qty, setQty] = useState(1)
-  const oos = product.totalStock !== undefined && product.totalStock <= 0
+  const hasVariants = product.variants && product.variants.length > 0
+  const [selectedVariant, setSelectedVariant] = useState(hasVariants ? null : undefined)
+  const activeVariant = hasVariants ? selectedVariant : null
+  const displayPrice = activeVariant?.price != null ? activeVariant.price : product.sellingPrice
+  const variantStock = activeVariant ? activeVariant.stock : product.totalStock
+  const oos = variantStock !== undefined && variantStock <= 0
+  const needsVariant = hasVariants && !selectedVariant
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 249 }} />
@@ -134,15 +141,30 @@ export function QuickAddModal({ product, store, accent = '#111', onAdd, onClose,
           <div style={{ padding: '22px 18px', display: 'flex', flexDirection: 'column' }}>
             {product.category && <div style={{ fontSize: '10px', color: '#bbb', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '6px' }}>{product.category.name}</div>}
             <div style={{ fontSize: '14px', fontWeight: 700, lineHeight: 1.3, marginBottom: '8px', color: '#111' }}>{product.name}</div>
-            <div style={{ fontSize: '16px', fontWeight: 800, marginBottom: '20px', color: accent }}>{fmt(product.sellingPrice, store?.currency)}</div>
-            {!oos ? (
+            <div style={{ fontSize: '16px', fontWeight: 800, marginBottom: '12px', color: accent }}>{fmt(displayPrice, store?.currency)}</div>
+            {hasVariants && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: '6px' }}>Select Option</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                  {product.variants.map(v => (
+                    <button key={v.id} onClick={() => setSelectedVariant(v)} disabled={v.stock <= 0}
+                      style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 600, border: `1.5px solid ${selectedVariant?.id === v.id ? accent : '#e0e0e0'}`, background: selectedVariant?.id === v.id ? accent : '#fff', color: selectedVariant?.id === v.id ? '#fff' : v.stock <= 0 ? '#d1d5db' : '#374151', borderRadius: '6px', cursor: v.stock <= 0 ? 'not-allowed' : 'pointer', textDecoration: v.stock <= 0 ? 'line-through' : 'none', transition: 'all 0.15s' }}>
+                      {v.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {needsVariant ? (
+              <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '12px' }}>Please select an option above</div>
+            ) : !oos ? (
               <>
                 <div style={{ display: 'flex', border: '1px solid #e0e0e0', marginBottom: '12px', width: 'fit-content' }}>
                   <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{ width: '32px', height: '32px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>−</button>
                   <span style={{ fontSize: '13px', fontWeight: 700, width: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>{qty}</span>
                   <button onClick={() => setQty(q => q + 1)} style={{ width: '32px', height: '32px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>+</button>
                 </div>
-                <button onClick={() => onAdd(product, qty)} style={{ padding: '11px', background: accent, color: '#fff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.08em', marginBottom: '8px' }}>ADD TO CART</button>
+                <button onClick={() => onAdd(product, qty, activeVariant)} style={{ padding: '11px', background: accent, color: '#fff', border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.08em', marginBottom: '8px' }}>ADD TO CART</button>
               </>
             ) : <div style={{ fontSize: '12px', fontWeight: 700, color: '#dc2626', marginBottom: '12px' }}>SOLD OUT</div>}
             <button onClick={onFull} style={{ padding: '9px', background: 'transparent', color: '#666', border: '1px solid #e0e0e0', fontSize: '11px', cursor: 'pointer' }}>View Full Details</button>
@@ -158,7 +180,13 @@ export function ProductDetailPage({ product, store, accent = '#111', onAdd, onCl
   const [qty, setQty]         = useState(1)
   const [activeThumb]         = useState(0)
   const [accordion, setAcc]   = useState(null)
-  const oos = product.totalStock !== undefined && product.totalStock <= 0
+  const hasVariants = product.variants && product.variants.length > 0
+  const [selectedVariant, setSelectedVariant] = useState(hasVariants ? null : undefined)
+  const activeVariant = hasVariants ? selectedVariant : null
+  const displayPrice = activeVariant?.price != null ? activeVariant.price : product.sellingPrice
+  const variantStock = activeVariant ? activeVariant.stock : product.totalStock
+  const oos = variantStock !== undefined && variantStock <= 0
+  const needsVariant = hasVariants && !selectedVariant
 
   const accordions = [
     { id: 'features', label: 'Features', content: <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: '#555', lineHeight: 2 }}>{['Premium quality material','Comfortable fit','Easy to care for','Available in multiple sizes','Suitable for everyday use'].map(i => <li key={i}>{i}</li>)}</ul> },
@@ -195,17 +223,32 @@ export function ProductDetailPage({ product, store, accent = '#111', onAdd, onCl
           <div>
             {product.category && <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#bbb', marginBottom: '10px' }}>{product.category.name}</div>}
             <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#111', lineHeight: 1.2, marginBottom: '12px', letterSpacing: '-0.3px' }}>{product.name}</h1>
-            <div style={{ fontSize: '24px', fontWeight: 900, color: accent, marginBottom: '20px' }}>{fmt(product.sellingPrice, store?.currency)}</div>
+            <div style={{ fontSize: '24px', fontWeight: 900, color: accent, marginBottom: '20px' }}>{fmt(displayPrice, store?.currency)}</div>
             {product.description && <p style={{ fontSize: '14px', color: '#666', lineHeight: 1.7, marginBottom: '24px' }}>{product.description}</p>}
-            {!oos ? (
+            {hasVariants && (
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Select Option</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {product.variants.map(v => (
+                    <button key={v.id} onClick={() => setSelectedVariant(v)} disabled={v.stock <= 0}
+                      style={{ padding: '7px 16px', fontSize: '13px', fontWeight: 600, border: `1.5px solid ${selectedVariant?.id === v.id ? accent : '#e0e0e0'}`, background: selectedVariant?.id === v.id ? accent : '#fff', color: selectedVariant?.id === v.id ? '#fff' : v.stock <= 0 ? '#d1d5db' : '#374151', borderRadius: '8px', cursor: v.stock <= 0 ? 'not-allowed' : 'pointer', textDecoration: v.stock <= 0 ? 'line-through' : 'none', transition: 'all 0.15s' }}>
+                      {v.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {needsVariant ? (
+              <div style={{ padding: '12px', background: '#fafafa', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '13px', color: '#9ca3af', marginBottom: '24px' }}>Please select an option to continue</div>
+            ) : !oos ? (
               <>
                 <div style={{ display: 'flex', border: '1px solid #e0e0e0', marginBottom: '14px', width: 'fit-content' }}>
                   <button onClick={() => setQty(q => Math.max(1, q - 1))} style={{ width: '40px', height: '44px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>−</button>
                   <span style={{ fontSize: '15px', fontWeight: 700, width: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0' }}>{qty}</span>
                   <button onClick={() => setQty(q => q + 1)} style={{ width: '40px', height: '44px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>+</button>
                 </div>
-                <button onClick={() => onAdd(product, qty)} style={{ width: '100%', padding: '15px', background: accent, color: '#fff', border: 'none', fontSize: '13px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '24px' }}>
-                  Add to Cart — {fmt(product.sellingPrice * qty, store?.currency)}
+                <button onClick={() => onAdd(product, qty, activeVariant)} style={{ width: '100%', padding: '15px', background: accent, color: '#fff', border: 'none', fontSize: '13px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '24px' }}>
+                  Add to Cart — {fmt(displayPrice * qty, store?.currency)}
                 </button>
               </>
             ) : <div style={{ padding: '14px', background: '#fee2e2', borderRadius: '6px', fontSize: '13px', fontWeight: 700, color: '#dc2626', marginBottom: '24px', textAlign: 'center' }}>OUT OF STOCK</div>}
@@ -314,8 +357,9 @@ export function CheckoutPage({ cart, products, store, cartTotal, form, setForm, 
           <div style={{ maxWidth: '360px' }}>
             {cart.map(item => {
               const prod = products.find(x => x.id === item.productId)
+              const itemKey = item.key || item.productId
               return (
-                <div key={item.productId} style={{ display: 'flex', gap: '14px', marginBottom: '20px' }}>
+                <div key={itemKey} style={{ display: 'flex', gap: '14px', marginBottom: '20px' }}>
                   <div style={{ position: 'relative', flexShrink: 0 }}>
                     <div style={{ width: '60px', height: '75px', background: '#e8e8e8', overflow: 'hidden' }}>
                       {prod?.imageUrl ? <img src={prod.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>📦</div>}
