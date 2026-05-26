@@ -130,7 +130,7 @@ export default function FashionTemplate(props) {
         .fa-card-price { font-size: 15px; font-weight: 800; color: #111; }
 
         /* Feature banner */
-        .fa-banner { display: grid; grid-template-columns: 1fr 1fr; min-height: 360px; background: #111; overflow: hidden; }
+        .fa-banner { display: grid; grid-template-columns: 1fr 1fr; min-height: 360px; background: #111; overflow: hidden; margin: 0 32px 80px; border-radius: 20px; }
         .fa-banner-left { padding: 60px 56px; display: flex; flex-direction: column; justify-content: center; }
         .fa-banner-tag { font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: ${gold}; margin-bottom: 16px; }
         .fa-banner-h2 { font-family: ${SERIF}; font-size: clamp(28px,3vw,44px); font-weight: 700; color: #fff; line-height: 1.1; letter-spacing: -1px; margin-bottom: 16px; }
@@ -188,7 +188,7 @@ export default function FashionTemplate(props) {
           .fa-trust-in { gap: 20px; justify-content: flex-start; padding: 18px 16px; }
           .fa-products { padding: 48px 16px; }
           .fa-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px 12px; }
-          .fa-banner { grid-template-columns: 1fr; }
+          .fa-banner { grid-template-columns: 1fr; margin: 0 16px 48px; border-radius: 12px; }
           .fa-banner-left { padding: 44px 28px; }
           .fa-banner-right { min-height: 240px; }
           .fa-nl { padding: 64px 20px; }
