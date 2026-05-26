@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { ShoppingBag, Search, X, Menu } from 'lucide-react'
+import { ShoppingBag, Search, X, Menu, Truck, RefreshCw, Lock, MessageCircle, Phone, Mail, MapPin, Building2, Package, ImageOff } from 'lucide-react'
 import { fmt } from '../../lib/storefront'
 import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage, AnnouncementBar } from '../StoreOverlays'
 import { DEMO } from './demoData'
@@ -289,14 +289,14 @@ export default function FashionTemplate(props) {
           <div className="fa-hero-right">
             {heroImg
               ? <img src={heroImg} alt="" />
-              : <div style={{ width: '100%', height: '100%', minHeight: '500px', background: 'linear-gradient(135deg,#e8ddd0,#d4c4b0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '120px' }}>👗</div>
+              : <div style={{ width: '100%', height: '100%', minHeight: '500px', background: 'linear-gradient(135deg,#e8ddd0,#d4c4b0)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ImageOff size={64} color="rgba(255,255,255,0.4)" strokeWidth={1} /></div>
             }
             {allProds[0] && (
               <div className="fa-hero-badge">
                 <div className="fa-badge-img">
                   {allProds[0].imageUrl
                     ? <img src={allProds[0].imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', background: '#f5f5f3' }}>👗</div>
+                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f3' }}><Package size={18} color="#ccc" strokeWidth={1.5} /></div>
                   }
                 </div>
                 <div>
@@ -324,10 +324,10 @@ export default function FashionTemplate(props) {
         <div className="fa-trust">
           <div className="fa-trust-in">
             {[
-              { icon: '🚚', title: 'Free Delivery', sub: 'Orders over Tk 1,500' },
-              { icon: '🔄', title: '7-Day Returns', sub: 'Hassle-free returns' },
-              { icon: '🔒', title: 'Secure Payment', sub: '100% protected' },
-              { icon: '💬', title: 'Live Support', sub: 'Mon–Sat 9am–8pm' },
+              { icon: <Truck size={18} strokeWidth={1.8} />, title: 'Free Delivery', sub: 'Orders over Tk 1,500' },
+              { icon: <RefreshCw size={18} strokeWidth={1.8} />, title: '7-Day Returns', sub: 'Hassle-free returns' },
+              { icon: <Lock size={18} strokeWidth={1.8} />, title: 'Secure Payment', sub: '100% protected' },
+              { icon: <MessageCircle size={18} strokeWidth={1.8} />, title: 'Live Support', sub: 'Mon–Sat 9am–8pm' },
             ].map(item => (
               <div key={item.title} className="fa-trust-item">
                 <div className="fa-trust-icon">{item.icon}</div>
@@ -359,7 +359,7 @@ export default function FashionTemplate(props) {
           </div>
         )}
         {allProds.length === 0
-          ? <div className="fa-empty"><div style={{ fontSize: '48px', marginBottom: '14px' }}>🔍</div><div style={{ fontSize: '14px' }}>No products found</div></div>
+          ? <div className="fa-empty"><Search size={40} color="#ccc" strokeWidth={1.5} style={{ marginBottom: '14px' }} /><div style={{ fontSize: '14px' }}>No products found</div></div>
           : <div className="fa-grid">{allProds.map(p => <FashionCard key={p.id} p={p} accent={accent} currency={store?.currency} onAdd={addToCart} onView={setDetail} />)}</div>
         }
       </div>
@@ -426,10 +426,10 @@ export default function FashionTemplate(props) {
           </div>
           <div className="fa-footer-col">
             <h4>Contact</h4>
-            {store?.phone   && <span className="fa-footer-link">📞 {store.phone}</span>}
-            {store?.email   && <span className="fa-footer-link">✉️ {store.email}</span>}
-            {store?.address && <span className="fa-footer-link">📍 {store.address}</span>}
-            {store?.city    && <span className="fa-footer-link">🏙️ {store.city}</span>}
+            {store?.phone   && <span className="fa-footer-link" style={{ display:'flex', alignItems:'center', gap:'6px' }}><Phone size={12} strokeWidth={1.8} />{store.phone}</span>}
+            {store?.email   && <span className="fa-footer-link" style={{ display:'flex', alignItems:'center', gap:'6px' }}><Mail size={12} strokeWidth={1.8} />{store.email}</span>}
+            {store?.address && <span className="fa-footer-link" style={{ display:'flex', alignItems:'center', gap:'6px' }}><MapPin size={12} strokeWidth={1.8} />{store.address}</span>}
+            {store?.city    && <span className="fa-footer-link" style={{ display:'flex', alignItems:'center', gap:'6px' }}><Building2 size={12} strokeWidth={1.8} />{store.city}</span>}
           </div>
         </div>
         <div className="fa-footer-bottom">
@@ -455,7 +455,7 @@ function FashionCard({ p, accent, currency, onAdd, onView }) {
       <div className="fa-card-img">
         {p.imageUrl
           ? <img src={p.imageUrl} alt={p.name} style={{ transform: hovered ? 'scale(1.07)' : 'scale(1)' }} />
-          : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px', background: '#f5f5f3' }}>👗</div>
+          : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f3' }}><Package size={36} color="#ccc" strokeWidth={1.2} /></div>
         }
         {oos
           ? <span className="fa-card-badge badge-out">Sold Out</span>

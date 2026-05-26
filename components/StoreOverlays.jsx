@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { X, ChevronRight, ShoppingBag } from 'lucide-react'
+import { X, ChevronRight, ShoppingBag, Package } from 'lucide-react'
 import { fmt } from '../lib/storefront'
 
 /* ── Announcement Bar ────────────────────────────────────── */
@@ -10,7 +10,7 @@ export function AnnouncementBar({ message, accent = '#111' }) {
   return (
     <div style={{ background: accent, color: '#fff', fontSize: '12px', fontWeight: 600, textAlign: 'center', padding: '8px 40px', position: 'relative', letterSpacing: '0.03em' }}>
       {message}
-      <button onClick={() => setVisible(false)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+      <button onClick={() => setVisible(false)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', lineHeight: 1, display:'flex', alignItems:'center' }}><X size={14} /></button>
     </div>
   )
 }
@@ -83,7 +83,7 @@ export function CartDrawer({ cart, products, store, cartCount, cartTotal, cartOp
                 return (
                   <div key={itemKey} style={{ display: 'flex', gap: '12px', paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f5f5f5' }}>
                     <div style={{ width: '64px', height: '80px', background: '#f0f0f0', flexShrink: 0, overflow: 'hidden' }}>
-                      {prod?.imageUrl ? <img src={prod.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📦</div>}
+                      {prod?.imageUrl ? <img src={prod.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f3' }}><Package size={22} color="#ccc" strokeWidth={1.5} /></div>}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '13px', fontWeight: 600, lineHeight: 1.3, marginBottom: '4px', color: '#111' }}>{item.name}</div>
@@ -136,7 +136,7 @@ export function QuickAddModal({ product, store, accent = '#111', onAdd, onClose,
         <button onClick={onClose} style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(255,255,255,0.9)', border: 'none', width: '30px', height: '30px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}><X size={14} /></button>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
           <div style={{ aspectRatio: '3/4', overflow: 'hidden', background: '#f0f0f0' }}>
-            {product.imageUrl ? <img src={product.imageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' }}>📦</div>}
+            {product.imageUrl ? <img src={product.imageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f3' }}><Package size={36} color="#ccc" strokeWidth={1.2} /></div>}
           </div>
           <div style={{ padding: '22px 18px', display: 'flex', flexDirection: 'column' }}>
             {product.category && <div style={{ fontSize: '10px', color: '#bbb', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '6px' }}>{product.category.name}</div>}
@@ -206,7 +206,7 @@ export function ProductDetailPage({ product, store, accent = '#111', onAdd, onCl
           <div>
             <div style={{ width: '100%', paddingBottom: '125%', position: 'relative', background: '#f0f0f0', overflow: 'hidden', marginBottom: '8px' }}>
               <div style={{ position: 'absolute', inset: 0 }}>
-                {product.imageUrl ? <img src={product.imageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '80px' }}>📦</div>}
+                {product.imageUrl ? <img src={product.imageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f3' }}><Package size={64} color="#ccc" strokeWidth={1} /></div>}
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
@@ -398,7 +398,7 @@ export function CheckoutPage({ cart, products, store, cartTotal, form, setForm, 
                       <div style={{ width: '64px', height: '80px', background: '#e5e7eb', borderRadius: '6px', overflow: 'hidden', border: '1px solid #e0e0e0' }}>
                         {prod?.imageUrl
                           ? <img src={prod.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
-                          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>📦</div>}
+                          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e5e7eb' }}><Package size={20} color="#ccc" strokeWidth={1.5} /></div>}
                       </div>
                       <div style={{ position: 'absolute', top: '-8px', right: '-8px', minWidth: '22px', height: '22px', background: '#6b7280', borderRadius: '50%', fontSize: '11px', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, padding: '0 4px' }}>{item.qty}</div>
                     </div>
