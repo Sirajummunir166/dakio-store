@@ -177,7 +177,8 @@ export function ProductDetailPage({ product, store, accent = '#111', onAdd, onCl
 }
 
 /* ── Checkout + Success ──────────────────────────────────── */
-export function CheckoutPage({ cart, products, store, cartTotal, form, setForm, formErr, placing, placeOrder, setView, accent = '#111' }) {
+export function CheckoutPage({ cart, products, store, cartTotal, form, setForm, formErr, placing, placeOrder, setView, accent = '#111',
+  couponCode, setCouponCode, couponDiscount, couponErr, appliedCoupon, couponLoading, applyCoupon, removeCoupon }) {
   const FONT = "'Inter', sans-serif"
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 399, display: 'flex', flexDirection: 'column', fontFamily: FONT, background: '#fff' }}>
@@ -218,6 +219,30 @@ export function CheckoutPage({ cart, products, store, cartTotal, form, setForm, 
                   onFocus={e => e.target.style.borderColor = accent} onBlur={e => e.target.style.borderColor = '#d1d5db'} />
               </div>
             ))}
+            {/* Coupon */}
+            <div style={{ fontSize: '15px', fontWeight: 700, color: '#111', margin: '22px 0 12px' }}>Coupon</div>
+            {appliedCoupon ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px' }}>
+                <span style={{ fontSize: '13px', color: '#166534', fontWeight: 600 }}>
+                  🎉 {appliedCoupon.code} — {appliedCoupon.type === 'PERCENT' ? `${appliedCoupon.amount}% off` : `৳${couponDiscount} off`}
+                </span>
+                <button onClick={removeCoupon} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', color: '#9ca3af' }}>Remove</button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                  onKeyDown={e => e.key === 'Enter' && applyCoupon(couponCode)}
+                  placeholder="Enter coupon code"
+                  style={{ flex: 1, padding: '11px 13px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '14px', outline: 'none', fontFamily: FONT, boxSizing: 'border-box' }}
+                  onFocus={e => e.target.style.borderColor = accent} onBlur={e => e.target.style.borderColor = '#d1d5db'} />
+                <button onClick={() => applyCoupon(couponCode)} disabled={couponLoading || !couponCode.trim()}
+                  style={{ padding: '11px 16px', background: accent, color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  {couponLoading ? '…' : 'Apply'}
+                </button>
+              </div>
+            )}
+            {couponErr && <div style={{ fontSize: '12px', color: '#dc2626', marginTop: '6px' }}>{couponErr}</div>}
+
             <div style={{ fontSize: '15px', fontWeight: 700, color: '#111', margin: '22px 0 12px' }}>Payment</div>
             <div style={{ border: `1.5px solid ${accent}`, borderRadius: '6px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ width: '18px', height: '18px', borderRadius: '50%', border: `2px solid ${accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -259,11 +284,16 @@ export function CheckoutPage({ cart, products, store, cartTotal, form, setForm, 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#666', marginBottom: '8px' }}>
                 <span>Subtotal</span><span>{fmt(cartTotal, store?.currency)}</span>
               </div>
+              {couponDiscount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#16a34a', marginBottom: '8px' }}>
+                  <span>Discount ({appliedCoupon?.code})</span><span>- {fmt(couponDiscount, store?.currency)}</span>
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '16px' }}>
                 <span style={{ color: '#666' }}>Shipping</span><span style={{ color: '#16a34a', fontWeight: 600 }}>Free</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 800, color: '#111', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
-                <span>Total</span><span>{fmt(cartTotal, store?.currency)}</span>
+                <span>Total</span><span>{fmt(cartTotal - (couponDiscount || 0), store?.currency)}</span>
               </div>
             </div>
           </div>

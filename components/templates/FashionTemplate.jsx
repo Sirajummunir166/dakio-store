@@ -16,6 +16,7 @@ export default function FashionTemplate(props) {
     cart, cartOpen, setCartOpen, cartCount, cartTotal, addToCart, changeQty, removeFromCart,
     quickView, setQuickView, detail, setDetail,
     view, setView, form, setForm, formErr, placing, placeOrder, orderNum,
+    couponCode, setCouponCode, couponDiscount, couponErr, appliedCoupon, couponLoading, applyCoupon, removeCoupon,
     email, setEmail, subscribed, setSubscribed,
     isFiltered, catSections, uncategorised,
   } = props
@@ -31,7 +32,7 @@ export default function FashionTemplate(props) {
     ? allCats.map(c => ({ ...c, items: D.products.filter(p => p.category?.id === c.id) }))
     : catSections
 
-  if (view === 'checkout') return <CheckoutPage {...{ cart, products: showProds, store, cartTotal, form, setForm, formErr, placing, placeOrder, setView, accent }} />
+  if (view === 'checkout') return <CheckoutPage {...{ cart, products: showProds, store, cartTotal, form, setForm, formErr, placing, placeOrder, setView, accent, couponCode, setCouponCode, couponDiscount, couponErr, appliedCoupon, couponLoading, applyCoupon, removeCoupon }} />
   if (view === 'success')  return <SuccessPage {...{ orderNum, form, setView, setForm, accent }} />
 
   return (
