@@ -14,20 +14,42 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function StorePage({ params }) {
-  const [storeData, products, categories] = await Promise.all([
-    getStoreBySlug(params.slug),
-    getProducts(params.slug),
-    getCategories(params.slug),
-  ])
+  const slug = params.slug
 
-  if (!storeData?.store) notFound()
+  let storeData, products, categories
+  try {
+    ;[storeData, products, categories] = await Promise.all([
+      getStoreBySlug(slug),
+      getProducts(slug),
+      getCategories(slug),
+    ])
+  } catch (err) {
+    return (
+      <div style={{ padding: 40, fontFamily: 'sans-serif' }}>
+        <h2>Error loading store</h2>
+        <pre>{String(err)}</pre>
+        <p>Slug: {slug}</p>
+      </div>
+    )
+  }
+
+  if (!storeData?.store) {
+    return (
+      <div style={{ padding: 40, fontFamily: 'sans-serif' }}>
+        <h2>Store not found</h2>
+        <p>Slug: {slug}</p>
+        <p>API URL: {process.env.NEXT_PUBLIC_API_URL}</p>
+        <pre>{JSON.stringify(storeData, null, 2)}</pre>
+      </div>
+    )
+  }
 
   return (
     <StorefrontClient
       store={storeData.store}
       products={products}
       categories={categories}
-      slug={params.slug}
+      slug={slug}
     />
   )
 }
