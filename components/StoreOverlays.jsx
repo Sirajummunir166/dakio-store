@@ -224,7 +224,7 @@ export function CheckoutPage({ cart, products, store, cartTotal, form, setForm, 
             {appliedCoupon ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px' }}>
                 <span style={{ fontSize: '13px', color: '#166534', fontWeight: 600 }}>
-                  🎉 {appliedCoupon.code} — {appliedCoupon.type === 'PERCENT' ? `${appliedCoupon.amount}% off` : `৳${couponDiscount} off`}
+                  🎉 {appliedCoupon.code} — {appliedCoupon.type === 'PERCENT' ? `${appliedCoupon.amount}% off` : `Tk ${couponDiscount} off`}
                 </span>
                 <button onClick={removeCoupon} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', color: '#9ca3af' }}>Remove</button>
               </div>

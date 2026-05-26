@@ -267,7 +267,7 @@ export default function OrganicTemplate(props) {
               <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '7px', background: 'rgba(255,255,255,.18)', borderRadius: '8px', padding: '5px 12px', flexShrink: 0 }}>
                 <span style={{ fontSize: '12px', color: '#fff', fontWeight: 600, whiteSpace: 'nowrap' }}>{p.name}</span>
                 <span style={{ background: 'rgba(0,0,0,.2)', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>{pct}% ছাড়</span>
-                <span style={{ fontSize: '13px', fontWeight: 900, color: '#fff' }}>৳{p.sellingPrice}</span>
+                <span style={{ fontSize: '13px', fontWeight: 900, color: '#fff' }}>Tk {p.sellingPrice}</span>
               </div>
             )
           })}
@@ -502,9 +502,9 @@ function GBCard({ p, accent, currency, onAdd, onView }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
           <div>
-            <div style={{ fontSize: '16px', fontWeight: 900, color: accent, lineHeight: 1 }}>৳{p.sellingPrice}</div>
+            <div style={{ fontSize: '16px', fontWeight: 900, color: accent, lineHeight: 1 }}>Tk {p.sellingPrice}</div>
             {p.mrp && p.mrp > p.sellingPrice && (
-              <div style={{ fontSize: '11px', color: '#bbb', textDecoration: 'line-through', marginTop: '1px' }}>৳{p.mrp}</div>
+              <div style={{ fontSize: '11px', color: '#bbb', textDecoration: 'line-through', marginTop: '1px' }}>Tk {p.mrp}</div>
             )}
           </div>
           {!oos && (
