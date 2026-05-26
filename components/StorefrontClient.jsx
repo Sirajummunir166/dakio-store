@@ -19,5 +19,5 @@ const TEMPLATES = {
 export default function StorefrontClient({ store, products, categories, slug }) {
   const sf = useStorefront({ store, products, categories, slug })
   const Template = TEMPLATES[store?.storeTemplate] || MinimalTemplate
-  return <Template {...sf} slug={slug} />
+  return <Template {...sf} />
 }
