@@ -3,7 +3,8 @@ import StorefrontClient from '../../components/StorefrontClient'
 import { notFound } from 'next/navigation'
 
 export async function generateMetadata({ params }) {
-  const data = await getStoreBySlug(params.slug)
+  const { slug } = await params
+  const data = await getStoreBySlug(slug)
   if (!data?.store) return { title: 'Store Not Found' }
   const s = data.store
   return {
@@ -14,35 +15,15 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function StorePage({ params }) {
-  const slug = params.slug
+  const { slug } = await params
 
-  let storeData, products, categories
-  try {
-    ;[storeData, products, categories] = await Promise.all([
-      getStoreBySlug(slug),
-      getProducts(slug),
-      getCategories(slug),
-    ])
-  } catch (err) {
-    return (
-      <div style={{ padding: 40, fontFamily: 'sans-serif' }}>
-        <h2>Error loading store</h2>
-        <pre>{String(err)}</pre>
-        <p>Slug: {slug}</p>
-      </div>
-    )
-  }
+  const [storeData, products, categories] = await Promise.all([
+    getStoreBySlug(slug),
+    getProducts(slug),
+    getCategories(slug),
+  ])
 
-  if (!storeData?.store) {
-    return (
-      <div style={{ padding: 40, fontFamily: 'sans-serif' }}>
-        <h2>Store not found</h2>
-        <p>Slug: {slug}</p>
-        <p>API URL: {process.env.NEXT_PUBLIC_API_URL}</p>
-        <pre>{JSON.stringify(storeData, null, 2)}</pre>
-      </div>
-    )
-  }
+  if (!storeData?.store) notFound()
 
   return (
     <StorefrontClient
