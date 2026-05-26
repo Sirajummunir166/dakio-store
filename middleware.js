@@ -11,9 +11,9 @@ export async function middleware(req) {
   const { pathname } = req.nextUrl
 
   if (isCustomDomain(hostname)) {
-    // Rewrite all paths: /track → /domain/sharqee.xyz/track, / → /domain/sharqee.xyz
-    const rewritePath = pathname === '/' ? `/domain/${hostname}` : `/domain/${hostname}${pathname}`
-    return NextResponse.rewrite(new URL(rewritePath, req.url))
+    const url = req.nextUrl.clone()
+    url.pathname = pathname === '/' ? `/domain/${hostname}` : `/domain/${hostname}${pathname}`
+    return NextResponse.rewrite(url)
   }
 
   return NextResponse.next()
