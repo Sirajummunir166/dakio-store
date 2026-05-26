@@ -236,7 +236,7 @@ export default function MinimalTemplate(props) {
           <p style={{ fontSize: '12px', color: '#bbb' }}>© {new Date().getFullYear()} {store?.name || 'My Store'}. All rights reserved.</p>
           <p style={{ fontSize: '12px', color: '#bbb' }}>Powered by <strong style={{ color: '#888' }}>LenDen</strong></p>
         </div>
-              <SocialFooter store={store} accent={accent} />
+              <SocialFooter store={store} slug={slug} accent={accent} />
       </footer>
 
       {/* Overlays */}

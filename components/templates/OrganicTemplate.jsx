@@ -399,7 +399,7 @@ export default function OrganicTemplate(props) {
           <p style={{ fontSize: '12px', color: '#4a7a56' }}>© {new Date().getFullYear()} {store?.name}</p>
           <p style={{ fontSize: '12px', color: '#4a7a56' }}>Powered by <strong style={{ color: '#6b9e78' }}>LenDen</strong></p>
         </div>
-              <SocialFooter store={store} accent={accent} />
+              <SocialFooter store={store} slug={slug} accent={accent} />
       </footer>
 
       {detail    && <ProductDetailPage product={detail} store={store} accent={accent} onAdd={addToCart} onClose={() => setDetail(null)} />}

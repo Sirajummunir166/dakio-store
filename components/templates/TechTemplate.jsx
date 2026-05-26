@@ -219,7 +219,7 @@ export default function TechTemplate(props) {
           <p style={{ fontSize: '12px', color: '#475569' }}>© {new Date().getFullYear()} {store?.name}. All rights reserved.</p>
           <p style={{ fontSize: '12px', color: '#475569' }}>Powered by <strong style={{ color: '#64748b' }}>LenDen</strong></p>
         </div>
-              <SocialFooter store={store} accent={accent} />
+              <SocialFooter store={store} slug={slug} accent={accent} />
       </footer>
 
       {detail    && <ProductDetailPage product={detail} store={store} accent={accent} onAdd={addToCart} onClose={() => setDetail(null)} />}

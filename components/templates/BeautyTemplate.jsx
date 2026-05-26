@@ -240,7 +240,7 @@ export default function BeautyTemplate(props) {
           <p style={{ fontSize: '12px', color: '#ccc' }}>© {new Date().getFullYear()} {store?.name}</p>
           <p style={{ fontSize: '12px', color: '#ccc' }}>Powered by <strong style={{ color: '#999' }}>LenDen</strong></p>
         </div>
-              <SocialFooter store={store} accent={accent} />
+              <SocialFooter store={store} slug={slug} accent={accent} />
       </footer>
 
       {detail    && <ProductDetailPage product={detail} store={store} accent={accent} onAdd={addToCart} onClose={() => setDetail(null)} />}

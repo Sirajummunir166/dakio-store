@@ -229,7 +229,7 @@ export default function BoldTemplate(props) {
           <p style={{ fontSize: '12px', color: '#333' }}>© {new Date().getFullYear()} {store?.name?.toUpperCase()}</p>
           <p style={{ fontSize: '12px', color: '#333' }}>Powered by <strong style={{ color: '#555' }}>LenDen</strong></p>
         </div>
-              <SocialFooter store={store} accent={accent} />
+              <SocialFooter store={store} slug={slug} accent={accent} />
       </footer>
 
       {detail    && <ProductDetailPage product={detail} store={store} accent={accent} onAdd={addToCart} onClose={() => setDetail(null)} />}
