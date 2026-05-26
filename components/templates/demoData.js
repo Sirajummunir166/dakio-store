@@ -12,14 +12,14 @@ export const DEMO = {
     announce:  '🆕 New Collection Arrived — Free delivery on orders above Tk 1,500',
     categories: ['New In', 'Women', 'Men', 'Accessories'],
     products: [
-      { id: 'f1', name: 'Floral Midi Dress',        sellingPrice: 2490, imageUrl: U('1515886931-6f8a72e3ac11'), category: { id: 'fw', name: 'Women' } },
+      { id: 'f1', name: 'Floral Midi Dress',        sellingPrice: 2490, imageUrl: U('1595777457583-95e059d581b8'), category: { id: 'fw', name: 'Women' } },
       { id: 'f2', name: 'Classic Linen Shirt',       sellingPrice: 1190, imageUrl: U('1581044777550-4cfa60707c03'), category: { id: 'fm', name: 'Men' } },
       { id: 'f3', name: 'High-Waist Trousers',       sellingPrice: 1690, imageUrl: U('1506629082955-511b1aa562c8'), category: { id: 'fw', name: 'Women' } },
       { id: 'f4', name: 'Casual Polo Tee',           sellingPrice:  890, imageUrl: U('1521572163474-6864f9cf17ab'), category: { id: 'fm', name: 'Men' } },
-      { id: 'f5', name: 'Summer Printed Kurti',      sellingPrice: 1390, imageUrl: U('1594938298870-b36de3e8e96c'), category: { id: 'fw', name: 'Women' } },
+      { id: 'f5', name: 'Summer Printed Kurti',      sellingPrice: 1390, imageUrl: U('1591047139829-d91aecb6caea'), category: { id: 'fw', name: 'Women' } },
       { id: 'f6', name: 'Slim Fit Chinos',           sellingPrice: 1490, imageUrl: U('1473966968600-fa801b869a1a'), category: { id: 'fm', name: 'Men' } },
-      { id: 'f7', name: 'Embroidered Panjabi',       sellingPrice: 1890, imageUrl: U('1583743814966-8d4f4d5b3e3a'), category: { id: 'fm', name: 'Men' } },
-      { id: 'f8', name: 'Printed Scarf',             sellingPrice:  590, imageUrl: U('1601924994987-f02068681bd5'), category: { id: 'fa', name: 'Accessories' } },
+      { id: 'f7', name: 'Embroidered Panjabi',       sellingPrice: 1890, imageUrl: U('1512436991641-6745cdb1723f'), category: { id: 'fm', name: 'Men' } },
+      { id: 'f8', name: 'Printed Scarf',             sellingPrice:  590, imageUrl: U('1567401893414-76b7b1e5a7a5'), category: { id: 'fa', name: 'Accessories' } },
     ],
   },
 
@@ -102,7 +102,7 @@ export const DEMO = {
       { id: 'bl5', name: 'Tactical Crossbody Bag',      sellingPrice: 1290, imageUrl: U('1553062407-98eeb64c6a62'), category: { id: 'blx', name: 'Accessories' } },
       { id: 'bl6', name: 'Snapback Cap',                sellingPrice:  590, imageUrl: U('1521369749756-af76b36d3b59'), category: { id: 'blx', name: 'Accessories' } },
       { id: 'bl7', name: 'Premium Sports Socks (3-Pack)',sellingPrice:  390, imageUrl: U('1542291026-7eec264c27ff'), category: { id: 'blx', name: 'Accessories' } },
-      { id: 'bl8', name: 'Reflective Track Jacket',     sellingPrice: 2390, imageUrl: U('1515886931-6f8a72e3ac11'), category: { id: 'bla', name: 'Apparel' } },
+      { id: 'bl8', name: 'Reflective Track Jacket',     sellingPrice: 2390, imageUrl: U('1509631179647-0177331693ae'), category: { id: 'bla', name: 'Apparel' } },
     ],
   },
 
