@@ -21,9 +21,9 @@ export default function CheckoutClient({ store, slug }) {
   const [cart, setCart]         = useState([])
   const [cartReady, setCartReady] = useState(false)
   const [form, setForm]         = useState({ name: '', phone: '', address: '', note: '' })
-  const [district, setDistrict] = useState('')
-  const [thana, setThana]       = useState('')
-  const [showLocation, setShowLocation] = useState(false)
+  const [district, setDistrict]   = useState('')
+  const [thana, setThana]         = useState('')
+  const [autoDetected, setAutoDetected] = useState(false)
   const [formErr, setFormErr]   = useState('')
   const [placing, setPlacing]   = useState(false)
   const [orderNum, setOrderNum] = useState('')
@@ -53,8 +53,13 @@ export default function CheckoutClient({ store, slug }) {
   function handleAddressBlur(val) {
     if (!val.trim()) return
     const { district: d, thana: t } = detectLocation(val)
-    if (d) { setDistrict(d); if (t) setThana(t) }
-    setShowLocation(true)
+    if (d) {
+      setDistrict(d)
+      if (t) setThana(t)
+      setAutoDetected(true)
+    } else {
+      setAutoDetected(false)
+    }
   }
 
   async function applyCoupon(code) {
@@ -86,7 +91,7 @@ export default function CheckoutClient({ store, slug }) {
   async function placeOrder() {
     if (!form.name.trim())      { setFormErr('Please enter your name'); return }
     if (form.phone.length < 10) { setFormErr('Enter a valid phone number'); return }
-    if (!district)              { setFormErr('Please select your district'); return }
+    if (!district)              { setFormErr('Could not detect your area — please select district below'); return }
     setFormErr(''); setPlacing(true)
     try {
       const r = await fetch(`${API}/store/${slug}/orders`, {
@@ -235,36 +240,35 @@ export default function CheckoutClient({ store, slug }) {
                 style={{ ...inputStyle, resize: 'none', paddingTop: '10px', lineHeight: 1.5 }} />
             </Field>
 
-            {/* District / Thana */}
-            {showLocation ? (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                <Field label="District" required>
-                  <div style={{ position: 'relative' }}>
-                    <select value={district} onChange={e => { setDistrict(e.target.value); setThana('') }}
-                      style={{ ...selectStyle, color: district ? '#111' : '#9ca3af' }}
-                      onFocus={fieldFocus} onBlur={fieldBlur}>
-                      <option value="">Select district</option>
-                      {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
-                </Field>
-                <Field label="Thana / Upazila">
-                  <div style={{ position: 'relative' }}>
-                    <select value={thana} onChange={e => setThana(e.target.value)}
-                      disabled={!district}
-                      style={{ ...selectStyle, color: thana ? '#111' : '#9ca3af', opacity: district ? 1 : 0.5 }}
-                      onFocus={fieldFocus} onBlur={fieldBlur}>
-                      <option value="">Select thana</option>
-                      {getThanas(district).map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </div>
-                </Field>
+            {/* District / Thana — always visible, auto-fills from address */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '4px' }}>
+              <Field label="District" required>
+                <div style={{ position: 'relative' }}>
+                  <select value={district} onChange={e => { setDistrict(e.target.value); setThana(''); setAutoDetected(false) }}
+                    style={{ ...selectStyle, color: district ? '#111' : '#9ca3af' }}
+                    onFocus={fieldFocus} onBlur={fieldBlur}>
+                    <option value="">Select district</option>
+                    {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+              </Field>
+              <Field label="Thana / Upazila">
+                <div style={{ position: 'relative' }}>
+                  <select value={thana} onChange={e => setThana(e.target.value)}
+                    disabled={!district}
+                    style={{ ...selectStyle, color: thana ? '#111' : '#9ca3af', opacity: district ? 1 : 0.5 }}
+                    onFocus={fieldFocus} onBlur={fieldBlur}>
+                    <option value="">Select thana</option>
+                    {getThanas(district).map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </Field>
+            </div>
+            {autoDetected && district && (
+              <div style={{ fontSize: '12px', color: '#16a34a', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Auto-detected from address
               </div>
-            ) : (
-              <button type="button" onClick={() => setShowLocation(true)}
-                style={{ fontSize: '13px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 12px', textDecoration: 'underline', fontFamily: FONT }}>
-                + Select district &amp; thana
-              </button>
             )}
 
             {/* Delivery charge indicator */}
