@@ -1,12 +1,13 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { DISTRICTS, DHAKA_DISTRICTS, getThanas, detectLocation } from '../lib/bd-locations'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://dakio-api-production.up.railway.app/api'
 
 function fmt(price, currency) {
   const sym = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'Tk '
-  return `${sym}${Number(price || 0).toLocaleString('en-GB')}.00`
+  return `${sym}${Number(price || 0).toLocaleString('en-GB')}`
 }
 
 export default function CheckoutClient({ store, slug }) {
@@ -14,18 +15,24 @@ export default function CheckoutClient({ store, slug }) {
   const accent = store?.accentColor || '#111'
   const FONT = "'Inter', sans-serif"
 
-  const [cart, setCart]       = useState([])
+  const insideDhakaCharge  = store?.deliveryInsideDhaka  ?? 60
+  const outsideDhakaCharge = store?.deliveryOutsideDhaka ?? 120
+
+  const [cart, setCart]         = useState([])
   const [cartReady, setCartReady] = useState(false)
-  const [form, setForm]       = useState({ name: '', phone: '', address: '', city: '', note: '' })
-  const [formErr, setFormErr] = useState('')
-  const [placing, setPlacing] = useState(false)
+  const [form, setForm]         = useState({ name: '', phone: '', address: '', note: '' })
+  const [district, setDistrict] = useState('')
+  const [thana, setThana]       = useState('')
+  const [showLocation, setShowLocation] = useState(false)
+  const [formErr, setFormErr]   = useState('')
+  const [placing, setPlacing]   = useState(false)
   const [orderNum, setOrderNum] = useState('')
 
-  const [couponCode, setCouponCode]           = useState('')
-  const [couponDiscount, setCouponDiscount]   = useState(0)
-  const [couponErr, setCouponErr]             = useState('')
-  const [appliedCoupon, setAppliedCoupon]     = useState(null)
-  const [couponLoading, setCouponLoading]     = useState(false)
+  const [couponCode, setCouponCode]         = useState('')
+  const [couponDiscount, setCouponDiscount] = useState(0)
+  const [couponErr, setCouponErr]           = useState('')
+  const [appliedCoupon, setAppliedCoupon]   = useState(null)
+  const [couponLoading, setCouponLoading]   = useState(false)
 
   const [summaryOpen, setSummaryOpen] = useState(false)
 
@@ -37,9 +44,18 @@ export default function CheckoutClient({ store, slug }) {
     setCartReady(true)
   }, [slug])
 
-  const cartTotal = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0)
-  const cartCount = cart.reduce((s, i) => s + i.qty, 0)
-  const orderTotal = cartTotal - (couponDiscount || 0)
+  const cartTotal    = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0)
+  const cartCount    = cart.reduce((s, i) => s + i.qty, 0)
+  const isInsideDhaka = DHAKA_DISTRICTS.includes(district)
+  const shippingCharge = district ? (isInsideDhaka ? insideDhakaCharge : outsideDhakaCharge) : 0
+  const orderTotal   = cartTotal + shippingCharge - (couponDiscount || 0)
+
+  function handleAddressBlur(val) {
+    if (!val.trim()) return
+    const { district: d, thana: t } = detectLocation(val)
+    if (d) { setDistrict(d); if (t) setThana(t) }
+    setShowLocation(true)
+  }
 
   async function applyCoupon(code) {
     if (!code.trim()) return
@@ -70,14 +86,23 @@ export default function CheckoutClient({ store, slug }) {
   async function placeOrder() {
     if (!form.name.trim())      { setFormErr('Please enter your name'); return }
     if (form.phone.length < 10) { setFormErr('Enter a valid phone number'); return }
+    if (!district)              { setFormErr('Please select your district'); return }
     setFormErr(''); setPlacing(true)
     try {
       const r = await fetch(`${API}/store/${slug}/orders`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...form, items: cart, paymentMethod: 'COD',
-          discount: couponDiscount,
-          couponCode: appliedCoupon?.code || null,
+          name:    form.name,
+          phone:   form.phone,
+          address: form.address,
+          city:    thana,
+          district,
+          note:    form.note || undefined,
+          items:   cart,
+          paymentMethod: 'COD',
+          shippingCharge,
+          discount:    couponDiscount,
+          couponCode:  appliedCoupon?.code || null,
         }),
       })
       const data = await r.json()
@@ -97,6 +122,12 @@ export default function CheckoutClient({ store, slug }) {
     boxSizing: 'border-box', color: '#111', background: '#fff',
     WebkitAppearance: 'none',
   }
+  const selectStyle = {
+    ...inputStyle,
+    appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer',
+    paddingRight: '36px', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+    backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
+  }
   const fieldFocus = e => { e.target.style.borderColor = accent; e.target.style.boxShadow = `0 0 0 3px ${accent}22` }
   const fieldBlur  = e => { e.target.style.borderColor = '#d1d5db'; e.target.style.boxShadow = 'none' }
 
@@ -109,7 +140,7 @@ export default function CheckoutClient({ store, slug }) {
         </div>
         <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#111', margin: '0 0 8px', textAlign: 'center' }}>Order placed!</h1>
         <p style={{ fontSize: '15px', color: '#6b7280', margin: '0 0 6px', textAlign: 'center' }}>Thank you, {form.name.split(' ')[0]}.</p>
-        <p style={{ fontSize: '13px', color: '#9ca3af', margin: '0 0 28px', textAlign: 'center' }}>Order #{orderNum} · We'll contact you at {form.phone}</p>
+        <p style={{ fontSize: '13px', color: '#9ca3af', margin: '0 0 28px', textAlign: 'center' }}>Order {orderNum} · We&apos;ll contact you at {form.phone}</p>
         <button onClick={() => router.push(`/${slug}`)}
           style={{ padding: '14px 32px', background: accent, color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: FONT }}>
           Continue shopping
@@ -118,7 +149,7 @@ export default function CheckoutClient({ store, slug }) {
     )
   }
 
-  /* ── Empty cart redirect ───────────────────────────────── */
+  /* ── Empty cart ──────────────────────────────────────────── */
   if (cartReady && cart.length === 0) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, padding: '24px', background: '#fff' }}>
@@ -129,6 +160,13 @@ export default function CheckoutClient({ store, slug }) {
         </button>
       </div>
     )
+  }
+
+  const summaryProps = {
+    cart, store, cartTotal, cartCount, shippingCharge, district,
+    isInsideDhaka, couponCode, setCouponCode, couponDiscount, couponErr,
+    appliedCoupon, couponLoading, applyCoupon, removeCoupon,
+    orderTotal, accent, inputStyle, fieldFocus, fieldBlur, FONT,
   }
 
   /* ── Main checkout ──────────────────────────────────────── */
@@ -150,7 +188,7 @@ export default function CheckoutClient({ store, slug }) {
       </div>
 
       {/* Mobile: collapsible order summary */}
-      <div style={{ display: 'block' }} className="checkout-mobile-summary">
+      <div className="checkout-mobile-summary">
         <button onClick={() => setSummaryOpen(o => !o)}
           style={{ width: '100%', padding: '14px 20px', background: '#f9f9f7', border: 'none', borderBottom: '1px solid #e8e8e8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: FONT }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#374151', fontWeight: 600 }}>
@@ -160,18 +198,9 @@ export default function CheckoutClient({ store, slug }) {
           </div>
           <span style={{ fontSize: '16px', fontWeight: 800, color: '#111' }}>{fmt(orderTotal, store?.currency)}</span>
         </button>
-
         {summaryOpen && (
           <div style={{ background: '#f9f9f7', borderBottom: '1px solid #e8e8e8', padding: '16px 20px' }}>
-            <OrderSummaryContent
-              cart={cart} store={store} cartTotal={cartTotal} cartCount={cartCount}
-              couponCode={couponCode} setCouponCode={setCouponCode}
-              couponDiscount={couponDiscount} couponErr={couponErr}
-              appliedCoupon={appliedCoupon} couponLoading={couponLoading}
-              applyCoupon={applyCoupon} removeCoupon={removeCoupon}
-              orderTotal={orderTotal} accent={accent} inputStyle={inputStyle}
-              fieldFocus={fieldFocus} fieldBlur={fieldBlur} FONT={FONT}
-            />
+            <OrderSummaryContent {...summaryProps} />
           </div>
         )}
       </div>
@@ -198,16 +227,56 @@ export default function CheckoutClient({ store, slug }) {
 
             {/* Shipping */}
             <SectionTitle style={{ marginTop: '28px' }}>Shipping address</SectionTitle>
-            <Field label="Address">
-              <input type="text" placeholder="House, road, area" value={form.address}
+            <Field label="Full address">
+              <textarea placeholder="House, road, area, village…" value={form.address} rows={2}
                 onChange={e => setForm(p => ({ ...p, address: e.target.value }))}
-                style={inputStyle} onFocus={fieldFocus} onBlur={fieldBlur} />
+                onBlur={e => { fieldBlur(e); handleAddressBlur(e.target.value) }}
+                onFocus={e => { fieldFocus(e) }}
+                style={{ ...inputStyle, resize: 'none', paddingTop: '10px', lineHeight: 1.5 }} />
             </Field>
-            <Field label="City">
-              <input type="text" placeholder="Dhaka" value={form.city}
-                onChange={e => setForm(p => ({ ...p, city: e.target.value }))}
-                style={inputStyle} onFocus={fieldFocus} onBlur={fieldBlur} />
-            </Field>
+
+            {/* District / Thana */}
+            {showLocation ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                <Field label="District" required>
+                  <div style={{ position: 'relative' }}>
+                    <select value={district} onChange={e => { setDistrict(e.target.value); setThana('') }}
+                      style={{ ...selectStyle, color: district ? '#111' : '#9ca3af' }}
+                      onFocus={fieldFocus} onBlur={fieldBlur}>
+                      <option value="">Select district</option>
+                      {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+                </Field>
+                <Field label="Thana / Upazila">
+                  <div style={{ position: 'relative' }}>
+                    <select value={thana} onChange={e => setThana(e.target.value)}
+                      disabled={!district}
+                      style={{ ...selectStyle, color: thana ? '#111' : '#9ca3af', opacity: district ? 1 : 0.5 }}
+                      onFocus={fieldFocus} onBlur={fieldBlur}>
+                      <option value="">Select thana</option>
+                      {getThanas(district).map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                </Field>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setShowLocation(true)}
+                style={{ fontSize: '13px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 12px', textDecoration: 'underline', fontFamily: FONT }}>
+                + Select district &amp; thana
+              </button>
+            )}
+
+            {/* Delivery charge indicator */}
+            {district && (
+              <div style={{ padding: '12px 14px', borderRadius: '9px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: isInsideDhaka ? '#eff6ff' : '#fefce8', border: `1px solid ${isInsideDhaka ? '#bfdbfe' : '#fef08a'}` }}>
+                <span style={{ fontSize: '13px', fontWeight: 500, color: isInsideDhaka ? '#1d4ed8' : '#854d0e' }}>
+                  {isInsideDhaka ? '📍 Inside Dhaka' : '📦 Outside Dhaka'} delivery
+                </span>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: '#111' }}>{fmt(shippingCharge, store?.currency)}</span>
+              </div>
+            )}
+
             <Field label="Order note" optional>
               <input type="text" placeholder="Special instructions (optional)" value={form.note}
                 onChange={e => setForm(p => ({ ...p, note: e.target.value }))}
@@ -215,16 +284,18 @@ export default function CheckoutClient({ store, slug }) {
             </Field>
 
             {/* Shipping method */}
-            <SectionTitle style={{ marginTop: '28px' }}>Shipping method</SectionTitle>
+            <SectionTitle style={{ marginTop: '20px' }}>Shipping method</SectionTitle>
             <div style={{ border: `1.5px solid ${accent}`, borderRadius: '10px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '28px', background: `${accent}08` }}>
               <div style={{ width: '18px', height: '18px', borderRadius: '50%', border: `2px solid ${accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: accent }} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '14px', fontWeight: 600, color: '#111' }}>Cash on Delivery</div>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: '#111' }}>Cash on Delivery (COD)</div>
                 <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Pay when your order arrives</div>
               </div>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#16a34a' }}>Free</div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: district ? '#111' : '#16a34a' }}>
+                {district ? fmt(shippingCharge, store?.currency) : 'Free'}
+              </div>
             </div>
 
             {/* Error */}
@@ -250,15 +321,7 @@ export default function CheckoutClient({ store, slug }) {
 
         {/* Desktop: right summary column */}
         <div className="checkout-desktop-summary" style={{ width: '420px', flexShrink: 0, background: '#f9f9f7', borderLeft: '1px solid #e8e8e8', padding: '40px 40px 80px', overflowY: 'auto' }}>
-          <OrderSummaryContent
-            cart={cart} store={store} cartTotal={cartTotal} cartCount={cartCount}
-            couponCode={couponCode} setCouponCode={setCouponCode}
-            couponDiscount={couponDiscount} couponErr={couponErr}
-            appliedCoupon={appliedCoupon} couponLoading={couponLoading}
-            applyCoupon={applyCoupon} removeCoupon={removeCoupon}
-            orderTotal={orderTotal} accent={accent} inputStyle={inputStyle}
-            fieldFocus={fieldFocus} fieldBlur={fieldBlur} FONT={FONT}
-          />
+          <OrderSummaryContent {...summaryProps} />
         </div>
 
       </div>
@@ -298,7 +361,7 @@ function Field({ label, children, required, optional }) {
 }
 
 function OrderSummaryContent({
-  cart, store, cartTotal, cartCount,
+  cart, store, cartTotal, cartCount, shippingCharge, district,
   couponCode, setCouponCode, couponDiscount, couponErr,
   appliedCoupon, couponLoading, applyCoupon, removeCoupon,
   orderTotal, accent, inputStyle, fieldFocus, fieldBlur, FONT,
@@ -364,16 +427,18 @@ function OrderSummaryContent({
           <span>Subtotal · {cartCount} {cartCount === 1 ? 'item' : 'items'}</span>
           <span style={{ color: '#111', fontWeight: 500 }}>{fmt(cartTotal, store?.currency)}</span>
         </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#6b7280', marginBottom: '9px' }}>
+          <span>Shipping{district ? ` (${district})` : ''}</span>
+          {district
+            ? <span style={{ color: '#111', fontWeight: 500 }}>{fmt(shippingCharge, store?.currency)}</span>
+            : <span style={{ color: '#9ca3af' }}>Select district</span>}
+        </div>
         {couponDiscount > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#16a34a', marginBottom: '9px' }}>
             <span>Discount</span>
             <span style={{ fontWeight: 600 }}>−{fmt(couponDiscount, store?.currency)}</span>
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#6b7280', marginBottom: '16px' }}>
-          <span>Shipping</span>
-          <span style={{ color: '#16a34a', fontWeight: 600 }}>Free</span>
-        </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: '14px', borderTop: '1px solid #d1d5db' }}>
           <div>
             <span style={{ fontSize: '15px', fontWeight: 700, color: '#111' }}>Total</span>
