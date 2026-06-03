@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { MessageCircle, Phone, Package, CheckCircle2, Truck, XCircle, RotateCcw } from 'lucide-react'
+import { Phone, Package, CheckCircle2, Truck, XCircle, RotateCcw } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://dakio-api-production.up.railway.app/api'
 
@@ -9,13 +9,6 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-function cleanWA(raw) {
-  if (!raw) return null
-  let n = raw.replace(/[\s\-().+]/g, '')
-  if (n.startsWith('880') && n.length === 12) return n
-  if (n.startsWith('0') && n.length === 11) return '880' + n.slice(1)
-  return n
-}
 
 function lighten(hex, amt = 0.9) {
   try {
@@ -60,7 +53,6 @@ export default function TrackOrderDirect({ store, slug, code }) {
   }, [])
 
   const sColor = data ? statusColor(data.statusStep, accent) : accent
-  const waNum  = data ? cleanWA(data.store?.whatsappNumber || data.store?.phone) : null
 
   return (
     <div style={{ minHeight: '100vh', background: '#f0f2f5', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
@@ -164,23 +156,13 @@ export default function TrackOrderDirect({ store, slug, code }) {
             </div>
 
             {/* Support */}
-            {(waNum || data.store?.phone) && (
+            {data.store?.phone && (
               <div style={{ background: '#fff', borderRadius: 16, padding: '18px 20px', marginBottom: 10, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
                 <p style={s.sec}>Need help?</p>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  {waNum && (
-                    <a href={`https://wa.me/${waNum}?text=Hi%2C%20order%20%23${normCode}%20%E2%80%94%20need%20help`} target="_blank" rel="noopener noreferrer"
-                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px', borderRadius: 12, background: '#25D366', color: '#fff', fontSize: 13, fontWeight: 700 }}>
-                      <MessageCircle size={15} /> WhatsApp
-                    </a>
-                  )}
-                  {data.store?.phone && (
-                    <a href={`tel:${data.store.phone}`}
-                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px', borderRadius: 12, background: accent, color: '#fff', fontSize: 13, fontWeight: 700 }}>
-                      <Phone size={15} /> Call
-                    </a>
-                  )}
-                </div>
+                <a href={`tel:${data.store.phone}`}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px', borderRadius: 12, background: accent, color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
+                  <Phone size={16} /> {data.store.phone}
+                </a>
               </div>
             )}
           </>
