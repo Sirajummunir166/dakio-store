@@ -10,6 +10,21 @@ function fmtDate(d) {
 }
 
 
+const STEP_COLORS = [
+  '#6b7280', // 0: Order Placed   — gray
+  '#3b82f6', // 1: Confirmed      — blue
+  '#f59e0b', // 2: Preparing      — amber
+  '#8b5cf6', // 3: On the Way     — purple
+  '#f97316', // 4: Ready          — orange
+  '#16a34a', // 5: Delivered      — green
+]
+
+function stepColor(step) {
+  if (step === -1) return '#dc2626'
+  if (step === -2) return '#ea580c'
+  return STEP_COLORS[step] || '#6b7280'
+}
+
 function lighten(hex, amt = 0.9) {
   try {
     const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
@@ -17,19 +32,13 @@ function lighten(hex, amt = 0.9) {
   } catch { return '#f3f4f6' }
 }
 
-function statusColor(step, accent) {
-  if (step === 4)  return '#16a34a'
-  if (step === -1) return '#dc2626'
-  if (step === -2) return '#ea580c'
-  return accent
-}
-
-function StatusIcon({ step, accent, size = 22 }) {
-  if (step === 4)  return <CheckCircle2 size={size} color="#16a34a" />
-  if (step === -1) return <XCircle      size={size} color="#dc2626" />
-  if (step === -2) return <RotateCcw    size={size} color="#ea580c" />
-  if (step === 3)  return <Truck        size={size} color={accent} />
-  return                   <Package     size={size} color={accent} />
+function StatusIcon({ step, size = 22 }) {
+  const c = stepColor(step)
+  if (step === 5)  return <CheckCircle2 size={size} color={c} />
+  if (step === -1) return <XCircle      size={size} color={c} />
+  if (step === -2) return <RotateCcw    size={size} color={c} />
+  if (step === 3 || step === 4) return <Truck   size={size} color={c} />
+  return                                <Package size={size} color={c} />
 }
 
 export default function TrackOrderDirect({ store, slug, code }) {
@@ -52,7 +61,7 @@ export default function TrackOrderDirect({ store, slug, code }) {
       .finally(() => setLoading(false))
   }, [])
 
-  const sColor = data ? statusColor(data.statusStep, accent) : accent
+  const sColor = data ? stepColor(data.statusStep) : accent
 
   return (
     <div style={{ minHeight: '100vh', background: '#f0f2f5', fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
@@ -89,7 +98,7 @@ export default function TrackOrderDirect({ store, slug, code }) {
           {data && !loading && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 6 }}>
-                <StatusIcon step={data.statusStep} accent={accent} />
+                <StatusIcon step={data.statusStep} />
                 <p style={{ fontSize: 22, fontWeight: 800, color: sColor, letterSpacing: '-0.02em' }}>{data.displayStatus}</p>
               </div>
               <span style={{ display: 'inline-block', background: '#f3f4f6', borderRadius: 20, padding: '4px 14px', fontSize: 12, fontWeight: 600, color: '#6b7280', fontFamily: 'monospace', letterSpacing: '0.06em' }}>#{normCode}</span>
@@ -104,20 +113,23 @@ export default function TrackOrderDirect({ store, slug, code }) {
             {!data.isTerminal && data.timeline?.length > 0 && (
               <div style={{ background: '#fff', borderRadius: 16, padding: '20px 22px', marginBottom: 10, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
                 <p style={s.sec}>Order Progress</p>
-                {data.timeline.map((step, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 22, flexShrink: 0 }}>
-                      <div style={{ width: step.current ? 22 : 18, height: step.current ? 22 : 18, borderRadius: '50%', background: step.done ? accent : '#e5e7eb', boxShadow: step.current ? `0 0 0 4px ${accent}28` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {step.done && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />}
+                {data.timeline.map((step, i) => {
+                  const sc = STEP_COLORS[i] || '#6b7280'
+                  return (
+                    <div key={i} style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 22, flexShrink: 0 }}>
+                        <div style={{ width: step.current ? 22 : 18, height: step.current ? 22 : 18, borderRadius: '50%', background: step.done ? sc : '#e5e7eb', boxShadow: step.current ? `0 0 0 4px ${sc}33` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {step.done && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />}
+                        </div>
+                        {i < data.timeline.length - 1 && <div style={{ width: 2, flex: 1, minHeight: 26, background: step.done ? sc : '#e5e7eb', opacity: 0.35, marginTop: 3 }} />}
                       </div>
-                      {i < data.timeline.length - 1 && <div style={{ width: 2, flex: 1, minHeight: 26, background: step.done ? accent : '#e5e7eb', opacity: 0.3, marginTop: 3 }} />}
+                      <div style={{ paddingBottom: i < data.timeline.length - 1 ? 24 : 0, paddingTop: 2 }}>
+                        <p style={{ fontSize: 14, fontWeight: step.current ? 700 : 500, color: step.done ? '#111827' : '#9ca3af' }}>{step.label}</p>
+                        {step.current && <span style={{ display: 'inline-block', marginTop: 4, fontSize: 10, fontWeight: 700, color: sc, background: lighten(sc, 0.88), padding: '2px 8px', borderRadius: 6, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Current</span>}
+                      </div>
                     </div>
-                    <div style={{ paddingBottom: i < data.timeline.length - 1 ? 24 : 0, paddingTop: 2 }}>
-                      <p style={{ fontSize: 14, fontWeight: step.current ? 700 : 500, color: step.done ? '#111827' : '#9ca3af' }}>{step.label}</p>
-                      {step.current && <span style={{ display: 'inline-block', marginTop: 4, fontSize: 10, fontWeight: 700, color: accent, background: lighten(accent, 0.85), padding: '2px 8px', borderRadius: 6, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Current</span>}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
 
