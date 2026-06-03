@@ -11,12 +11,13 @@ function fmtDate(d) {
 
 
 const STEP_COLORS = [
-  '#6b7280', // 0: Order Placed   — gray
-  '#3b82f6', // 1: Confirmed      — blue
-  '#f59e0b', // 2: Preparing      — amber
-  '#8b5cf6', // 3: On the Way     — purple
-  '#f97316', // 4: Ready          — orange
-  '#16a34a', // 5: Delivered      — green
+  '#6b7280', // 0: Order Placed       — gray
+  '#3b82f6', // 1: Confirmed          — blue
+  '#f59e0b', // 2: Preparing          — amber
+  '#06b6d4', // 3: Shipped            — cyan
+  '#8b5cf6', // 4: On the Way         — purple
+  '#f97316', // 5: Ready for Delivery — orange
+  '#16a34a', // 6: Delivered          — green
 ]
 
 function stepColor(step) {
@@ -34,11 +35,11 @@ function lighten(hex, amt = 0.9) {
 
 function StatusIcon({ step, size = 22 }) {
   const c = stepColor(step)
-  if (step === 5)  return <CheckCircle2 size={size} color={c} />
+  if (step === 6)  return <CheckCircle2 size={size} color={c} />
   if (step === -1) return <XCircle      size={size} color={c} />
   if (step === -2) return <RotateCcw    size={size} color={c} />
-  if (step === 3 || step === 4) return <Truck   size={size} color={c} />
-  return                                <Package size={size} color={c} />
+  if (step === 3 || step === 4 || step === 5) return <Truck size={size} color={c} />
+  return <Package size={size} color={c} />
 }
 
 export default function TrackOrderDirect({ store, slug, code }) {
@@ -124,7 +125,8 @@ export default function TrackOrderDirect({ store, slug, code }) {
                         {i < data.timeline.length - 1 && <div style={{ width: 2, flex: 1, minHeight: 26, background: step.done ? sc : '#e5e7eb', opacity: 0.35, marginTop: 3 }} />}
                       </div>
                       <div style={{ paddingBottom: i < data.timeline.length - 1 ? 24 : 0, paddingTop: 2 }}>
-                        <p style={{ fontSize: 14, fontWeight: step.current ? 700 : 500, color: step.done ? '#111827' : '#9ca3af' }}>{step.label}</p>
+                        <p style={{ fontSize: 14, fontWeight: step.current ? 700 : 500, color: step.done ? sc : '#9ca3af' }}>{step.label}</p>
+                        {step.time && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{fmtDate(step.time)}</p>}
                         {step.current && <span style={{ display: 'inline-block', marginTop: 4, fontSize: 10, fontWeight: 700, color: sc, background: lighten(sc, 0.88), padding: '2px 8px', borderRadius: 6, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Current</span>}
                       </div>
                     </div>
