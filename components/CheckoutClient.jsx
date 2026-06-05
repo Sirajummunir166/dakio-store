@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { DISTRICTS, DHAKA_DISTRICTS, getThanas, detectLocation } from '../lib/bd-locations'
 import TrackingScripts from './TrackingScripts'
@@ -108,6 +108,38 @@ export default function CheckoutClient({ store, slug }) {
   function removeCoupon() {
     setAppliedCoupon(null); setCouponDiscount(0); setCouponCode(''); setCouponErr('')
   }
+
+  const leadSaved = useRef(false)
+
+  function tryLeadCapture() {
+    if (leadSaved.current || !cart.length || !form.name.trim() || form.phone.length < 8) return
+    leadSaved.current = true
+    fetch(`${API}/store/${slug}/leads`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:      form.name,
+        phone:     form.phone,
+        address:   form.address  || undefined,
+        city:      thana         || undefined,
+        district:  district      || undefined,
+        cart:      cart.map(i => ({ productId: i.productId, name: i.name, qty: i.qty, unitPrice: i.unitPrice })),
+        cartValue: cart.reduce((s, i) => s + i.qty * i.unitPrice, 0),
+        sourceUrl: typeof window !== 'undefined' ? window.location.href : undefined,
+      }),
+      keepalive: true,
+    }).catch(() => {})
+  }
+
+  useEffect(() => {
+    window.addEventListener('beforeunload', tryLeadCapture)
+    return () => window.removeEventListener('beforeunload', tryLeadCapture)
+  }, [cart, form, district, thana]) // eslint-disable-line
+
+  useEffect(() => {
+    if (!cart.length || !form.name.trim() || form.phone.length < 8 || leadSaved.current) return
+    const t = setTimeout(tryLeadCapture, 20000)
+    return () => clearTimeout(t)
+  }, [cart, form]) // eslint-disable-line
 
   async function placeOrder() {
     if (!form.name.trim())      { setFormErr('Please enter your name'); return }
