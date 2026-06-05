@@ -114,6 +114,10 @@ export default function CheckoutClient({ store, slug }) {
     if (form.phone.length < 10) { setFormErr('Enter a valid phone number'); return }
     if (!district)              { setFormErr('Could not detect your area — please select district below'); return }
     setFormErr(''); setPlacing(true)
+    // Generate event_id for Meta browser+server deduplication
+    const metaEventId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
     try {
       const r = await fetch(`${API}/store/${slug}/orders`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -129,11 +133,12 @@ export default function CheckoutClient({ store, slug }) {
           shippingCharge,
           discount:    couponDiscount,
           couponCode:  appliedCoupon?.code || null,
+          metaEventId,
         }),
       })
       const data = await r.json()
       if (!r.ok) throw new Error(data?.error || 'Order failed')
-      // Fire Purchase before cart is cleared — fires once, cart still available
+      // Fire browser-side Purchase with matching event_id for deduplication with server CAPI event
       try {
         const currency = store?.currency || 'BDT'
         window.fbq?.('track', 'Purchase', {
@@ -143,7 +148,7 @@ export default function CheckoutClient({ store, slug }) {
           content_ids:  cart.map(i => i.productId),
           content_type: 'product',
           num_items:    cart.reduce((s, i) => s + i.qty, 0),
-        })
+        }, { eventID: metaEventId })
         window.dataLayer?.push({
           event:          'purchase',
           value:          orderTotal,
