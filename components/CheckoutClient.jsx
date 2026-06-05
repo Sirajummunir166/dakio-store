@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { DISTRICTS, DHAKA_DISTRICTS, getThanas, detectLocation } from '../lib/bd-locations'
+import TrackingScripts from './TrackingScripts'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://dakio-api-production.up.railway.app/api'
 
@@ -43,6 +44,26 @@ export default function CheckoutClient({ store, slug }) {
     } catch {}
     setCartReady(true)
   }, [slug])
+
+  // Fire InitiateCheckout once the cart is loaded and non-empty
+  useEffect(() => {
+    if (!cartReady || !cart.length) return
+    try {
+      const total    = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0)
+      const currency = store?.currency || 'BDT'
+      window.fbq?.('track', 'InitiateCheckout', {
+        value:      total,
+        currency,
+        num_items:  cart.reduce((s, i) => s + i.qty, 0),
+      })
+      window.dataLayer?.push({
+        event:    'begin_checkout',
+        value:    total,
+        currency,
+        items:    cart.map(i => ({ item_id: i.productId, item_name: i.name, price: i.unitPrice, quantity: i.qty })),
+      })
+    } catch {}
+  }, [cartReady]) // eslint-disable-line
 
   const cartTotal    = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0)
   const cartCount    = cart.reduce((s, i) => s + i.qty, 0)
@@ -112,6 +133,25 @@ export default function CheckoutClient({ store, slug }) {
       })
       const data = await r.json()
       if (!r.ok) throw new Error(data?.error || 'Order failed')
+      // Fire Purchase before cart is cleared — fires once, cart still available
+      try {
+        const currency = store?.currency || 'BDT'
+        window.fbq?.('track', 'Purchase', {
+          value:        orderTotal,
+          currency,
+          order_id:     data.orderNumber,
+          content_ids:  cart.map(i => i.productId),
+          content_type: 'product',
+          num_items:    cart.reduce((s, i) => s + i.qty, 0),
+        })
+        window.dataLayer?.push({
+          event:          'purchase',
+          value:          orderTotal,
+          currency,
+          transaction_id: data.orderNumber,
+          items: cart.map(i => ({ item_id: i.productId, item_name: i.name, price: i.unitPrice, quantity: i.qty })),
+        })
+      } catch {}
       localStorage.removeItem(`dk_cart_${slug}`)
       setCart([])
       setOrderNum(data.orderNumber)
@@ -177,6 +217,7 @@ export default function CheckoutClient({ store, slug }) {
   /* ── Main checkout ──────────────────────────────────────── */
   return (
     <div style={{ minHeight: '100dvh', background: '#fff', fontFamily: FONT }}>
+      <TrackingScripts store={store} />
 
       {/* Header */}
       <div style={{ borderBottom: '1px solid #e8e8e8', padding: '0 20px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '1100px', margin: '0 auto' }}>

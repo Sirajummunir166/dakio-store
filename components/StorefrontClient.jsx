@@ -1,12 +1,13 @@
 'use client'
 import { useStorefront } from '../lib/storefront'
-import VisitorTracker  from './VisitorTracker'
-import MinimalTemplate from './templates/MinimalTemplate'
-import FashionTemplate from './templates/FashionTemplate'
-import TechTemplate    from './templates/TechTemplate'
-import OrganicTemplate from './templates/OrganicTemplate'
-import BeautyTemplate  from './templates/BeautyTemplate'
-import BoldTemplate    from './templates/BoldTemplate'
+import VisitorTracker    from './VisitorTracker'
+import TrackingScripts   from './TrackingScripts'
+import MinimalTemplate   from './templates/MinimalTemplate'
+import FashionTemplate   from './templates/FashionTemplate'
+import TechTemplate      from './templates/TechTemplate'
+import OrganicTemplate   from './templates/OrganicTemplate'
+import BeautyTemplate    from './templates/BeautyTemplate'
+import BoldTemplate      from './templates/BoldTemplate'
 
 const TEMPLATES = {
   minimal: MinimalTemplate,
@@ -22,6 +23,7 @@ export default function StorefrontClient({ store, products, categories, slug }) 
   const Template = TEMPLATES[store?.storeTemplate] || MinimalTemplate
   return (
     <>
+      <TrackingScripts store={store} />
       <VisitorTracker slug={slug} />
       <Template {...sf} />
     </>
