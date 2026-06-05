@@ -45,17 +45,24 @@ export default function CheckoutClient({ store, slug }) {
     setCartReady(true)
   }, [slug])
 
-  // Fire InitiateCheckout once the cart is loaded and non-empty
+  // Fire InitiateCheckout once the cart is loaded and non-empty.
+  // Generate checkoutEventId for browser/server Meta deduplication — stored in sessionStorage
+  // so tryLeadCapture can pass it to the server-side CAPI InitiateCheckout call later.
   useEffect(() => {
     if (!cartReady || !cart.length) return
     try {
+      const checkoutEventId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      try { sessionStorage.setItem(`dk_checkout_eid_${slug}`, checkoutEventId) } catch {}
+
       const total    = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0)
       const currency = store?.currency || 'BDT'
       window.fbq?.('track', 'InitiateCheckout', {
         value:      total,
         currency,
         num_items:  cart.reduce((s, i) => s + i.qty, 0),
-      })
+      }, { eventID: checkoutEventId })
       window.dataLayer?.push({
         event:    'begin_checkout',
         value:    total,
@@ -114,6 +121,29 @@ export default function CheckoutClient({ store, slug }) {
   function tryLeadCapture() {
     if (leadSaved.current || !cart.length || !form.name.trim() || form.phone.length < 8) return
     leadSaved.current = true
+
+    // Generate leadEventId for Meta browser/server Lead deduplication.
+    // Only fire browser Lead if storefront.js didn't already fire it this session
+    // (prevents double Lead when user filled product-page form then navigated here).
+    const leadEventId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const alreadyFiredLead = (() => { try { return !!sessionStorage.getItem(`dk_lead_fired_${slug}`) } catch { return false } })()
+    if (!alreadyFiredLead) {
+      try {
+        const val = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0)
+        window.fbq?.('track', 'Lead', {
+          value:    val,
+          currency: store?.currency || 'BDT',
+        }, { eventID: leadEventId })
+        try { sessionStorage.setItem(`dk_lead_fired_${slug}`, '1') } catch {}
+      } catch {}
+    }
+
+    // Read checkoutEventId set by the InitiateCheckout effect above —
+    // server uses it to coordinate server-side CAPI InitiateCheckout with the browser event.
+    const checkoutEventId = (() => { try { return sessionStorage.getItem(`dk_checkout_eid_${slug}`) || undefined } catch { return undefined } })()
+
     fetch(`${API}/store/${slug}/leads`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -125,6 +155,8 @@ export default function CheckoutClient({ store, slug }) {
         cart:      cart.map(i => ({ productId: i.productId, name: i.name, qty: i.qty, unitPrice: i.unitPrice })),
         cartValue: cart.reduce((s, i) => s + i.qty * i.unitPrice, 0),
         sourceUrl: typeof window !== 'undefined' ? window.location.href : undefined,
+        leadEventId:     alreadyFiredLead ? undefined : leadEventId,
+        checkoutEventId: checkoutEventId || undefined,
       }),
       keepalive: true,
     }).catch(() => {})
