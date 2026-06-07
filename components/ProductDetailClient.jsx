@@ -7,11 +7,26 @@ export default function ProductDetailClient({ store, product: p, slug, isCustomD
   const [qty,       setQty]       = useState(1)
   const [activeImg, setActiveImg] = useState(p.imageUrl || null)
   const [ordered,   setOrdered]   = useState(false)
+  const [copied,    setCopied]    = useState(false)
 
   const currency = store.currency === 'USD' ? '$' : 'Tk '
   const accent   = store.accentColor || '#111111'
   const allImgs  = [p.imageUrl, ...(Array.isArray(p.images) ? p.images : [])].filter(Boolean)
   const inStock  = p.totalStock > 0 || p.variants?.length > 0
+
+  function copyProductLink() {
+    const url = window.location.href
+    navigator.clipboard.writeText(url).catch(() => {
+      try {
+        const el = document.createElement('textarea')
+        el.value = url; el.style.position = 'fixed'; el.style.opacity = '0'
+        document.body.appendChild(el); el.select(); document.execCommand('copy')
+        document.body.removeChild(el)
+      } catch (_) {}
+    })
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   function addAndCheckout() {
     const key  = `${p.id}_default`
@@ -108,9 +123,16 @@ export default function ProductDetailClient({ store, product: p, slug, isCustomD
               {ordered ? 'Redirecting…' : inStock ? 'Order Now' : 'Out of Stock'}
             </button>
 
+            {/* Share / Copy link */}
+            <button
+              onClick={copyProductLink}
+              style={{ width: '100%', marginTop: '10px', padding: '11px', background: copied ? '#f0fdf4' : '#f9fafb', border: `1px solid ${copied ? '#bbf7d0' : '#e5e7eb'}`, borderRadius: '12px', fontSize: '13px', fontWeight: 600, color: copied ? '#16a34a' : '#6b7280', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              {copied ? '✓ Link Copied!' : '🔗 Copy Product Link'}
+            </button>
+
             {/* SKU */}
             {p.sku && (
-              <div style={{ marginTop: '16px', fontSize: '11px', color: '#9ca3af' }}>SKU: {p.sku}</div>
+              <div style={{ marginTop: '14px', fontSize: '11px', color: '#9ca3af' }}>SKU: {p.sku}</div>
             )}
           </div>
         </div>
