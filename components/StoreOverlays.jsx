@@ -1,7 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, ChevronRight, ShoppingBag, Package } from 'lucide-react'
 import { fmt } from '../lib/storefront'
+import { trackPath } from '../lib/routes'
 
 /* ── Announcement Bar ────────────────────────────────────── */
 export function AnnouncementBar({ message, accent = '#111' }) {
@@ -18,7 +19,8 @@ export function AnnouncementBar({ message, accent = '#111' }) {
 /* ── Social Links Footer ─────────────────────────────────── */
 export function SocialFooter({ store, slug, accent = '#111' }) {
   const { facebookUrl, instagramUrl, whatsappNumber } = store || {}
-  const trackUrl = slug ? `/${slug}/track` : '/track'
+  const [trackUrl, setTrackUrl] = useState(`/${slug}/track`)
+  useEffect(() => { setTrackUrl(trackPath(slug)) }, [slug])
   return (
     <div style={{ borderTop: '1px solid #e5e7eb' }}>
       {(facebookUrl || instagramUrl || whatsappNumber) && (

@@ -1,5 +1,7 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { storeHome } from '../lib/routes'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://dakio-api-production.up.railway.app/api'
 
@@ -18,6 +20,7 @@ const STATUS_CONFIG = {
 const TIMELINE = ['PENDING', 'APPROVED', 'PROCESSING', 'SHIPPED', 'DELIVERED']
 
 export default function TrackOrderClient({ store, slug }) {
+  const router = useRouter()
   const accent = store?.accentColor || '#111111'
   const [orderNumber, setOrderNumber] = useState('')
   const [phone, setPhone] = useState('')
@@ -45,7 +48,7 @@ export default function TrackOrderClient({ store, slug }) {
     <div style={{ minHeight: '100vh', background: '#f9fafb', fontFamily: 'Inter, sans-serif' }}>
       {/* Header */}
       <div style={{ background: accent, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <a href={`/${slug}`} style={{ color: '#fff', textDecoration: 'none', fontSize: '13px', opacity: 0.85 }}>← Back to Store</a>
+        <button onClick={() => router.push(storeHome(slug))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', fontSize: '13px', opacity: 0.85, padding: 0 }}>← Back to Store</button>
         {store?.logoUrl && <img src={store.logoUrl} alt={store.name} style={{ height: '32px', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />}
         <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{store?.name}</div>
       </div>

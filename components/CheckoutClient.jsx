@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { DISTRICTS, DHAKA_DISTRICTS, getThanas, detectLocation } from '../lib/bd-locations'
 import TrackingScripts from './TrackingScripts'
+import { storeHome } from '../lib/routes'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://dakio-api-production.up.railway.app/api'
 
@@ -255,7 +256,7 @@ export default function CheckoutClient({ store, slug }) {
         <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#111', margin: '0 0 8px', textAlign: 'center' }}>Order placed!</h1>
         <p style={{ fontSize: '15px', color: '#6b7280', margin: '0 0 6px', textAlign: 'center' }}>Thank you, {form.name.split(' ')[0]}.</p>
         <p style={{ fontSize: '13px', color: '#9ca3af', margin: '0 0 28px', textAlign: 'center' }}>Order {orderNum} · We&apos;ll contact you at {form.phone}</p>
-        <button onClick={() => router.push(`/${slug}`)}
+        <button onClick={() => router.push(storeHome(slug))}
           style={{ padding: '14px 32px', background: accent, color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: FONT }}>
           Continue shopping
         </button>
@@ -268,7 +269,7 @@ export default function CheckoutClient({ store, slug }) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, padding: '24px', background: '#fff' }}>
         <p style={{ fontSize: '16px', color: '#6b7280', marginBottom: '20px' }}>Your cart is empty.</p>
-        <button onClick={() => router.push(`/${slug}`)}
+        <button onClick={() => router.push(storeHome(slug))}
           style={{ padding: '13px 28px', background: accent, color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: FONT }}>
           Back to store
         </button>
@@ -290,7 +291,7 @@ export default function CheckoutClient({ store, slug }) {
 
       {/* Header */}
       <div style={{ borderBottom: '1px solid #e8e8e8', padding: '0 20px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '1100px', margin: '0 auto' }}>
-        <button onClick={() => router.push(`/${slug}`)}
+        <button onClick={() => router.push(storeHome(slug))}
           style={{ fontSize: '13px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontFamily: FONT, padding: 0 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           Back

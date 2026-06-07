@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { checkoutPath } from '../lib/routes'
 
 export default function ProductDetailClient({ store, product: p, slug, isCustomDomain }) {
   const router = useRouter()
@@ -67,7 +68,7 @@ export default function ProductDetailClient({ store, product: p, slug, isCustomD
       localStorage.setItem(`dk_cart_${slug}`, JSON.stringify(existing))
     } catch (_) {}
     setOrdered(true)
-    router.push(isCustomDomain ? '/checkout' : `/${slug}/checkout`)
+    router.push(checkoutPath(slug))
   }
 
   function copyProductLink() {
