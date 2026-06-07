@@ -84,7 +84,10 @@ export default function ProductDetailClient({ store, product: p, slug, isCustomD
 
             {/* Description */}
             {p.description && (
-              <div style={{ fontSize: '14px', color: '#4b5563', lineHeight: 1.7, marginBottom: '24px', whiteSpace: 'pre-wrap' }}>{p.description}</div>
+              <div
+                style={{ fontSize: '14px', color: '#4b5563', lineHeight: 1.7, marginBottom: '24px' }}
+                dangerouslySetInnerHTML={{ __html: p.description }}
+              />
             )}
 
             {/* Qty selector */}
