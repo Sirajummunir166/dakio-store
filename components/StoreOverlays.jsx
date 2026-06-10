@@ -80,8 +80,9 @@ export function CartDrawer({ cart, products, store, cartCount, cartTotal, cartOp
           <>
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
               {cart.map(item => {
-                const prod = products.find(x => x.id === item.productId)
+                const prod    = products.find(x => x.id === item.productId)
                 const itemKey = item.key || item.productId
+                const itemOos = prod && prod.totalStock !== undefined && prod.totalStock <= 0
                 return (
                   <div key={itemKey} style={{ display: 'flex', gap: '12px', paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #f5f5f5' }}>
                     <div style={{ width: '64px', height: '80px', background: '#f0f0f0', flexShrink: 0, overflow: 'hidden' }}>
@@ -89,12 +90,15 @@ export function CartDrawer({ cart, products, store, cartCount, cartTotal, cartOp
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '13px', fontWeight: 600, lineHeight: 1.3, marginBottom: '4px', color: '#111' }}>{item.name}</div>
+                      {itemOos && <div style={{ fontSize: '11px', fontWeight: 700, color: '#dc2626', marginBottom: '4px' }}>Out of stock — remove to checkout</div>}
                       <div style={{ fontSize: '12px', color: '#999', marginBottom: '10px' }}>{fmt(item.unitPrice, store?.currency)}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #e0e0e0', width: 'fit-content' }}>
-                        <button onClick={() => changeQty(itemKey, -1)} style={{ width: '28px', height: '28px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>−</button>
-                        <span style={{ fontSize: '13px', fontWeight: 700, width: '28px', textAlign: 'center', borderLeft: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0', lineHeight: '28px' }}>{item.qty}</span>
-                        <button onClick={() => changeQty(itemKey, 1)} style={{ width: '28px', height: '28px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>+</button>
-                      </div>
+                      {!itemOos && (
+                        <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #e0e0e0', width: 'fit-content' }}>
+                          <button onClick={() => changeQty(itemKey, -1)} style={{ width: '28px', height: '28px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>−</button>
+                          <span style={{ fontSize: '13px', fontWeight: 700, width: '28px', textAlign: 'center', borderLeft: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0', lineHeight: '28px' }}>{item.qty}</span>
+                          <button onClick={() => changeQty(itemKey, 1)} style={{ width: '28px', height: '28px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>+</button>
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between' }}>
                       <button onClick={() => removeFromCart(itemKey)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc' }}><X size={13} /></button>
@@ -104,16 +108,31 @@ export function CartDrawer({ cart, products, store, cartCount, cartTotal, cartOp
                 )
               })}
             </div>
-            <div style={{ padding: '16px 20px', borderTop: '1px solid #e8e8e8' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '13px', color: '#888' }}>
-                <span>Subtotal</span><span>{fmt(cartTotal, store?.currency)}</span>
-              </div>
-              <div style={{ fontSize: '11px', color: '#bbb', textAlign: 'center', marginBottom: '12px' }}>Shipping calculated at checkout</div>
-              <button onClick={() => { setCartOpen(false); setView('checkout') }}
-                style={{ width: '100%', padding: '14px', background: accent, color: '#fff', border: 'none', fontSize: '13px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                Checkout — {fmt(cartTotal, store?.currency)}
-              </button>
-            </div>
+            {(() => {
+              const hasOos = cart.some(item => {
+                const prod = products.find(x => x.id === item.productId)
+                return prod && prod.totalStock !== undefined && prod.totalStock <= 0
+              })
+              return (
+                <div style={{ padding: '16px 20px', borderTop: '1px solid #e8e8e8' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '13px', color: '#888' }}>
+                    <span>Subtotal</span><span>{fmt(cartTotal, store?.currency)}</span>
+                  </div>
+                  {hasOos && (
+                    <div style={{ fontSize: '12px', color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '8px 12px', marginBottom: '10px', textAlign: 'center' }}>
+                      Remove out-of-stock items to proceed
+                    </div>
+                  )}
+                  {!hasOos && <div style={{ fontSize: '11px', color: '#bbb', textAlign: 'center', marginBottom: '12px' }}>Shipping calculated at checkout</div>}
+                  <button
+                    onClick={() => { if (!hasOos) { setCartOpen(false); setView('checkout') } }}
+                    disabled={hasOos}
+                    style={{ width: '100%', padding: '14px', background: hasOos ? '#d1d5db' : accent, color: hasOos ? '#9ca3af' : '#fff', border: 'none', fontSize: '13px', fontWeight: 700, cursor: hasOos ? 'not-allowed' : 'pointer', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    Checkout — {fmt(cartTotal, store?.currency)}
+                  </button>
+                </div>
+              )
+            })()}
           </>
         )}
       </div>
