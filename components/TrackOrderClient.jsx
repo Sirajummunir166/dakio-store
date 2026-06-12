@@ -17,6 +17,34 @@ const STATUS_CONFIG = {
   FOLLOW_UP:  { label: 'Follow Up', color: '#7c3aed', bg: '#faf5ff', dot: '#8b5cf6' },
 }
 
+// Maps raw courier status → customer-friendly display + timeline position
+const COURIER_CUSTOMER_MAP = {
+  'in_review':                          { label: 'Processing',       color: '#7c3aed', bg: '#faf5ff', dot: '#8b5cf6', timeline: 'PROCESSING' },
+  'pending':                            { label: 'Processing',       color: '#7c3aed', bg: '#faf5ff', dot: '#8b5cf6', timeline: 'PROCESSING' },
+  'hold':                               { label: 'Processing',       color: '#7c3aed', bg: '#faf5ff', dot: '#8b5cf6', timeline: 'PROCESSING' },
+  'delivered_approval_pending':         { label: 'Delivered',        color: '#16a34a', bg: '#f0fdf4', dot: '#22c55e', timeline: 'DELIVERED'  },
+  'partial_delivered_approval_pending': { label: 'Processing',       color: '#7c3aed', bg: '#faf5ff', dot: '#8b5cf6', timeline: 'PROCESSING' },
+  'cancelled_approval_pending':         { label: 'Cancelled',        color: '#dc2626', bg: '#fef2f2', dot: '#ef4444', timeline: null         },
+  'delivered':                          { label: 'Delivered',        color: '#16a34a', bg: '#f0fdf4', dot: '#22c55e', timeline: 'DELIVERED'  },
+  'partial_delivered':                  { label: 'Delivered',        color: '#16a34a', bg: '#f0fdf4', dot: '#22c55e', timeline: 'DELIVERED'  },
+  'cancelled':                          { label: 'Cancelled',        color: '#dc2626', bg: '#fef2f2', dot: '#ef4444', timeline: null         },
+  'Picked Up':                          { label: 'Processing',       color: '#7c3aed', bg: '#faf5ff', dot: '#8b5cf6', timeline: 'PROCESSING' },
+  'In Transit':                         { label: 'Shipped',          color: '#ca8a04', bg: '#fefce8', dot: '#eab308', timeline: 'SHIPPED'    },
+  'Delivered':                          { label: 'Delivered',        color: '#16a34a', bg: '#f0fdf4', dot: '#22c55e', timeline: 'DELIVERED'  },
+  'Partially Delivered':                { label: 'Delivered',        color: '#16a34a', bg: '#f0fdf4', dot: '#22c55e', timeline: 'DELIVERED'  },
+  'Cancelled':                          { label: 'Cancelled',        color: '#dc2626', bg: '#fef2f2', dot: '#ef4444', timeline: null         },
+  'Returned':                           { label: 'Cancelled',        color: '#dc2626', bg: '#fef2f2', dot: '#ef4444', timeline: null         },
+  'Pickup Requested':                   { label: 'Processing',       color: '#7c3aed', bg: '#faf5ff', dot: '#8b5cf6', timeline: 'PROCESSING' },
+  'Pickup Queued':                      { label: 'Processing',       color: '#7c3aed', bg: '#faf5ff', dot: '#8b5cf6', timeline: 'PROCESSING' },
+  'Pickup Assigned':                    { label: 'Processing',       color: '#7c3aed', bg: '#faf5ff', dot: '#8b5cf6', timeline: 'PROCESSING' },
+  'Delivery In Progress':               { label: 'Out for Delivery', color: '#ea580c', bg: '#fff7ed', dot: '#fb923c', timeline: 'SHIPPED'    },
+  'At Sorting Hub':                     { label: 'Shipped',          color: '#ca8a04', bg: '#fefce8', dot: '#eab308', timeline: 'SHIPPED'    },
+  'Partial Delivered':                  { label: 'Delivered',        color: '#16a34a', bg: '#f0fdf4', dot: '#22c55e', timeline: 'DELIVERED'  },
+  'Pickup Cancel':                      { label: 'Cancelled',        color: '#dc2626', bg: '#fef2f2', dot: '#ef4444', timeline: null         },
+  'Return In Transit':                  { label: 'Cancelled',        color: '#dc2626', bg: '#fef2f2', dot: '#ef4444', timeline: null         },
+  'Return Received':                    { label: 'Cancelled',        color: '#dc2626', bg: '#fef2f2', dot: '#ef4444', timeline: null         },
+}
+
 const TIMELINE = ['PENDING', 'APPROVED', 'PROCESSING', 'SHIPPED', 'DELIVERED']
 
 export default function TrackOrderClient({ store, slug }) {
@@ -41,8 +69,12 @@ export default function TrackOrderClient({ store, slug }) {
     finally { setLoading(false) }
   }
 
-  const st = order ? (STATUS_CONFIG[order.status] || STATUS_CONFIG.PENDING) : null
-  const currentStep = order ? TIMELINE.indexOf(order.status) : -1
+  const courierDisplay = order?.courierStatus ? COURIER_CUSTOMER_MAP[order.courierStatus] : null
+  const st = order ? (courierDisplay || STATUS_CONFIG[order.status] || STATUS_CONFIG.PENDING) : null
+  const currentStep = order
+    ? TIMELINE.indexOf(courierDisplay?.timeline || order.status)
+    : -1
+  const isCancelledCourier = courierDisplay?.timeline === null && courierDisplay != null
 
   return (
     <div style={{ minHeight: '100vh', background: '#f9fafb', fontFamily: 'Inter, sans-serif' }}>
@@ -115,7 +147,7 @@ export default function TrackOrderClient({ store, slug }) {
             </div>
 
             {/* Timeline */}
-            {!['CANCELLED','RETURNED','FAILED'].includes(order.status) && (
+            {!['CANCELLED','RETURNED','FAILED'].includes(order.status) && !isCancelledCourier && (
               <div style={{ padding: '20px 24px', borderBottom: '1px solid #f3f4f6' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
                   {/* Progress line */}
