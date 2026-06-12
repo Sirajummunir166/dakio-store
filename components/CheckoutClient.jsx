@@ -7,6 +7,11 @@ import { storeHome } from '../lib/routes'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://dakio-api-production.up.railway.app/api'
 
+function isValidBDPhone(raw) {
+  const p = String(raw || '').replace(/[\s\-(). ]/g, '')
+  return /^(?:\+?88)?01[3-9]\d{8}$/.test(p)
+}
+
 function fmt(price, currency) {
   const sym = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'Tk '
   return `${sym}${Number(price || 0).toLocaleString('en-GB')}`
@@ -210,10 +215,11 @@ export default function CheckoutClient({ store, slug }) {
   }
 
   async function placeOrder() {
-    if (!form.name.trim())      { setFormErr('Please enter your name'); return }
-    if (form.phone.length < 10) { setFormErr('Enter a valid phone number'); return }
-    if (!district)              { setFormErr('Please select your district'); return }
-    if (!thana)                 { setFormErr('Please select your thana / upazila'); return }
+    if (!form.name.trim())           { setFormErr('Please enter your name'); return }
+    if (!form.phone.trim())          { setFormErr('Phone number is required'); return }
+    if (!isValidBDPhone(form.phone)) { setFormErr('Please enter a valid Bangladesh mobile number (e.g. 01XXXXXXXXX)'); return }
+    if (!district)                   { setFormErr('Please select your district'); return }
+    if (!thana)                      { setFormErr('Please select your thana / upazila'); return }
     setFormErr(''); setPlacing(true)
     // Generate event_id for Meta browser+server deduplication. Persisted in ref for OTP flow.
     const metaEventId = (typeof crypto !== 'undefined' && crypto.randomUUID)
