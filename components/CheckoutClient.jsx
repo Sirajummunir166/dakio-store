@@ -36,6 +36,16 @@ export default function CheckoutClient({ store, slug }) {
   const [appliedCoupon, setAppliedCoupon]   = useState(null)
   const [couponLoading, setCouponLoading]   = useState(false)
 
+  // OTP challenge state — sessionToken stored in component state only, never in localStorage/URL
+  const [otpStep, setOtpStep]             = useState(false)
+  const [otpInput, setOtpInput]           = useState('')
+  const [otpErr, setOtpErr]               = useState('')
+  const [otpVerifying, setOtpVerifying]   = useState(false)
+  const [otpSessionToken, setOtpSessionToken] = useState('')
+  const [otpMaskedPhone, setOtpMaskedPhone]   = useState('')
+  const [otpExpiresAt, setOtpExpiresAt]       = useState(null)
+  const metaEventIdRef = useRef(null)
+
   const [summaryOpen, setSummaryOpen] = useState(false)
 
   useEffect(() => {
@@ -174,15 +184,42 @@ export default function CheckoutClient({ store, slug }) {
     return () => clearTimeout(t)
   }, [cart, form]) // eslint-disable-line
 
+  // Fires browser Purchase + GTM + clears cart. Called after any successful 201 order creation.
+  function fireOrderSuccess(data, eventId) {
+    try {
+      const currency = store?.currency || 'BDT'
+      window.fbq?.('track', 'Purchase', {
+        value:        orderTotal,
+        currency,
+        order_id:     data.orderNumber,
+        content_ids:  cart.map(i => i.productId),
+        content_type: 'product',
+        num_items:    cart.reduce((s, i) => s + i.qty, 0),
+      }, { eventID: eventId })
+      window.dataLayer?.push({
+        event:          'purchase',
+        value:          orderTotal,
+        currency,
+        transaction_id: data.orderNumber,
+        items: cart.map(i => ({ item_id: i.productId, item_name: i.name, price: i.unitPrice, quantity: i.qty })),
+      })
+    } catch {}
+    localStorage.removeItem(`dk_cart_${slug}`)
+    setCart([])
+    setOrderNum(data.orderNumber)
+  }
+
   async function placeOrder() {
     if (!form.name.trim())      { setFormErr('Please enter your name'); return }
     if (form.phone.length < 10) { setFormErr('Enter a valid phone number'); return }
-    if (!district)              { setFormErr('Could not detect your area — please select district below'); return }
+    if (!district)              { setFormErr('Please select your district'); return }
+    if (!thana)                 { setFormErr('Please select your thana / upazila'); return }
     setFormErr(''); setPlacing(true)
-    // Generate event_id for Meta browser+server deduplication
+    // Generate event_id for Meta browser+server deduplication. Persisted in ref for OTP flow.
     const metaEventId = (typeof crypto !== 'undefined' && crypto.randomUUID)
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    metaEventIdRef.current = metaEventId
     try {
       const r = await fetch(`${API}/store/${slug}/orders`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -202,33 +239,53 @@ export default function CheckoutClient({ store, slug }) {
         }),
       })
       const data = await r.json()
+      // 202 = OTP challenge required — do NOT fire Purchase, show OTP modal
+      if (r.status === 202 && data?.status === 'OTP_REQUIRED') {
+        setOtpSessionToken(data.sessionToken)
+        setOtpMaskedPhone(data.maskedPhone || form.phone)
+        setOtpExpiresAt(data.expiresAt ? new Date(data.expiresAt) : null)
+        setOtpStep(true)
+        setPlacing(false)
+        return
+      }
       if (!r.ok) throw new Error(data?.error || 'Order failed')
-      // Fire browser-side Purchase with matching event_id for deduplication with server CAPI event
-      try {
-        const currency = store?.currency || 'BDT'
-        window.fbq?.('track', 'Purchase', {
-          value:        orderTotal,
-          currency,
-          order_id:     data.orderNumber,
-          content_ids:  cart.map(i => i.productId),
-          content_type: 'product',
-          num_items:    cart.reduce((s, i) => s + i.qty, 0),
-        }, { eventID: metaEventId })
-        window.dataLayer?.push({
-          event:          'purchase',
-          value:          orderTotal,
-          currency,
-          transaction_id: data.orderNumber,
-          items: cart.map(i => ({ item_id: i.productId, item_name: i.name, price: i.unitPrice, quantity: i.qty })),
-        })
-      } catch {}
-      localStorage.removeItem(`dk_cart_${slug}`)
-      setCart([])
-      setOrderNum(data.orderNumber)
+      // 201 — fire browser Purchase and show confirmation
+      fireOrderSuccess(data, metaEventId)
     } catch (e) {
       setFormErr(e.message || 'Order failed. Try again.')
     }
     setPlacing(false)
+  }
+
+  async function verifyOtp() {
+    if (otpInput.length !== 6) { setOtpErr('Enter the 6-digit code'); return }
+    setOtpErr(''); setOtpVerifying(true)
+    try {
+      const r = await fetch(`${API}/store/${slug}/orders/verify-otp`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionToken: otpSessionToken, otp: otpInput }),
+      })
+      const data = await r.json()
+      if (!r.ok) {
+        if (r.status === 410 || r.status === 429) {
+          // Expired or locked — reset back to checkout form
+          setOtpStep(false)
+          setOtpInput('')
+          setOtpSessionToken('')
+          setFormErr(data?.error || 'Verification failed. Please try again.')
+        } else {
+          const left = data?.attemptsLeft != null ? ` (${data.attemptsLeft} attempts left)` : ''
+          setOtpErr((data?.error || 'Incorrect code.') + left)
+        }
+        setOtpVerifying(false)
+        return
+      }
+      // 201 — OTP verified, order created, fire Purchase now
+      fireOrderSuccess(data, metaEventIdRef.current)
+    } catch (e) {
+      setOtpErr(e.message || 'Verification failed. Try again.')
+    }
+    setOtpVerifying(false)
   }
 
   const inputStyle = {
@@ -245,6 +302,39 @@ export default function CheckoutClient({ store, slug }) {
   }
   const fieldFocus = e => { e.target.style.borderColor = accent; e.target.style.boxShadow = `0 0 0 3px ${accent}22` }
   const fieldBlur  = e => { e.target.style.borderColor = '#d1d5db'; e.target.style.boxShadow = 'none' }
+
+  /* ── OTP verification screen ────────────────────────────── */
+  if (otpStep) {
+    const minutesLeft = otpExpiresAt ? Math.max(0, Math.ceil((otpExpiresAt - Date.now()) / 60000)) : 5
+    return (
+      <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, padding: '24px', background: '#fff' }}>
+        <div style={{ width: '100%', maxWidth: '360px' }}>
+          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#eff6ff', border: '2px solid #bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', marginLeft: 'auto', marginRight: 'auto' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          </div>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#111', margin: '0 0 8px', textAlign: 'center' }}>Verify your number</h2>
+          <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 24px', textAlign: 'center', lineHeight: 1.5 }}>
+            We sent a 6-digit code to <strong>{otpMaskedPhone}</strong>. Enter it below to place your order.
+          </p>
+          <input
+            type="tel" inputMode="numeric" maxLength={6} placeholder="6-digit code"
+            value={otpInput} onChange={e => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            style={{ width: '100%', padding: '14px', border: otpErr ? '1.5px solid #dc2626' : '1.5px solid #d1d5db', borderRadius: '8px', fontSize: '22px', letterSpacing: '8px', textAlign: 'center', outline: 'none', fontFamily: FONT, boxSizing: 'border-box', color: '#111', background: '#fff', WebkitAppearance: 'none', marginBottom: '8px' }}
+          />
+          {otpErr && <p style={{ fontSize: '13px', color: '#dc2626', margin: '0 0 12px' }}>{otpErr}</p>}
+          <p style={{ fontSize: '12px', color: '#9ca3af', margin: '0 0 20px' }}>Code expires in {minutesLeft} minute{minutesLeft !== 1 ? 's' : ''}.</p>
+          <button onClick={verifyOtp} disabled={otpVerifying || otpInput.length !== 6}
+            style={{ width: '100%', padding: '14px', background: otpInput.length === 6 ? accent : '#e5e7eb', color: otpInput.length === 6 ? '#fff' : '#9ca3af', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 700, cursor: otpInput.length === 6 ? 'pointer' : 'default', fontFamily: FONT, marginBottom: '12px' }}>
+            {otpVerifying ? 'Verifying...' : 'Confirm order'}
+          </button>
+          <button onClick={() => { setOtpStep(false); setOtpInput(''); setOtpErr('') }}
+            style={{ width: '100%', padding: '10px', background: 'none', border: 'none', fontSize: '13px', color: '#6b7280', cursor: 'pointer', fontFamily: FONT }}>
+            Back to checkout
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   /* ── Success screen ─────────────────────────────────────── */
   if (orderNum) {
@@ -363,7 +453,7 @@ export default function CheckoutClient({ store, slug }) {
                   </select>
                 </div>
               </Field>
-              <Field label="Thana / Upazila">
+              <Field label="Thana / Upazila" required>
                 <div style={{ position: 'relative' }}>
                   <select value={thana} onChange={e => setThana(e.target.value)}
                     disabled={!district}
