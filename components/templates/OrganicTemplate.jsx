@@ -4,6 +4,7 @@ import { ShoppingBag, Search, X, Menu, Phone, Plus, ChevronRight } from 'lucide-
 import { fmt } from '../../lib/storefront'
 import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage, AnnouncementBar, SocialFooter } from '../StoreOverlays'
 import { DEMO } from './demoData'
+import { resolveMedia } from '../../lib/mediaUtils'
 
 const F = "'Inter', 'Noto Sans Bengali', sans-serif"
 
@@ -54,7 +55,7 @@ export default function OrganicTemplate(props) {
   const accent   = store?.accentColor || '#1b8a3c'
   const D        = DEMO.organic
   const demoMode = products.length === 0 && !isFiltered
-  const heroImg  = products[0]?.imageUrl || D.hero
+  const heroImg  = resolveMedia(products[0]).primary || D.hero
 
   const allCats = categories.length > 0 ? categories : D.products.reduce((a, p) => {
     if (p.category && !a.find(c => c.id === p.category.id)) a.push(p.category); return a
@@ -452,6 +453,7 @@ function GBCard({ p, accent, currency, onAdd, onView }) {
   const [added, setAdded] = useState(false)
   const oos      = p.totalStock !== undefined && p.totalStock <= 0
   const discount = p.mrp && p.mrp > p.sellingPrice ? Math.round((1 - p.sellingPrice / p.mrp) * 100) : null
+  const { primary: cardImg } = resolveMedia(p)
 
   function handleAdd(e) {
     e.stopPropagation()
@@ -467,8 +469,8 @@ function GBCard({ p, accent, currency, onAdd, onView }) {
 
       {/* Image */}
       <div style={{ position: 'relative', width: '100%', aspectRatio: '1', overflow: 'hidden', background: '#f0f7f0' }}>
-        {p.imageUrl
-          ? <img src={p.imageUrl} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        {cardImg
+          ? <img src={cardImg} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '52px' }}>🥬</div>
         }
 

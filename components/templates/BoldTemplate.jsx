@@ -4,6 +4,7 @@ import { ShoppingCart, Search, X, Menu, ChevronRight, Zap } from 'lucide-react'
 import { fmt } from '../../lib/storefront'
 import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage, AnnouncementBar, SocialFooter } from '../StoreOverlays'
 import { DEMO } from './demoData'
+import { resolveMedia } from '../../lib/mediaUtils'
 
 const FONT = "'Inter', 'Segoe UI', sans-serif"
 
@@ -24,7 +25,7 @@ export default function BoldTemplate(props) {
   const D = DEMO.bold
   const demoMode = products.length === 0 && !isFiltered
   const showProds = products.length > 0 ? products : D.products
-  const heroImg = products[0]?.imageUrl || D.hero
+  const heroImg = resolveMedia(products[0]).primary || D.hero
   const allCats = categories.length > 0 ? categories : D.products.reduce((acc, p) => {
     if (p.category && !acc.find(c => c.id === p.category.id)) acc.push(p.category); return acc
   }, [])
@@ -254,11 +255,12 @@ function BoldGrid({ products, accent, currency, onAdd, onView, onQuick }) {
 function BoldCard({ p, accent, currency, onAdd, onView, onQuick }) {
   const [hovered, setHovered] = useState(false)
   const oos = p.totalStock !== undefined && p.totalStock <= 0
+  const { primary: cardImg } = resolveMedia(p)
   return (
     <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       onClick={() => onView(p)}
       style={{ position: 'relative', overflow: 'hidden', cursor: 'pointer', background: '#1a1a1a', aspectRatio: '3/4' }}>
-      {p.imageUrl ? <img src={p.imageUrl} alt={p.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s', transform: hovered ? 'scale(1.06)' : 'scale(1)' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px' }}>👟</div>}
+      {cardImg ? <img src={cardImg} alt={p.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s', transform: hovered ? 'scale(1.06)' : 'scale(1)' }} onError={e => { e.target.style.display = 'none' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px' }}>👟</div>}
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0) 70%)' }} />
       {oos && <div style={{ position: 'absolute', top: '12px', left: '12px', background: '#dc2626', color: '#fff', fontSize: '10px', fontWeight: 900, padding: '4px 10px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Sold Out</div>}
       {!oos && (

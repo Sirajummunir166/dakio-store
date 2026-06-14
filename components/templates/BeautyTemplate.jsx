@@ -4,6 +4,7 @@ import { ShoppingBag, Search, X, Menu, Heart, ChevronRight, Sparkles } from 'luc
 import { fmt } from '../../lib/storefront'
 import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage, AnnouncementBar, SocialFooter } from '../StoreOverlays'
 import { DEMO } from './demoData'
+import { resolveMedia } from '../../lib/mediaUtils'
 
 const FONT = "'Inter', sans-serif"
 
@@ -24,7 +25,7 @@ export default function BeautyTemplate(props) {
   const D = DEMO.beauty
   const demoMode = products.length === 0 && !isFiltered
   const showProds = products.length > 0 ? products : D.products
-  const heroImg = products[0]?.imageUrl || D.hero
+  const heroImg = resolveMedia(products[0]).primary || D.hero
   const allCats = categories.length > 0 ? categories : D.products.reduce((acc, p) => {
     if (p.category && !acc.find(c => c.id === p.category.id)) acc.push(p.category); return acc
   }, [])
@@ -266,11 +267,12 @@ function BeautyCard({ p, accent, currency, onAdd, onView, onQuick }) {
   const [hovered, setHovered] = useState(false)
   const [wishlisted, setWishlisted] = useState(false)
   const oos = p.totalStock !== undefined && p.totalStock <= 0
+  const { primary: cardImg } = resolveMedia(p)
   return (
     <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       style={{ background: '#fff', borderRadius: '20px', overflow: 'hidden', boxShadow: hovered ? `0 12px 40px ${accent}22` : '0 2px 12px rgba(0,0,0,0.05)', transition: 'all 0.2s', cursor: 'pointer' }}>
       <div style={{ position: 'relative', width: '100%', paddingBottom: '110%', overflow: 'hidden', background: '#fdf2f8' }} onClick={() => onView(p)}>
-        {p.imageUrl ? <img src={p.imageUrl} alt={p.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s', transform: hovered ? 'scale(1.06)' : 'scale(1)' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px' }}>💄</div>}
+        {cardImg ? <img src={cardImg} alt={p.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s', transform: hovered ? 'scale(1.06)' : 'scale(1)' }} onError={e => { e.target.style.display = 'none' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px' }}>💄</div>}
         {oos && <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,249,251,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ background: '#1a1a2e', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '5px 14px', borderRadius: '20px' }}>Sold Out</span></div>}
         <button onClick={e => { e.stopPropagation(); setWishlisted(!wishlisted) }} style={{ position: 'absolute', top: '10px', right: '10px', background: '#fff', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <Heart size={14} fill={wishlisted ? accent : 'none'} color={wishlisted ? accent : '#ccc'} />

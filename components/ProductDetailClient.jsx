@@ -2,20 +2,22 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { checkoutPath } from '../lib/routes'
+import { resolveMedia } from '../lib/mediaUtils'
 
 export default function ProductDetailClient({ store, product: p, slug, isCustomDomain }) {
   const router = useRouter()
 
+  const { primary: primaryImg, gallery: allImgs } = resolveMedia(p)
+
   const [qty,             setQty]             = useState(1)
-  const [activeImg,       setActiveImg]       = useState(p.imageUrl || null)
+  const [activeImg,       setActiveImg]       = useState(primaryImg)
   const [ordered,         setOrdered]         = useState(false)
   const [copied,          setCopied]          = useState(false)
   const [accordion,       setAccordion]       = useState(null)
   const [selectedVariant, setSelectedVariant] = useState(null)
 
-  const currency    = store.currency === 'USD' ? '$' : 'Tk '
-  const accent      = store.accentColor || '#111111'
-  const allImgs     = [p.imageUrl, ...(Array.isArray(p.images) ? p.images : [])].filter(Boolean)
+  const currency = store.currency === 'USD' ? '$' : 'Tk '
+  const accent   = store.accentColor || '#111111'
   const hasVariants = p.variants && p.variants.length > 0
   const needsVariant = hasVariants && !selectedVariant
 
@@ -60,7 +62,7 @@ export default function ProductDetailClient({ store, product: p, slug, isCustomD
     const name      = activeVariant ? `${p.name} — ${activeVariant.name}` : p.name
     const sku       = activeVariant?.sku || p.sku || ''
     const unitPrice = displayPrice
-    const item      = { key, productId: p.id, variantId, name, sku, unitPrice, qty, imageUrl: p.imageUrl }
+    const item      = { key, productId: p.id, variantId, name, sku, unitPrice, qty, imageUrl: primaryImg }
     try {
       const existing = JSON.parse(localStorage.getItem(`dk_cart_${slug}`) || '[]')
       const idx = existing.findIndex(i => i.key === key)

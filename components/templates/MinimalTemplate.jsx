@@ -4,6 +4,7 @@ import { ShoppingBag, Search, X, ChevronRight, Menu, Star, Truck, RotateCcw, Shi
 import { fmt } from '../../lib/storefront'
 import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage, AnnouncementBar, SocialFooter } from '../StoreOverlays'
 import { DEMO } from './demoData'
+import { resolveMedia } from '../../lib/mediaUtils'
 
 const FONT = "'Helvetica Neue', Arial, sans-serif"
 const D = DEMO.minimal
@@ -23,7 +24,7 @@ export default function MinimalTemplate(props) {
   const accent      = store?.accentColor || '#111111'
   const demoMode    = products.length === 0 && !isFiltered
   const showProds   = products.length > 0 ? products : D.products
-  const heroImg     = products[0]?.imageUrl || D.hero
+  const heroImg     = resolveMedia(products[0]).primary || D.hero
   const allCats     = categories.length > 0 ? categories : D.products.reduce((acc, p) => {
     if (p.category && !acc.find(c => c.id === p.category.id)) acc.push(p.category); return acc
   }, [])
@@ -258,12 +259,13 @@ function ProductGrid({ products, accent, currency, onAdd, onView, onQuick }) {
 function ProductCard({ p, accent, currency, onAdd, onView, onQuick }) {
   const [hovered, setHovered] = useState(false)
   const oos = p.totalStock !== undefined && p.totalStock <= 0
+  const { primary: cardImg } = resolveMedia(p)
   return (
     <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{ cursor: 'pointer' }}>
       <div style={{ position: 'relative', width: '100%', paddingBottom: '125%', overflow: 'hidden', background: '#f5f5f5', marginBottom: '12px' }}>
         <div style={{ position: 'absolute', inset: 0 }} onClick={() => onView(p)}>
-          {p.imageUrl
-            ? <img src={p.imageUrl} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.55s ease', transform: hovered ? 'scale(1.07)' : 'scale(1)' }} />
+          {cardImg
+            ? <img src={cardImg} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.55s ease', transform: hovered ? 'scale(1.07)' : 'scale(1)' }} onError={e => { e.target.style.display = 'none' }} />
             : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', color: '#ccc' }}>📦</div>
           }
         </div>

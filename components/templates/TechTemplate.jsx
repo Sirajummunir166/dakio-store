@@ -4,6 +4,7 @@ import { ShoppingCart, Search, X, Menu, ChevronRight, Zap, Star } from 'lucide-r
 import { fmt } from '../../lib/storefront'
 import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage, AnnouncementBar, SocialFooter } from '../StoreOverlays'
 import { DEMO } from './demoData'
+import { resolveMedia } from '../../lib/mediaUtils'
 
 const FONT = "'Inter', 'Segoe UI', sans-serif"
 
@@ -23,7 +24,7 @@ export default function TechTemplate(props) {
   const D = DEMO.tech
   const demoMode = products.length === 0 && !isFiltered
   const showProds = products.length > 0 ? products : D.products
-  const heroImg = products[0]?.imageUrl || D.hero
+  const heroImg = resolveMedia(products[0]).primary || D.hero
   const allCats = categories.length > 0 ? categories : D.products.reduce((acc, p) => {
     if (p.category && !acc.find(c => c.id === p.category.id)) acc.push(p.category); return acc
   }, [])
@@ -244,12 +245,13 @@ function TechGrid({ products, accent, currency, onAdd, onView, onQuick }) {
 function TechCard({ p, accent, currency, onAdd, onView, onQuick }) {
   const [hovered, setHovered] = useState(false)
   const oos = p.totalStock !== undefined && p.totalStock <= 0
+  const { primary: cardImg } = resolveMedia(p)
   return (
     <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       onClick={() => onView(p)}
       style={{ background: '#1e293b', border: `1px solid ${hovered ? accent + '55' : '#334155'}`, borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.2s, transform 0.15s', transform: hovered ? 'translateY(-2px)' : 'none' }}>
       <div style={{ position: 'relative', aspectRatio: '1', overflow: 'hidden', background: '#0f172a' }}>
-        {p.imageUrl ? <img src={p.imageUrl} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s', transform: hovered ? 'scale(1.05)' : 'scale(1)' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' }}>📱</div>}
+        {cardImg ? <img src={cardImg} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s', transform: hovered ? 'scale(1.05)' : 'scale(1)' }} onError={e => { e.target.style.display = 'none' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' }}>📱</div>}
         {oos && <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ background: '#dc2626', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '4px 12px', borderRadius: '4px' }}>OUT OF STOCK</span></div>}
         {/* Fake rating */}
         <div style={{ position: 'absolute', top: '8px', left: '8px', display: 'flex', alignItems: 'center', gap: '3px', background: 'rgba(15,23,42,0.8)', borderRadius: '4px', padding: '3px 7px' }}>

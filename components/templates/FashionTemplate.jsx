@@ -4,6 +4,7 @@ import { ShoppingBag, Search, X, Menu, Truck, RefreshCw, Lock, MessageCircle, Ph
 import { fmt } from '../../lib/storefront'
 import { CartDrawer, QuickAddModal, ProductDetailPage, CheckoutPage, SuccessPage, AnnouncementBar } from '../StoreOverlays'
 import { DEMO } from './demoData'
+import { resolveMedia } from '../../lib/mediaUtils'
 
 const SERIF = "'Georgia', 'Times New Roman', serif"
 const SANS  = "'Helvetica Neue', Arial, sans-serif"
@@ -42,7 +43,7 @@ export default function FashionTemplate(props) {
       ? products
       : [...(catSections || []).flatMap(s => s.items), ...(uncategorised || [])]
 
-  const heroImg = allProds[0]?.imageUrl || null
+  const heroImg = resolveMedia(allProds[0]).primary
 
   if (view === 'checkout') return <CheckoutPage {...{ cart, products: allProds, store, cartTotal, form, setForm, formErr, placing, placeOrder, setView, accent, couponCode, setCouponCode, couponDiscount, couponErr, appliedCoupon, couponLoading, applyCoupon, removeCoupon }} />
   if (view === 'success')  return <SuccessPage  {...{ orderNum, form, setView, setForm, accent }} />
@@ -294,8 +295,8 @@ export default function FashionTemplate(props) {
             {allProds[0] && (
               <div className="fa-hero-badge">
                 <div className="fa-badge-img">
-                  {allProds[0].imageUrl
-                    ? <img src={allProds[0].imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {heroImg
+                    ? <img src={heroImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f3' }}><Package size={18} color="#ccc" strokeWidth={1.5} /></div>
                   }
                 </div>
@@ -450,11 +451,12 @@ export default function FashionTemplate(props) {
 function FashionCard({ p, accent, currency, onAdd, onView }) {
   const [hovered, setHovered] = useState(false)
   const oos = p.totalStock !== undefined && p.totalStock <= 0
+  const { primary: cardImg } = resolveMedia(p)
   return (
     <div className="fa-card" onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onClick={() => onView(p)}>
       <div className="fa-card-img">
-        {p.imageUrl
-          ? <img src={p.imageUrl} alt={p.name} style={{ transform: hovered ? 'scale(1.07)' : 'scale(1)' }} />
+        {cardImg
+          ? <img src={cardImg} alt={p.name} style={{ transform: hovered ? 'scale(1.07)' : 'scale(1)' }} onError={e => { e.target.style.display = 'none' }} />
           : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f3' }}><Package size={36} color="#ccc" strokeWidth={1.2} /></div>
         }
         {oos
