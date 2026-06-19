@@ -122,13 +122,15 @@ export default function FashionTemplate(props) {
         .badge-new  { background: #111; color: #fff; }
         .badge-sale { background: #e53e3e; color: #fff; }
         .badge-out  { background: #e5e7eb; color: #666; }
-        .fa-card-over { position: absolute; inset: 0; border-radius: 12px; display: flex; align-items: flex-end; padding: 12px; opacity: 0; transition: opacity .25s; }
-        .fa-card:hover .fa-card-over { opacity: 1; }
-        .fa-overlay-add { flex: 1; padding: 11px; background: #fff; color: #111; border: none; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; border-radius: 8px; cursor: pointer; font-family: ${SANS}; transition: background .15s, color .15s; }
-        .fa-overlay-add:hover { background: #111; color: #fff; }
         .fa-card-cat { font-size: 11px; color: #bbb; font-weight: 500; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; }
-        .fa-card-name { font-size: 14px; font-weight: 600; line-height: 1.35; margin-bottom: 8px; color: #111; }
+        .fa-card-name { font-size: 14px; font-weight: 600; line-height: 1.35; margin-bottom: 6px; color: #111; }
+        .fa-card-price-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 3px; }
         .fa-card-price { font-size: 15px; font-weight: 800; color: #111; }
+        .fa-card-mrp { font-size: 11px; color: #bbb; text-decoration: line-through; }
+        .fa-card-off { font-size: 10px; font-weight: 700; color: #16a34a; }
+        .fa-card-cod { font-size: 10px; color: #15803d; font-weight: 600; margin-bottom: 10px; }
+        .fa-card-add { width: 100%; padding: 10px; background: #111; color: #fff; border: none; font-size: 12px; font-weight: 700; letter-spacing: .06em; border-radius: 6px; cursor: pointer; font-family: ${SANS}; transition: opacity .15s; }
+        .fa-card-add:hover { opacity: .82; }
 
         /* Feature banner */
         .fa-banner { display: grid; grid-template-columns: 1fr 1fr; min-height: 360px; background: #111; overflow: hidden; margin: 0 32px 80px; border-radius: 20px; }
@@ -180,9 +182,9 @@ export default function FashionTemplate(props) {
           .fh-inner { padding: 0 16px; }
           .fh-nav { display: none !important; }
           .fh-mob { display: flex !important; }
-          .fa-hero { grid-template-columns: 1fr; }
-          .fa-hero-left { padding: 44px 20px 32px; }
-          .fa-hero-right { min-height: 300px; }
+          .fa-hero { grid-template-columns: 1fr; min-height: 0; }
+          .fa-hero-left { padding: 32px 20px 24px; }
+          .fa-hero-right { min-height: 200px; }
           .fa-hero-stats { gap: 20px; }
           .fa-hero-badge { display: none; }
           .fa-cats { padding: 14px 16px; }
@@ -444,34 +446,46 @@ export default function FashionTemplate(props) {
       {detail    && <ProductDetailPage product={detail} store={store} accent={accent} onAdd={addToCart} onClose={() => setDetail(null)} />}
       {quickView && <QuickAddModal product={quickView} store={store} accent={accent} onAdd={addToCart} onClose={() => setQuickView(null)} onFull={() => { setDetail(quickView); setQuickView(null) }} />}
       <CartDrawer {...{ cart, products: allProds, store, cartCount, cartTotal, cartOpen, setCartOpen, changeQty, removeFromCart, setView, accent }} />
+      {store?.whatsappNumber && (
+        <a href={`https://wa.me/880${store.whatsappNumber.replace(/^(\+?880|0)/, '').replace(/\D/g, '')}`}
+          target="_blank" rel="noopener noreferrer"
+          style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 997, width: '52px', height: '52px', background: '#25d366', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(37,211,102,0.45)', textDecoration: 'none' }}>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        </a>
+      )}
     </div>
   )
 }
 
 function FashionCard({ p, accent, currency, onAdd, onView }) {
   const [hovered, setHovered] = useState(false)
-  const oos = p.totalStock !== undefined && p.totalStock <= 0
+  const oos      = p.totalStock !== undefined && p.totalStock <= 0
+  const discount = p.mrp && p.mrp > p.sellingPrice ? Math.round((1 - p.sellingPrice / p.mrp) * 100) : null
   const { primary: cardImg } = resolveMedia(p)
   return (
-    <div className="fa-card" onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onClick={() => onView(p)}>
-      <div className="fa-card-img">
+    <div className="fa-card" onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+      <div className="fa-card-img" onClick={() => onView(p)}>
         {cardImg
           ? <img src={cardImg} alt={p.name} style={{ transform: hovered ? 'scale(1.07)' : 'scale(1)' }} onError={e => { e.target.style.display = 'none' }} />
           : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f3' }}><Package size={36} color="#ccc" strokeWidth={1.2} /></div>
         }
         {oos
           ? <span className="fa-card-badge badge-out">Sold Out</span>
-          : <span className="fa-card-badge badge-new">New</span>
+          : discount
+            ? <span className="fa-card-badge badge-sale">{discount}% off</span>
+            : <span className="fa-card-badge badge-new">New</span>
         }
-        {!oos && (
-          <div className="fa-card-over" style={{ opacity: hovered ? 1 : 0 }}>
-            <button className="fa-overlay-add" onClick={e => { e.stopPropagation(); onAdd(p, 1) }}>Quick Add</button>
-          </div>
-        )}
       </div>
-      {p.category && <div className="fa-card-cat">{p.category.name}</div>}
-      <div className="fa-card-name">{p.name}</div>
-      <div className="fa-card-price">{fmt(p.sellingPrice, currency)}</div>
+      <div onClick={() => onView(p)}>
+        {p.category && <div className="fa-card-cat">{p.category.name}</div>}
+        <div className="fa-card-name">{p.name}</div>
+        <div className="fa-card-price-row">
+          <span className="fa-card-price">{fmt(p.sellingPrice, currency)}</span>
+          {discount && <span className="fa-card-mrp">{fmt(p.mrp, currency)}</span>}
+        </div>
+        <div className="fa-card-cod">✓ ক্যাশ অন ডেলিভারি</div>
+      </div>
+      {!oos && <button className="fa-card-add" onClick={e => { e.stopPropagation(); onAdd(p, 1) }}>অর্ডার করুন</button>}
     </div>
   )
 }
