@@ -1,4 +1,7 @@
-export const metadata = { title: 'Dakio Store', description: 'Powered by Dakio' }
+export const metadata = {
+  title: 'Dakio Store — Bangladesh\'s Online Store Platform',
+  description: 'Thousands of Bangladeshi stores are powered by Dakio. Find a store or create your own free online store at store.dakio.io.',
+}
 
 export default function RootLayout({ children }) {
   return (
