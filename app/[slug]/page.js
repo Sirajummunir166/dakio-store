@@ -1,5 +1,6 @@
 import { getStoreBySlug, getProducts, getCategories } from '../../lib/api'
 import StorefrontClient from '../../components/StorefrontClient'
+import StoreUnavailable from '../../components/StoreUnavailable'
 import { notFound } from 'next/navigation'
 
 export async function generateMetadata({ params }) {
@@ -24,7 +25,12 @@ export default async function StorePage({ params }) {
     getCategories(slug),
   ])
 
-  if (!storeData?.store) notFound()
+  if (storeData.notFound) notFound()
+
+  if (storeData.unavailable) {
+    console.error(`[storefront] API unavailable for slug="${slug}" — upstream 5xx or network failure`)
+    return <StoreUnavailable />
+  }
 
   return (
     <StorefrontClient

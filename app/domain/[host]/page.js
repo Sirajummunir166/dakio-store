@@ -1,5 +1,6 @@
 import { getStoreByDomain, getProducts, getCategories } from '../../../lib/api'
 import StorefrontClient from '../../../components/StorefrontClient'
+import StoreUnavailable from '../../../components/StoreUnavailable'
 import { notFound } from 'next/navigation'
 
 export async function generateMetadata({ params }) {
@@ -19,7 +20,13 @@ export default async function DomainStorePage({ params }) {
   const { host } = await params
 
   const storeData = await getStoreByDomain(host)
-  if (!storeData?.store) notFound()
+
+  if (storeData.notFound) notFound()
+
+  if (storeData.unavailable) {
+    console.error(`[storefront] API unavailable for domain="${host}" — upstream 5xx or network failure`)
+    return <StoreUnavailable />
+  }
 
   const slug = storeData.store.slug
   const [products, categories] = await Promise.all([
