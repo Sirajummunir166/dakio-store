@@ -1,0 +1,899 @@
+/*
+ * Dakio Fashion — Phase E Additions
+ * New sections: Lookbook, ShopByStyle, SizeGuide, FabricCare
+ * PDP improvements: sticky CTA, trust badges, wishlist, recently viewed
+ * Priority 3: typography rhythm, whitespace, editorial hierarchy
+ */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PRIORITY 3 — Typography & Editorial Rhythm Overrides
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Refined CSS variables — scoped to .veluna so they don't pollute other themes */
+.veluna {
+  --section-pad: 80px 0;
+  --section-pad-sm: 56px 0;
+  --heading-tracking: -0.025em;
+  --heading-weight: 500;
+  --card-transition: box-shadow 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+                     transform 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+                     border-color 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Editorial heading scale */
+.veluna .section-head h2,
+.veluna .section-head--center h2 {
+  font-size: clamp(26px, 4vw, 40px);
+  font-weight: var(--heading-weight);
+  letter-spacing: var(--heading-tracking);
+  line-height: 1.2;
+}
+
+/* More breathing room on section heads */
+.veluna .section-head,
+.veluna .section-head--center {
+  margin-bottom: 44px;
+}
+
+/* Eyebrow refinement — more editorial */
+.veluna .eyebrow--editorial {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+/* Section spacing rhythm */
+.veluna .categories,
+.veluna .products-section,
+.veluna .blog,
+.veluna .features,
+.veluna .promo-banner,
+.veluna .brand-story {
+  padding: var(--section-pad);
+}
+
+/* Refined card hover — less aggressive lift */
+.veluna .product-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Hero editorial — more vertical presence */
+.veluna .hero-editorial {
+  min-height: 92vh;
+}
+
+.veluna .hero-editorial__copy h1 {
+  font-size: clamp(36px, 6vw, 76px);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+
+.veluna .hero-editorial__copy p {
+  font-size: clamp(15px, 2vw, 18px);
+  color: rgba(255,255,255,0.82);
+  line-height: 1.65;
+  max-width: 480px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   LOOKBOOK SECTION
+   ───────────────────────────────────────────────────────────────────────── */
+
+.lookbook {
+  padding: var(--section-pad);
+  background: var(--bg);
+}
+
+.lookbook__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 36px;
+  gap: 24px;
+}
+
+.lookbook__head h2 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--dark);
+}
+
+.lookbook__grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 16px;
+}
+
+.lookbook__grid--2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.lookbook__grid--4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.lookbook-card {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--card-media-bg);
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  text-align: left;
+}
+
+.lookbook-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.lookbook-card__media {
+  position: relative;
+  overflow: hidden;
+}
+
+.lookbook-card:first-child .lookbook-card__media {
+  aspect-ratio: 2/3;
+}
+
+.lookbook-card__media {
+  aspect-ratio: 3/4;
+}
+
+.lookbook-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.lookbook-card:hover .lookbook-card__media img {
+  transform: scale(1.04);
+}
+
+.lookbook-card__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0) 55%);
+  pointer-events: none;
+}
+
+.lookbook-card__body {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 28px 24px 24px;
+  color: #fff;
+}
+
+.lookbook-card__eyebrow {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 6px;
+}
+
+.lookbook-card__title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.lookbook-card__subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255,255,255,0.75);
+}
+
+.lookbook-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  border-bottom: 1px solid rgba(255,255,255,0.5);
+  padding-bottom: 2px;
+  transition: border-color 0.2s ease;
+}
+
+.lookbook-card:hover .lookbook-card__cta {
+  border-color: #fff;
+}
+
+@media (max-width: 900px) {
+  .lookbook__grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .lookbook-card:first-child .lookbook-card__media {
+    aspect-ratio: 3/4;
+  }
+}
+
+@media (max-width: 600px) {
+  .lookbook__grid,
+  .lookbook__grid--2,
+  .lookbook__grid--4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   SHOP BY STYLE SECTION
+   ───────────────────────────────────────────────────────────────────────── */
+
+.shop-by-style {
+  padding: var(--section-pad-sm);
+  background: var(--bg-soft);
+}
+
+.shop-by-style__head {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.shop-by-style__head h2 {
+  margin: 0;
+  font-size: clamp(24px, 3.5vw, 36px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--dark);
+}
+
+.shop-by-style__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.style-card {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 24px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.22s ease, border-color 0.22s ease, color 0.22s ease, transform 0.22s ease;
+  min-width: 110px;
+  text-align: center;
+}
+
+.style-card:hover,
+.style-card:focus-visible {
+  background: var(--dark);
+  border-color: var(--dark);
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.style-card__icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  transition: color 0.22s ease;
+}
+
+.style-card:hover .style-card__icon,
+.style-card:focus-visible .style-card__icon {
+  color: rgba(255,255,255,0.75);
+}
+
+.style-card__label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--dark);
+  transition: color 0.22s ease;
+}
+
+.style-card:hover .style-card__label,
+.style-card:focus-visible .style-card__label {
+  color: #fff;
+}
+
+@media (max-width: 600px) {
+  .shop-by-style__grid {
+    gap: 8px;
+  }
+  .style-card {
+    padding: 16px 18px;
+    min-width: 90px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   SIZE GUIDE MODAL
+   ───────────────────────────────────────────────────────────────────────── */
+
+.size-guide-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s ease;
+}
+
+.size-guide-trigger:hover {
+  color: var(--dark);
+}
+
+.size-guide-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 0 0;
+}
+
+@media (min-width: 640px) {
+  .size-guide-modal {
+    align-items: center;
+    padding: 24px;
+  }
+}
+
+.size-guide-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.46);
+  backdrop-filter: blur(4px);
+  border: none;
+  cursor: pointer;
+}
+
+.size-guide-modal__panel {
+  position: relative;
+  width: min(680px, 100%);
+  max-height: 92vh;
+  overflow: auto;
+  background: var(--bg);
+  border-radius: 12px 12px 0 0;
+  padding: 32px 28px 40px;
+  animation: sg-in 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (min-width: 640px) {
+  .size-guide-modal__panel {
+    border-radius: 12px;
+    animation: sg-in-center 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@keyframes sg-in {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes sg-in-center {
+  from { opacity: 0; transform: scale(0.97) translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.size-guide-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.size-guide-modal__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--dark);
+}
+
+.size-guide-modal__close {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--dark);
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.size-guide-modal__close:hover {
+  border-color: var(--dark);
+}
+
+.size-guide-modal__note {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 24px;
+  line-height: 1.65;
+}
+
+.size-guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.size-guide-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 16px 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.size-guide-table th:last-child,
+.size-guide-table td:last-child {
+  padding-right: 0;
+}
+
+.size-guide-table td {
+  padding: 14px 16px 14px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  color: var(--text);
+}
+
+.size-guide-table td:first-child {
+  font-weight: 600;
+  color: var(--dark);
+}
+
+.size-guide-modal__tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+
+.size-guide-modal__tab {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.size-guide-modal__tab.active,
+.size-guide-modal__tab:hover {
+  background: var(--dark);
+  border-color: var(--dark);
+  color: #fff;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   FABRIC & CARE SECTION
+   ───────────────────────────────────────────────────────────────────────── */
+
+.fabric-care {
+  padding: var(--section-pad-sm);
+  background: var(--bg);
+  border-top: 1px solid rgba(0,0,0,0.05);
+}
+
+.fabric-care__head {
+  text-align: center;
+  margin-bottom: 44px;
+}
+
+.fabric-care__eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.fabric-care__head h2 {
+  margin: 0 0 12px;
+  font-size: clamp(24px, 3.5vw, 36px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--dark);
+}
+
+.fabric-care__subtitle {
+  margin: 0;
+  font-size: 15px;
+  color: var(--muted);
+  max-width: 480px;
+  margin-inline: auto;
+  line-height: 1.65;
+}
+
+.fabric-care__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  max-width: 860px;
+  margin-inline: auto;
+  background: var(--border);
+}
+
+.care-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 20px;
+  background: var(--bg);
+  text-align: center;
+}
+
+.care-item__icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--dark);
+  background: var(--bg-soft);
+}
+
+.care-item__label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dark);
+  letter-spacing: 0.01em;
+}
+
+.care-item__detail {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: -6px;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .fabric-care__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .care-item {
+    padding: 24px 16px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PDP — STICKY MOBILE ADD TO CART
+   ───────────────────────────────────────────────────────────────────────── */
+
+.pdp-sticky-cta {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px) saturate(1.4);
+  border-top: 1px solid var(--border);
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  transform: translateY(100%);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pdp-sticky-cta.is-visible {
+  transform: translateY(0);
+}
+
+.pdp-sticky-cta__product {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.pdp-sticky-cta__img {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pdp-sticky-cta__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pdp-sticky-cta__price {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+.pdp-sticky-cta__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pdp-sticky-cta .btn {
+  padding: 10px 16px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* Only show on mobile */
+@media (min-width: 768px) {
+  .pdp-sticky-cta {
+    display: none !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PDP — TRUST BADGES
+   ───────────────────────────────────────────────────────────────────────── */
+
+.pdp-trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 20px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin: 24px 0;
+}
+
+.pdp-trust__badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.pdp-trust__badge svg {
+  flex-shrink: 0;
+  color: var(--dark);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PDP — DELIVERY ESTIMATION CARD
+   ───────────────────────────────────────────────────────────────────────── */
+
+.pdp-delivery {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin: 20px 0;
+}
+
+.pdp-delivery__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.pdp-delivery__row + .pdp-delivery__row {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.pdp-delivery__icon {
+  flex-shrink: 0;
+  color: var(--dark);
+}
+
+.pdp-delivery__label {
+  font-weight: 600;
+  color: var(--dark);
+}
+
+.pdp-delivery__detail {
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: auto;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PDP — RETURN POLICY CARD
+   ───────────────────────────────────────────────────────────────────────── */
+
+.pdp-return {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin: 12px 0;
+}
+
+.pdp-return__icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--dark);
+}
+
+.pdp-return__text strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dark);
+  margin-bottom: 3px;
+}
+
+.pdp-return__text span {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PDP — WISHLIST + SHARE ACTIONS
+   ───────────────────────────────────────────────────────────────────────── */
+
+.pdp-actions-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.pdp-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.pdp-action-btn:hover {
+  border-color: var(--dark);
+  color: var(--dark);
+}
+
+.pdp-action-btn.is-active {
+  background: var(--dark);
+  border-color: var(--dark);
+  color: #fff;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PDP — RECENTLY VIEWED
+   ───────────────────────────────────────────────────────────────────────── */
+
+.recently-viewed {
+  padding: 56px 0 72px;
+  border-top: 1px solid rgba(0,0,0,0.05);
+}
+
+.recently-viewed__head {
+  margin-bottom: 28px;
+}
+
+.recently-viewed__head h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--dark);
+}
+
+.recently-viewed__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .recently-viewed__grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PRESET TOKENS
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Classic preset — clean, comfortable */
+.veluna[data-preset="classic"] {
+  --section-pad: 80px 0;
+  --heading-tracking: -0.025em;
+  --heading-weight: 500;
+  --card-radius: 12px;
+}
+
+/* Editorial preset — generous, refined */
+.veluna[data-preset="editorial"] {
+  --section-pad: 100px 0;
+  --heading-tracking: -0.03em;
+  --heading-weight: 400;
+  --card-radius: 4px;
+  --bg-soft: #f8f7f5;
+  --border: #e8e5e0;
+}
+
+.veluna[data-preset="editorial"] .hero-editorial__copy h1 {
+  font-size: clamp(48px, 8vw, 96px);
+  font-weight: 300;
+}
+
+.veluna[data-preset="editorial"] .section-head h2 {
+  font-weight: 300;
+}
+
+/* Campaign preset — bold, compact */
+.veluna[data-preset="campaign"] {
+  --section-pad: 60px 0;
+  --heading-tracking: -0.015em;
+  --heading-weight: 700;
+  --card-radius: 6px;
+}
+
+.veluna[data-preset="campaign"] .section-head h2 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}

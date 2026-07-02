@@ -1,4 +1,4 @@
-import { getStoreByDomain, getProductBySlug } from '../../../../../lib/api'
+import { getStoreByDomain, getProductBySlug, getProducts } from '../../../../../lib/api'
 import ProductDetailClient from '../../../../../components/ProductDetailClient'
 import { notFound } from 'next/navigation'
 
@@ -19,8 +19,31 @@ export default async function DomainProductPage({ params }) {
   const { host, productSlug } = await params
   const storeData = await getStoreByDomain(host)
   if (!storeData?.store) notFound()
-  const slug    = storeData.store.slug
-  const product = await getProductBySlug(slug, productSlug)
+  const slug = storeData.store.slug
+  const [product, allProducts] = await Promise.all([
+    getProductBySlug(slug, productSlug),
+    getProducts(slug, { limit: 48 }),
+  ])
   if (!product) notFound()
-  return <ProductDetailClient store={storeData.store} product={product} slug={slug} isCustomDomain={true} />
+
+  const relatedProducts = product.category?.id
+    ? allProducts.filter(x => x.category?.id === product.category.id && x.id !== product.id).slice(0, 8)
+    : allProducts.filter(x => x.id !== product.id).slice(0, 8)
+
+  const isFashionV1 = storeData.store?.storeTemplate === 'fashion_v1'
+
+  return (
+    <>
+      {isFashionV1 && <link rel="stylesheet" href="/fashion-theme.css" />}
+      {isFashionV1 && <link rel="stylesheet" href="/fashion-additions.css" />}
+      <ProductDetailClient
+        store={storeData.store}
+        product={product}
+        slug={slug}
+        isCustomDomain={true}
+        relatedProducts={relatedProducts}
+        allProducts={allProducts}
+      />
+    </>
+  )
 }

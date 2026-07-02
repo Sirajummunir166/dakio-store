@@ -34,12 +34,18 @@ export default async function DomainStorePage({ params }) {
     getCategories(slug),
   ])
 
+  const isFashionV1 = storeData.store?.storeTemplate === 'fashion_v1'
+
   return (
-    <StorefrontClient
-      store={storeData.store}
-      products={products}
-      categories={categories}
-      slug={slug}
-    />
+    <>
+      {isFashionV1 && <link rel="stylesheet" href="/fashion-theme.css" />}
+      {isFashionV1 && <link rel="stylesheet" href="/fashion-additions.css" />}
+      <StorefrontClient
+        store={storeData.store}
+        products={products}
+        categories={categories}
+        slug={slug}
+      />
+    </>
   )
 }

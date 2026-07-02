@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import { DISTRICTS, DHAKA_DISTRICTS, getThanas, detectLocation } from '../lib/bd-locations'
 import TrackingScripts from './TrackingScripts'
 import { storeHome } from '../lib/routes'
+import { resolveFashionConfig } from '../lib/theme/fashionDefaults'
+import FashionCheckoutRoute from './templates/fashion/FashionCheckoutRoute'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://dakio-api-production.up.railway.app/api'
 
@@ -308,6 +310,57 @@ export default function CheckoutClient({ store, slug }) {
   }
   const fieldFocus = e => { e.target.style.borderColor = accent; e.target.style.boxShadow = `0 0 0 3px ${accent}22` }
   const fieldBlur  = e => { e.target.style.borderColor = '#d1d5db'; e.target.style.boxShadow = 'none' }
+
+  if (store?.storeTemplate === 'fashion') {
+    return (
+      <FashionCheckoutRoute
+        store={store}
+        slug={slug}
+        accent={resolveFashionConfig(store).primary || accent}
+        router={router}
+        cart={cart}
+        cartReady={cartReady}
+        form={form}
+        setForm={setForm}
+        district={district}
+        setDistrict={setDistrict}
+        thana={thana}
+        setThana={setThana}
+        autoDetected={autoDetected}
+        setAutoDetected={setAutoDetected}
+        formErr={formErr}
+        placing={placing}
+        placeOrder={placeOrder}
+        orderNum={orderNum}
+        couponCode={couponCode}
+        setCouponCode={setCouponCode}
+        couponDiscount={couponDiscount}
+        couponErr={couponErr}
+        appliedCoupon={appliedCoupon}
+        couponLoading={couponLoading}
+        applyCoupon={applyCoupon}
+        removeCoupon={removeCoupon}
+        otpStep={otpStep}
+        otpInput={otpInput}
+        setOtpInput={setOtpInput}
+        otpErr={otpErr}
+        setOtpErr={setOtpErr}
+        otpVerifying={otpVerifying}
+        verifyOtp={verifyOtp}
+        otpMaskedPhone={otpMaskedPhone}
+        otpExpiresAt={otpExpiresAt}
+        setOtpStep={setOtpStep}
+        cartTotal={cartTotal}
+        cartCount={cartCount}
+        shippingCharge={shippingCharge}
+        orderTotal={orderTotal}
+        isInsideDhaka={isInsideDhaka}
+        handleAddressBlur={handleAddressBlur}
+        summaryOpen={summaryOpen}
+        setSummaryOpen={setSummaryOpen}
+      />
+    )
+  }
 
   /* ── OTP verification screen ────────────────────────────── */
   if (otpStep) {
