@@ -4,6 +4,7 @@ import { IconBag, IconCheck, IconClose, IconMinus, IconPlus } from './Icons.jsx'
 import { useFashionTheme } from '../FashionThemeContext.jsx'
 
 const FREE_SHIPPING_THRESHOLD = 2500
+const STANDARD_SHIPPING_FEE = 120
 
 function formatPrice(amount) {
   if (amount == null) return '৳0'
@@ -28,12 +29,19 @@ export default function CartDrawer() {
   if (!cart.isOpen) return null
 
   const subtotal = cart.total
+  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE
+  const total = subtotal + shipping
   const freeShippingProgress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100)
   const amountToFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal)
 
   const goCheckout = () => {
     cart.close()
     navigate.toCheckout()
+  }
+
+  const goToProduct = (item) => {
+    cart.close()
+    if (item.slug) navigate.toProduct(item.slug)
   }
 
   return (
@@ -80,11 +88,21 @@ export default function CartDrawer() {
             <ul className="cart-drawer__list">
               {cart.items.map((item) => (
                 <li key={item.key} className="cart-drawer__item">
-                  <div className="cart-drawer__thumb">
+                  <button
+                    type="button"
+                    className="cart-drawer__thumb"
+                    onClick={() => goToProduct(item)}
+                  >
                     {item.image && <img src={item.image} alt={item.name} />}
-                  </div>
+                  </button>
                   <div className="cart-drawer__body">
-                    <span className="cart-drawer__name">{item.name}</span>
+                    <button
+                      type="button"
+                      className="cart-drawer__name"
+                      onClick={() => goToProduct(item)}
+                    >
+                      {item.name}
+                    </button>
                     {item.variantId && <p className="cart-drawer__meta">Size {item.variantId}</p>}
                     <div className="cart-drawer__row">
                       <div className="cart-drawer__qty">
@@ -125,9 +143,13 @@ export default function CartDrawer() {
                   <span>Subtotal</span>
                   <span>{formatPrice(subtotal)}</span>
                 </div>
+                <div className="cart-drawer__total-row">
+                  <span>Shipping</span>
+                  <span>{shipping === 0 ? 'Free' : formatPrice(shipping)}</span>
+                </div>
                 <div className="cart-drawer__total-row cart-drawer__total-row--grand">
                   <span>Total</span>
-                  <strong>{formatPrice(subtotal)}</strong>
+                  <strong>{formatPrice(total)}</strong>
                 </div>
               </div>
               <button type="button" className="btn btn--accent cart-drawer__checkout" onClick={goCheckout}>
