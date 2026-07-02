@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import SalePrice from './SalePrice.jsx'
 import { AddedLabel, IconBagAddPlus, IconHeart } from './Icons.jsx'
 import { useFashionTheme } from '../FashionThemeContext.jsx'
@@ -25,6 +25,15 @@ export default function ProductCard({
   const { contract, navigate, quickView } = useFashionTheme()
   const [added, setAdded] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
+  const imgRef = useRef(null)
+
+  // SSR race condition fix: image may finish loading before React attaches onLoad handler.
+  // Check img.complete on mount and set loaded state immediately if so.
+  useEffect(() => {
+    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
+      setImageLoaded(true)
+    }
+  }, [])
 
   const onSale = product.comparePrice != null && product.comparePrice > product.price
 
@@ -74,6 +83,7 @@ export default function ProductCard({
           aria-label={`View ${product.name}`}
         >
           <img
+            ref={imgRef}
             src={product.image}
             alt={product.name}
             loading="lazy"
