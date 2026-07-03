@@ -1,3 +1,5 @@
+'use client'
+
 const FEATURE_ICON_MAP = {
   'Free Delivery': 'truck',
   'Easy Returns': 'return',

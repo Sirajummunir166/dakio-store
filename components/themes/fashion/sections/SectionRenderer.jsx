@@ -1,3 +1,4 @@
+'use client'
 import TopbarSection from './TopbarSection.jsx'
 import HeaderSection from './HeaderSection.jsx'
 import HeroDealsSection from './HeroDealsSection.jsx'
@@ -28,9 +29,14 @@ const SECTION_COMPONENTS = {
   'fabric-care': FabricCareSection,
 }
 
-export default function SectionRenderer({ section }) {
+export default function SectionRenderer({ section, variant }) {
   if (!section.enabled) return null
   const Component = SECTION_COMPONENTS[section.type]
   if (!Component) return null
-  return <Component settings={section.settings} />
+
+  return (
+    <div className="section-root" data-section-type={section.type}>
+      <Component settings={section.settings} sectionId={section.id} variant={variant} />
+    </div>
+  )
 }

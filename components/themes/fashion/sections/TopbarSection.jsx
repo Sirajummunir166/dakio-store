@@ -1,3 +1,4 @@
+'use client'
 import { sanitizeThemeUrl } from '../../../../lib/theme/sanitizeThemeUrl.js'
 
 export default function TopbarSection({ settings }) {

@@ -1,3 +1,5 @@
+'use client'
+
 export default function PromoBannerSection({ settings }) {
   const isCampaign = settings.variant === 'campaign'
   const isBrandStory = settings.variant === 'brand-story'

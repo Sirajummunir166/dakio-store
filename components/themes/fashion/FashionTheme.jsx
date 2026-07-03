@@ -3,6 +3,8 @@ import { FashionThemeProvider } from './FashionThemeContext.jsx'
 import FashionStyleInjector from './styles/FashionStyleInjector.jsx'
 import SectionRenderer from './sections/SectionRenderer.jsx'
 import CartDrawer from './components/CartDrawer.jsx'
+import CartToast from './components/CartToast.jsx'
+import SiteHeaderLock from './components/SiteHeaderLock.jsx'
 import ProductQuickView from './components/ProductQuickView.jsx'
 import SizeGuideModal from './sections/SizeGuide/SizeGuideModal.jsx'
 import { resolvePreset } from './defaults/presets.js'
@@ -11,15 +13,24 @@ import { getDefaultPageConfig } from './defaults/pageConfig.js'
 export default function FashionTheme({ contract }) {
   const { sections, dataPreset } = resolvePageSections(contract.pageConfig)
 
+  const headerSections = sections.filter((s) => s.type === 'topbar' || s.type === 'header')
+  const contentSections = sections.filter((s) => s.type !== 'topbar' && s.type !== 'header')
+
   return (
     <FashionThemeProvider contract={contract}>
       <FashionStyleInjector accentColor={contract.store.accentColor} />
       <div className="veluna" data-preset={dataPreset}>
-        {sections.map((section) => (
+        <SiteHeaderLock>
+          {headerSections.map((section) => (
+            <SectionRenderer key={section.id} section={section} />
+          ))}
+        </SiteHeaderLock>
+        {contentSections.map((section) => (
           <SectionRenderer key={section.id} section={section} />
         ))}
       </div>
       <CartDrawer />
+      <CartToast />
       <ProductQuickView />
       {/* Global SizeGuideModal — mounted once, driven by sizeGuide context state */}
       <SizeGuideModal />

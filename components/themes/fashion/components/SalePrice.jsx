@@ -1,3 +1,5 @@
+'use client'
+
 function formatPrice(amount) {
   if (amount == null) return '৳0'
   return `৳${Number(amount).toLocaleString('en-BD')}`
