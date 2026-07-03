@@ -34,7 +34,7 @@ export default async function DomainStorePage({ params }) {
     getCategories(slug),
   ])
 
-  const isFashionV1 = storeData.store?.storeTemplate === 'fashion_v1'
+  const isFashionV1 = true // Fashion V1 is now the universal theme engine
 
   return (
     <>

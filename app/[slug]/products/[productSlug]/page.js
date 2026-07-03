@@ -26,7 +26,7 @@ export default async function ProductPage({ params }) {
     ? allProducts.filter(x => x.category?.id === product.category.id && x.id !== product.id).slice(0, 8)
     : allProducts.filter(x => x.id !== product.id).slice(0, 8)
 
-  const isFashionV1 = storeData.store?.storeTemplate === 'fashion_v1'
+  const isFashionV1 = true // Fashion V1 is now the universal theme engine
 
   return (
     <>
