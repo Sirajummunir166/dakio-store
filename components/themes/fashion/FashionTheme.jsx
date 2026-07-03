@@ -11,7 +11,8 @@ import { resolvePreset } from './defaults/presets.js'
 import { getDefaultPageConfig } from './defaults/pageConfig.js'
 
 export default function FashionTheme({ contract }) {
-  const { sections, dataPreset } = resolvePageSections(contract.pageConfig)
+  const { sections: rawSections, dataPreset } = resolvePageSections(contract.pageConfig)
+  const sections = patchStoreSections(rawSections, contract.store)
 
   const headerSections = sections.filter((s) => s.type === 'topbar' || s.type === 'header')
   const contentSections = sections.filter((s) => s.type !== 'topbar' && s.type !== 'header')
@@ -36,6 +37,43 @@ export default function FashionTheme({ contract }) {
       <SizeGuideModal />
     </FashionThemeProvider>
   )
+}
+
+// Replace Veluna placeholder branding with the merchant's real store data
+// and fix default product tab so all products show instead of badge-filtered "new"
+function patchStoreSections(sections, store) {
+  if (!store?.name || !Array.isArray(sections)) return sections
+  return sections.map((s) => {
+    if (s.type === 'header' && s.settings?.brandName === 'Veluna') {
+      return {
+        ...s,
+        settings: {
+          ...s.settings,
+          brandName: store.name,
+          brandMark: store.name.charAt(0).toUpperCase(),
+          ...(store.logoUrl ? { logoUrl: store.logoUrl } : {}),
+        },
+      }
+    }
+    if (s.type === 'footer' && s.settings?.copyright?.includes('Veluna')) {
+      return {
+        ...s,
+        settings: {
+          ...s.settings,
+          copyright: `© 2026 ${store.name}`,
+        },
+      }
+    }
+    // Default products tab 'new' filters by badge — most stores have no badges,
+    // so switch to show all products instead
+    if (s.type === 'products' && s.settings?.defaultTab === 'new') {
+      return {
+        ...s,
+        settings: { ...s.settings, defaultTab: 'all' },
+      }
+    }
+    return s
+  })
 }
 
 function resolvePageSections(pageConfig) {
