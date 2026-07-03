@@ -71,14 +71,14 @@ export default function FashionProductPage({ product }) {
           <span>/</span>
           <button type="button" onClick={goHome}>Shop</button>
           <span>/</span>
-          <span>{product.category}</span>
+          <span>{product.category?.name ?? product.category}</span>
         </nav>
 
         <div className="product-page__hero">
           <ProductGallery product={product} />
 
           <div className="product-page__info">
-            <p className="product-page__category">{product.category}</p>
+            <p className="product-page__category">{product.category?.name ?? product.category}</p>
             <h1 className="product-page__title">{product.name}</h1>
 
             <p className="product-page__sku">SKU {product.sku}</p>
@@ -91,7 +91,15 @@ export default function FashionProductPage({ product }) {
               <SalePrice product={product} variant="page" className="product-page__price" />
             )}
 
-            <p className="product-page__stock">{product.stock}</p>
+            <p className="product-page__stock">
+              {product.availability?.inStock === false
+                ? 'Out of stock'
+                : product.availability?.isLowStock
+                  ? `Only ${product.totalStock} left`
+                  : product.totalStock > 0
+                    ? 'In stock'
+                    : product.stock != null ? product.stock : null}
+            </p>
 
             <div ref={purchaseRef} className="product-page__purchase-zone">
               <div className="product-page__option">

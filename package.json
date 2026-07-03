@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --test lib/api.test.js lib/theme/validateThemeConfig.test.js lib/theme/previewPage.test.js lib/theme-runtime/theme-runtime.test.js lib/theme-runtime/pipeline.test.js lib/mediaUtils.test.js"
+    "test": "node --test lib/api.test.js lib/theme/validateThemeConfig.test.js lib/theme/previewPage.test.js lib/theme/fashion-wiring.test.js lib/theme-runtime/theme-runtime.test.js lib/theme-runtime/pipeline.test.js lib/mediaUtils.test.js"
   },
   "dependencies": {
     "jsonwebtoken": "^9.0.3",

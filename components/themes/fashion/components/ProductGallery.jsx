@@ -3,7 +3,14 @@ import { useEffect, useState } from 'react'
 import { isOnSale } from '../compat/lib-products.js'
 
 export default function ProductGallery({ product }) {
-  const images = product.images?.length ? product.images : [{ src: product.image, alt: product.name }]
+  // Normalize string[] (Dakio API) or {src,alt}[] (Veluna native) into a uniform shape
+  const images = (() => {
+    const raw = product.images?.length ? product.images : null
+    if (!raw) return [{ src: product.image, alt: product.name }]
+    return raw.map((img) =>
+      typeof img === 'string' ? { src: img, alt: product.name } : img
+    )
+  })()
   const [activeIndex, setActiveIndex] = useState(0)
   const onSale = isOnSale(product)
 
