@@ -8,17 +8,17 @@
 export const PRODUCT_SIZES = ['S', 'M', 'L', 'XL', 'XXL']
 
 export function isOnSale(product) {
-  return Boolean(product?.compare && Number(product.compare) > Number(product.price))
+  return Boolean(product?.comparePrice && Number(product.comparePrice) > Number(product.price))
 }
 
 export function getSaleSavings(product) {
   if (!isOnSale(product)) return 0
-  return Number(product.compare) - Number(product.price)
+  return Number(product.comparePrice) - Number(product.price)
 }
 
 export function getDiscount(product) {
-  if (!product?.compare || !product?.price) return null
-  return Math.round((1 - Number(product.price) / Number(product.compare)) * 100)
+  if (!product?.comparePrice || !product?.price) return null
+  return Math.round((1 - Number(product.price) / Number(product.comparePrice)) * 100)
 }
 
 /**

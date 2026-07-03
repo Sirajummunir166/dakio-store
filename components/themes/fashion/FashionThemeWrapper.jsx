@@ -61,10 +61,12 @@ export default function FashionThemeWrapper({
   // Cart bridge rebuilds when cart state changes — that is expected and correct.
   const cart       = useMemo(() => buildCartBridge({
     state: {
-      cart:      sf.cart,
-      cartOpen:  sf.cartOpen,
-      cartTotal: sf.cartTotal,
-      cartCount: sf.cartCount,
+      cart:           sf.cart,
+      cartOpen:       sf.cartOpen,
+      cartTotal:      sf.cartTotal,
+      cartCount:      sf.cartCount,
+      appliedCoupon:  sf.appliedCoupon ?? null,
+      couponDiscount: sf.couponDiscount ?? 0,
     },
     actions: {
       setCartOpen:    sf.setCartOpen,
@@ -73,7 +75,7 @@ export default function FashionThemeWrapper({
       changeQty:      sf.changeQty,
     },
     slug,
-  }), [sf.cart, sf.cartOpen, sf.cartTotal, sf.cartCount, sf.setCartOpen, sf.addToCart, sf.removeFromCart, sf.changeQty, slug])
+  }), [sf.cart, sf.cartOpen, sf.cartTotal, sf.cartCount, sf.appliedCoupon, sf.couponDiscount, sf.setCartOpen, sf.addToCart, sf.removeFromCart, sf.changeQty, slug])
 
   // Live pageConfig from published themeSettings. Null → Classic preset auto-applied in FashionTheme.
   // In preview mode the store API already swaps in themeSettingsDraft before it reaches here.

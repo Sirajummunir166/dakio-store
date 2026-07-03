@@ -29,8 +29,10 @@ export default function CartDrawer() {
   if (!cart.isOpen) return null
 
   const subtotal = cart.total
+  const couponDiscount = cart.couponDiscount ?? 0
+  const appliedCoupon = cart.coupon ?? null
   const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE
-  const total = subtotal + shipping
+  const total = subtotal - couponDiscount + shipping
   const freeShippingProgress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100)
   const amountToFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal)
 
@@ -143,6 +145,12 @@ export default function CartDrawer() {
                   <span>Subtotal</span>
                   <span>{formatPrice(subtotal)}</span>
                 </div>
+                {couponDiscount > 0 && (
+                  <div className="cart-drawer__total-row">
+                    <span>Discount {appliedCoupon ? `(${appliedCoupon.code ?? appliedCoupon})` : ''}</span>
+                    <span>-{formatPrice(couponDiscount)}</span>
+                  </div>
+                )}
                 <div className="cart-drawer__total-row">
                   <span>Shipping</span>
                   <span>{shipping === 0 ? 'Free' : formatPrice(shipping)}</span>

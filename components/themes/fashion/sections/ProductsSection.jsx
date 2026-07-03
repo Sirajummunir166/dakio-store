@@ -40,13 +40,13 @@ export default function ProductsSection({ settings }) {
     defaultTab,
     limit,
     loadMoreLabel,
-    showTabs = false,
+    showTabs = true,
     showReviews = false,
     showQuickView = true,
     showComparePrice = true,
-    curated = true,
+    curated = false,
     addToCartLabel = 'Add to cart',
-    quickViewLabel = 'Quick view',
+    quickViewLabel = 'Quick View',
   } = settings
 
   const [activeTab, setActiveTab] = useState(defaultTab)

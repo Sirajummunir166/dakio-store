@@ -26,8 +26,8 @@ export default function FashionProductPage({ product }) {
   const [stickyVisible, setStickyVisible] = useState(false)
   const purchaseRef = useRef(null)
 
-  // Related products are contract.products[1..n] (set by FashionPDPWrapper)
-  const related = contract.products?.slice(1) ?? []
+  // Dakio Platform decides what related products are — theme only renders what it receives
+  const related = contract.relatedProducts ?? []
   const availableSizes = getProductAvailableSizes(product)
   const cartLine = getCartLine(items, product.id, size)
   const inCart = Boolean(cartLine)
