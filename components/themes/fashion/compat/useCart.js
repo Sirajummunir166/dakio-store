@@ -34,23 +34,23 @@ export function useCart() {
     // Veluna: buyNow adds then navigates — navigation handled by caller via openCheckout()
     buyNow: (product, { size, qty }) => c.addItem(product, qty, size),
 
-    // Veluna: removeItem(productId, size) — construct the item key
+    // Veluna: removeItem(productId, size) — Dakio key = productId + variantId (no separator)
     removeItem: (productId, size) => {
       const items = c.items ?? []
       const item = items.find(
         (i) =>
-          i.key === `${productId}:${size}` ||
+          i.key === `${productId}${size}` ||
           (String(i.productId) === String(productId) && i.size === size),
       )
       if (item) c.removeItem(item.key ?? item.id)
     },
 
-    // Veluna: updateQty(productId, size, qty) — find and change qty
+    // Veluna: updateQty(productId, size, qty)
     updateQty: (productId, size, qty) => {
       const items = c.items ?? []
       const item = items.find(
         (i) =>
-          i.key === `${productId}:${size}` ||
+          i.key === `${productId}${size}` ||
           (String(i.productId) === String(productId) && i.size === size),
       )
       if (item) c.changeQty(item.key ?? item.id, qty)

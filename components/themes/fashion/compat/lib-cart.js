@@ -6,13 +6,14 @@
 
 /**
  * Find a cart line for a specific product + size combo.
- * Handles veluna key format ("productId:size") and Dakio {productId, size} fields.
+ * Dakio key format: productId + variantId (no separator) — e.g. "abc123M"
+ * Fallback: match by productId + size field (set in normalizeCartItem from variantId).
  */
 export function getCartLine(items = [], productId, size) {
   return (
     items.find(
       (item) =>
-        item.key === `${productId}:${size}` ||
+        item.key === `${productId}${size}` ||
         (String(item.productId) === String(productId) && item.size === size),
     ) ?? null
   )
