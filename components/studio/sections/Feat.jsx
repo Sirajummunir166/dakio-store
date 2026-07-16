@@ -4,9 +4,11 @@ import ImageSlot from '../ImageSlot';
 import { baseStyles, sx } from '../theme';
 import { PRODUCTS } from '../catalog';
 
-// Featured products — grid or horizontally scrolling row of demo catalog cards.
+// Featured products — grid or horizontally scrolling row of catalog cards.
+// Real catalog arrives via the bridge (ctx.products); demo data is the fallback.
 export default function Feat({ sec, ctx }) {
   const { P, F, C, mob, preview, assets } = ctx;
+  const products = ctx.products && ctx.products.length ? ctx.products : PRODUCTS;
   const p = sec.props;
   const { c, pad, h2 } = baseStyles(sec, ctx);
 
@@ -31,10 +33,12 @@ export default function Feat({ sec, ctx }) {
         <div style={sx(viewAll)}>View all →</div>
       </div>
       <div style={sx(prodGrid)}>
-        {PRODUCTS.slice(0, n).map((pr, pi) => (
+        {products.slice(0, n).map((pr, pi) => (
           <div key={pi} style={sx(card)}>
             <div style={sx(imgWrap)}>
-              <ImageSlot slotId={'st-prod-' + pi} assets={assets} fit="cover" placeholder="Product photo" preview={preview} />
+              {pr.img
+                ? <img src={pr.img} alt={pr.n} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <ImageSlot slotId={'st-prod-' + pi} assets={assets} fit="cover" placeholder="Product photo" preview={preview} />}
               {!!pr.t && <div style={sx(tagStyle)}>{pr.t}</div>}
             </div>
             <div style={sx(nameStyle)}>{pr.n}</div>

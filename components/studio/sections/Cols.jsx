@@ -5,8 +5,10 @@ import { baseStyles, sx } from '../theme';
 import { COLDATA } from '../catalog';
 
 // Collection grid — 3up / 4up / 2big tile variants with scrim + name overlay.
+// Real collections arrive via the bridge (ctx.collections); demo data is the fallback.
 export default function Cols({ sec, ctx }) {
   const { F, C, mob, preview, assets } = ctx;
+  const collections = ctx.collections && ctx.collections.length ? ctx.collections : COLDATA;
   const p = sec.props;
   const { c, pad, h2 } = baseStyles(sec, ctx);
 
@@ -21,7 +23,7 @@ export default function Cols({ sec, ctx }) {
     <div style={sx(pad)}>
       <Editable secId={sec.id} k="head" value={p.head} style={h2} preview={preview} />
       <div style={sx(colGrid)}>
-        {COLDATA.slice(0, count).map((t, ti) => (
+        {collections.slice(0, count).map((t, ti) => (
           <div key={ti} style={sx(tile)}>
             <div style={{ position: 'absolute', inset: 0 }}>
               <ImageSlot slotId={'st-col-' + ti} assets={assets} fit="cover" placeholder="Collection image" preview={preview} />

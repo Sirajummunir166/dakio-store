@@ -48,7 +48,7 @@ export default function StudioCanvas() {
 
   useEffect(() => {
     const off = listen((m) => {
-      if (m.t === 'state') setSt({ doc: m.doc, curPage: m.curPage, device: m.device, preview: m.preview, sel: m.sel, building: m.building });
+      if (m.t === 'state') setSt({ doc: m.doc, catalog: m.catalog, curPage: m.curPage, device: m.device, preview: m.preview, sel: m.sel, building: m.building });
       if (m.t === 'scrollToSec') {
         const el = els.current[m.id];
         if (el) send('secOffset', { id: m.id, top: el.offsetTop });
@@ -83,7 +83,7 @@ export default function StudioCanvas() {
 
   if (!st || !st.doc) return null;
 
-  const { doc, curPage, device, preview, sel, building } = st;
+  const { doc, catalog, curPage, device, preview, sel, building } = st;
   const theme = doc.theme;
   const P = PAL[theme.p] || PAL.porcelain;
   const F = FON[theme.f] || FON.clean;
@@ -99,6 +99,7 @@ export default function StudioCanvas() {
   const ctxFor = (sec) => ({
     P, F, C, mob, padX, preview, theme,
     menus: doc.menus, assets: doc.assets || {},
+    products: catalog?.products, collections: catalog?.collections,
     isSel: !preview && sel === sec.id,
     onGoPage: (id) => send('goPage', { id }),
   });
