@@ -11,13 +11,16 @@ export default function Promo({ sec, ctx }) {
 
   const cdOn = p.cd !== false;
 
-  // Countdown end is fixed at first mount (demo timer).
-  const endRef = useRef(null);
-  if (endRef.current === null) endRef.current = Date.now() + (2 * 24 * 3600 + 14 * 3600 + 22 * 60) * 1000;
-  const [now, setNow] = useState(() => Date.now());
+  // Countdown is a fixed demo offset counting down from mount. Tracked as
+  // elapsed-time-since-mount (not wall clock) so the SSR'd public page and the
+  // client's first render produce identical text — no hydration mismatch.
+  const CD_OFFSET = (2 * 24 * 3600 + 14 * 3600 + 22 * 60) * 1000;
+  const startRef = useRef(null);
+  const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     if (!cdOn) return;
-    const iv = setInterval(() => setNow(Date.now()), 1000);
+    if (startRef.current === null) startRef.current = Date.now();
+    const iv = setInterval(() => setElapsed(Date.now() - startRef.current), 1000);
     return () => clearInterval(iv);
   }, [cdOn]);
 
@@ -37,7 +40,7 @@ export default function Promo({ sec, ctx }) {
   const cdNum = 'font-family:' + F.b + '; font-weight:800; font-size:' + (mob ? 18 : 21) + 'px; font-variant-numeric:tabular-nums; line-height:1;';
   const cdLbl = 'font-family:' + F.b + '; font-size:9px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:' + c.sub + '; margin-top:4px;';
 
-  const diff = Math.max(0, endRef.current - now);
+  const diff = Math.max(0, CD_OFFSET - elapsed);
   const z = (x) => String(x).padStart(2, '0');
   const boxes = [
     [z(Math.floor(diff / 86400000)), 'days'],
