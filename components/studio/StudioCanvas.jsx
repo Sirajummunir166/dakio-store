@@ -102,6 +102,8 @@ export default function StudioCanvas() {
     products: catalog?.products, collections: catalog?.collections,
     isSel: !preview && sel === sec.id,
     onGoPage: (id) => send('goPage', { id }),
+    // Preview link clicks route to the chrome, which owns navigation + scrolling
+    onLink: (link) => send('navLink', { link }),
   });
 
   const renderSection = (sec, i, last, isFooter) => {
@@ -201,7 +203,7 @@ export default function StudioCanvas() {
                 style={{ cursor: 'pointer', whiteSpace: 'nowrap', ...(it.link.t === 'page' && it.link.ref === page.id ? { color: P.ink, textDecoration: 'underline', textUnderlineOffset: 5 } : {}) }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (preview) { if (it.link.t === 'page') send('goPage', { id: it.link.ref }); }
+                  if (preview) send('navLink', { link: it.link });
                   else send('navMenus', { label: it.label });
                 }}
               >

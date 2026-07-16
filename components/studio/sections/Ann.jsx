@@ -5,6 +5,7 @@ import { baseStyles, sx } from '../theme';
 // Announcement bar — static (centered message + underlined link) or marquee variant.
 export default function Ann({ sec, ctx }) {
   const { F, padX, preview, isSel } = ctx;
+  // p.to = link destination (set in the inspector); p.link stays the visible label
   const p = sec.props;
   const { c } = baseStyles(sec, ctx);
 
@@ -19,7 +20,10 @@ export default function Ann({ sec, ctx }) {
       {!marquee && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, flexWrap: 'wrap' }}>
           <Editable secId={sec.id} k="msg" value={p.msg} style={''} preview={preview} tag="span" />
-          <Editable secId={sec.id} k="link" value={p.link} style={annLink} preview={preview} tag="span" />
+          <Editable
+            secId={sec.id} k="link" value={p.link} style={annLink} preview={preview} tag="span"
+            onClick={preview ? (ev) => { ev.stopPropagation(); ctx.onLink && ctx.onLink(p.to); } : undefined}
+          />
         </div>
       )}
       {marquee && (

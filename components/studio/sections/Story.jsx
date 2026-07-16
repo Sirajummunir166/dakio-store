@@ -23,7 +23,7 @@ export default function Story({ sec, ctx }) {
           <Editable secId={sec.id} k="head" value={p.head} style={h2} preview={preview} />
           <Editable secId={sec.id} k="body" value={p.body} style={storyBody} multiline preview={preview} />
           <div style={{ marginTop: 22, display: 'flex' }}>
-            <div style={sx(btnGhost)}>
+            <div style={sx(btnGhost)} onClick={preview ? (ev) => { ev.stopPropagation(); ctx.onLink && ctx.onLink(p.to); } : undefined}>
               <Editable secId={sec.id} k="cta" value={p.cta} style={''} preview={preview} tag="span" />
             </div>
           </div>

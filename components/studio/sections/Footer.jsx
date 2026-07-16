@@ -6,7 +6,7 @@ import ImageSlot from '../ImageSlot';
 export default function Footer({ sec, ctx }) {
   const s = baseStyles(sec, ctx);
   const { c } = s;
-  const { F, mob, padX, preview, theme, menus, assets, onGoPage } = ctx;
+  const { F, mob, padX, preview, theme, menus, assets, onLink } = ctx;
   const p = sec.props;
   const cols = sec.v !== 'min';
 
@@ -44,7 +44,7 @@ export default function Footer({ sec, ctx }) {
                   key={it.id ?? i}
                   style={sx(footLink)}
                   onClick={(e) => {
-                    if (preview && it.link.t === 'page') { e.stopPropagation(); onGoPage(it.link.ref); }
+                    if (preview) { e.stopPropagation(); onLink && onLink(it.link); }
                   }}
                 >
                   {it.label}

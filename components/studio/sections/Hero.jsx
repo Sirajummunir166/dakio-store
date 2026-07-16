@@ -40,7 +40,7 @@ export default function Hero({ sec, ctx }) {
               <Editable secId={sec.id} k="head" value={p.head} style={heroHead} preview={preview} />
               <Editable secId={sec.id} k="sub" value={p.sub} style={heroSub} multiline preview={preview} />
               <div style={{ marginTop: 26, display: 'flex' }}>
-                <div style={sx(btn)}>
+                <div style={sx(btn)} onClick={preview ? (ev) => { ev.stopPropagation(); ctx.onLink && ctx.onLink(p.to); } : undefined}>
                   <Editable secId={sec.id} k="cta" value={p.cta} style={''} preview={preview} tag="span" />
                 </div>
               </div>
@@ -61,7 +61,7 @@ export default function Hero({ sec, ctx }) {
             <Editable secId={sec.id} k="eyebrow" value={p.eyebrow} style={bleedEyebrow} preview={preview} />
             <Editable secId={sec.id} k="head" value={p.head} style={bleedHead} preview={preview} />
             <div style={{ marginTop: 20, display: 'flex' }}>
-              <div style={sx(btn)}>
+              <div style={sx(btn)} onClick={preview ? (ev) => { ev.stopPropagation(); ctx.onLink && ctx.onLink(p.to); } : undefined}>
                 <Editable secId={sec.id} k="cta" value={p.cta} style={''} preview={preview} tag="span" />
               </div>
             </div>
@@ -74,7 +74,7 @@ export default function Hero({ sec, ctx }) {
           <Editable secId={sec.id} k="head" value={p.head} style={minHead} preview={preview} />
           <Editable secId={sec.id} k="sub" value={p.sub} style={minSub} multiline preview={preview} />
           <div style={{ marginTop: 28, display: 'flex', justifyContent: 'center' }}>
-            <div style={sx(btn)}>
+            <div style={sx(btn)} onClick={preview ? (ev) => { ev.stopPropagation(); ctx.onLink && ctx.onLink(p.to); } : undefined}>
               <Editable secId={sec.id} k="cta" value={p.cta} style={''} preview={preview} tag="span" />
             </div>
           </div>

@@ -11,10 +11,17 @@ export default function Promo({ sec, ctx }) {
 
   const cdOn = p.cd !== false;
 
-  // Countdown is a fixed demo offset counting down from mount. Tracked as
-  // elapsed-time-since-mount (not wall clock) so the SSR'd public page and the
-  // client's first render produce identical text — no hydration mismatch.
+  // Countdown target: the merchant's "Offer ends" moment (p.ends) when set,
+  // otherwise a demo offset counting down from mount. The demo path tracks
+  // elapsed-time-since-mount so SSR and the client's first render match; the
+  // real-end path reads the clock, so its digits carry suppressHydrationWarning
+  // (server vs client can differ by a second).
   const CD_OFFSET = (2 * 24 * 3600 + 14 * 3600 + 22 * 60) * 1000;
+  const endsMs = (() => {
+    if (!p.ends) return null;
+    const t = new Date(p.ends).getTime();
+    return isNaN(t) ? null : t;
+  })();
   const startRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
@@ -40,7 +47,9 @@ export default function Promo({ sec, ctx }) {
   const cdNum = 'font-family:' + F.b + '; font-weight:800; font-size:' + (mob ? 18 : 21) + 'px; font-variant-numeric:tabular-nums; line-height:1;';
   const cdLbl = 'font-family:' + F.b + '; font-size:9px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:' + c.sub + '; margin-top:4px;';
 
-  const diff = Math.max(0, CD_OFFSET - elapsed);
+  const diff = endsMs != null
+    ? Math.max(0, endsMs - ((startRef.current ?? Date.now()) + elapsed))
+    : Math.max(0, CD_OFFSET - elapsed);
   const z = (x) => String(x).padStart(2, '0');
   const boxes = [
     [z(Math.floor(diff / 86400000)), 'days'],
@@ -62,7 +71,7 @@ export default function Promo({ sec, ctx }) {
             <div style={{ display: 'flex', gap: 7 }}>
               {boxes.map(([num, lbl]) => (
                 <div key={lbl} style={sx(cdBox)}>
-                  <div style={sx(cdNum)}>{num}</div>
+                  <div style={sx(cdNum)} suppressHydrationWarning>{num}</div>
                   <div style={sx(cdLbl)}>{lbl}</div>
                 </div>
               ))}

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { PAL, FON, COR, co } from './theme';
 import { SECTION_COMPONENTS } from './sections';
+import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
 
 // Public renderer for a published Store Studio site — the same section components
 // the studio canvas uses, in preview mode (no editing affordances), with real
@@ -46,16 +47,66 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     return basePath + pg.slug;
   };
 
+  // WhatsApp number comes from the first Contact section anywhere on the site
+  const waDigits = () => {
+    let ph = '';
+    for (const pg of doc.pages) {
+      const s = pg.sections.find((x) => x.type === 'contact');
+      if (s && s.props.phone) { ph = s.props.phone; break; }
+    }
+    const d = String(ph).replace(/\D/g, '');
+    if (!d) return null;
+    return d.startsWith('0') ? '88' + d : d;
+  };
+
+  // Resolve a stored link to an href. Deleted targets fall back gracefully:
+  // a missing section scrolls to the top of its page, a missing page goes home.
   const linkHref = (link) => {
     if (!link) return null;
     if (link.t === 'page') return pageHref(link.ref);
-    if (link.t === 'url') return link.ref;
+    if (link.t === 'sec') {
+      const pg = doc.pages.find((p) => p.id === link.ref);
+      if (!pg) return basePath || '/';
+      const s = pg.sections.find((x) => x.id === link.sec && !x.hidden);
+      if (!s) return pageHref(pg.id);
+      return pg.id === page.id ? `#sec-${s.id}` : `${pageHref(pg.id)}#sec-${s.id}`;
+    }
+    if (link.t === 'wa') {
+      const d = waDigits();
+      return d ? `https://wa.me/${d}` : null;
+    }
+    if (link.t === 'url') return sanitizeThemeUrl(link.ref);
     if (link.t === 'prod') {
       const p = products.find((x) => x.n === link.ref);
       return p && p.slug ? `${basePath}/products/${p.slug}` : null;
     }
     return null; // collections: no public collection page yet
   };
+
+  const isExternal = (href) => /^https?:\/\//i.test(href) || href.startsWith('mailto:') || href.startsWith('tel:');
+
+  // Click navigation for section CTAs (ann link, hero/story buttons, footer items)
+  const onLink = (link) => {
+    const href = linkHref(link);
+    if (!href) return; // unlinked or unresolvable — inert on the live store
+    if (href.startsWith('#')) {
+      const el = document.getElementById(href.slice(1));
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    if (isExternal(href)) { window.open(href, '_blank', 'noopener'); return; }
+    window.location.href = href;
+  };
+
+  // Cross-page section links land with a #sec-… hash — scroll to it once rendered
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.location.hash.startsWith('#sec-')) return;
+    const el = document.getElementById(window.location.hash.slice(1));
+    if (el) {
+      const tm = setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+      return () => clearTimeout(tm);
+    }
+  }, []);
 
   const ctx = {
     P, F, C, mob, padX,
@@ -64,6 +115,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     products, collections,
     isSel: false,
     onGoPage: (id) => { window.location.href = pageHref(id); },
+    onLink,
   };
 
   const renderSection = (sec) => {
@@ -72,7 +124,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     if (!Comp) return null;
     const cc = co(sec.props.bg, P);
     return (
-      <div key={sec.id} data-section-type={sec.type} style={{ position: 'relative', background: cc.bg, color: cc.fg }}>
+      <div key={sec.id} id={'sec-' + sec.id} data-section-type={sec.type} style={{ position: 'relative', background: cc.bg, color: cc.fg }}>
         <Comp sec={sec} ctx={ctx} />
       </div>
     );
@@ -85,7 +137,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link href={`https://fonts.googleapis.com/css2?${FONT_HREF[theme.f] || FONT_HREF.clean}&display=swap`} rel="stylesheet" />
       <style>{`
-        html, body { margin:0; }
+        html, body { margin:0; scroll-behavior:smooth; }
         @keyframes marquee { 0% { transform:translateX(0); } 100% { transform:translateX(-33.333%); } }
         input::placeholder { color: currentColor; opacity: .38; }
         .studio-nav-link { color: inherit; text-decoration: none; }
@@ -114,8 +166,9 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
               const href = linkHref(it.link);
               const active = it.link.t === 'page' && it.link.ref === page.id;
               const style = { whiteSpace: 'nowrap', ...(active ? { color: P.ink, textDecoration: 'underline', textUnderlineOffset: 5 } : {}) };
+              const ext = href && isExternal(href);
               return href ? (
-                <a key={it.id} href={href} className="studio-nav-link" style={style}>{it.label}</a>
+                <a key={it.id} href={href} className="studio-nav-link" style={style} {...(ext ? { target: '_blank', rel: 'noopener' } : {})}>{it.label}</a>
               ) : (
                 <span key={it.id} style={style}>{it.label}</span>
               );
