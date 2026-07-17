@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { FON, COR, co, resolvePal } from './theme';
 import { SECTION_COMPONENTS } from './sections';
+import { optImg } from './publicCatalog';
 import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
 
 // Public renderer for a published Store Studio site — the same section components
@@ -113,12 +114,15 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     }
   }, []);
 
+  const seoF = doc.seo || {};
   const ctx = {
     P, F, C, mob, padX,
     preview: true, isPublic: true, theme,
     menus: doc.menus, assets,
     cat: { products, collections },
     isSel: false,
+    lazyImgs: seoF.lazy !== false,
+    optImg: (u) => optImg(u, seoF),
     onGoPage: (id) => { window.location.href = pageHref(id); },
     onLink,
   };

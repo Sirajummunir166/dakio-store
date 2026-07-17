@@ -2,7 +2,7 @@ import { getStoreBySlug, getProducts, getCategories, getPublishedSite } from '..
 import StorefrontClient from '../../components/StorefrontClient'
 import StoreUnavailable from '../../components/StoreUnavailable'
 import PublicSite from '../../components/studio/PublicSite'
-import { toStudioCatalog } from '../../components/studio/publicCatalog'
+import { toStudioCatalog, studioMetadata } from '../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
 
 export async function generateMetadata({ params }) {
@@ -10,10 +10,9 @@ export async function generateMetadata({ params }) {
   const siteData = await getPublishedSite(slug)
   if (siteData?.site) {
     const home = siteData.site.pages.find((p) => p.id === 'home') || siteData.site.pages[0]
-    return {
-      title: home?.seo?.title || siteData.site.theme?.brandName || 'Store',
-      description: home?.seo?.desc || undefined,
-    }
+    // Hierarchy: the page's own SEO wins, store defaults (doc.seo) fill in;
+    // favicon + social image are store-wide with optional per-page og override
+    return studioMetadata(siteData.site, home)
   }
   const data = await getStoreBySlug(slug)
   if (!data?.store) return { title: 'Store Not Found' }

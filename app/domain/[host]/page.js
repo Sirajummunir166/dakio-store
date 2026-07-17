@@ -2,7 +2,7 @@ import { getStoreByDomain, getProducts, getCategories, getPublishedSite } from '
 import StorefrontClient from '../../../components/StorefrontClient'
 import StoreUnavailable from '../../../components/StoreUnavailable'
 import PublicSite from '../../../components/studio/PublicSite'
-import { toStudioCatalog } from '../../../components/studio/publicCatalog'
+import { toStudioCatalog, studioMetadata } from '../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
 
 export async function generateMetadata({ params }) {
@@ -13,11 +13,7 @@ export async function generateMetadata({ params }) {
   const siteData = await getPublishedSite(s.slug)
   if (siteData?.site) {
     const home = siteData.site.pages.find((p) => p.id === 'home') || siteData.site.pages[0]
-    return {
-      title: home?.seo?.title || siteData.site.theme?.brandName || s.name,
-      description: home?.seo?.desc || undefined,
-      icons: s.faviconUrl ? { icon: s.faviconUrl, shortcut: s.faviconUrl } : undefined,
-    }
+    return studioMetadata(siteData.site, home)
   }
   return {
     title: s.name,

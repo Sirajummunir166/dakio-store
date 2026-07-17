@@ -3,6 +3,35 @@
 // dakio-api/src/lib/studioCatalog.js so the published page shows exactly what
 // the canvas showed. Public products are always PUBLISHED, so arch is false.
 
+// SEO hierarchy for published studio pages: a page's own title/desc wins,
+// otherwise the store default (doc.seo) fills in. Favicon + social image are
+// store-wide uploads; a page can override just its own social image.
+export function studioMetadata(site, page) {
+  const seo = site.seo || {};
+  const assets = site.assets || {};
+  const brand = site.theme?.brandName || 'Store';
+  const title = (page?.seo?.title || '').trim() || (seo.title || '').trim() || brand;
+  const description = (page?.seo?.desc || '').trim() || (seo.desc || '').trim() || undefined;
+  const favicon = assets['st-seo-favicon'];
+  const og = (page && assets['st-og-' + page.id]) || assets['st-seo-og'];
+  return {
+    title,
+    description,
+    ...(favicon ? { icons: { icon: favicon, shortcut: favicon } } : {}),
+    openGraph: { title, description, ...(og ? { images: [og] } : {}) },
+  };
+}
+
+// Image delivery honoring the store's speed switches: Cloudinary sources get
+// f_auto/q_auto + a width cap when "compress" is on; other hosts pass through.
+export function optImg(url, seo) {
+  if (!url || typeof url !== 'string') return url;
+  if ((seo?.compress ?? true) && url.includes('res.cloudinary.com') && url.includes('/upload/') && !url.includes('/upload/f_auto')) {
+    return url.replace('/upload/', '/upload/f_auto,q_auto,w_1200/');
+  }
+  return url;
+}
+
 // Synthetic page for /collections/{slug} — a live product grid bound to one
 // collection by id, rendered through the same PublicSite pipeline as real pages.
 export function collectionPage(col, catalog) {

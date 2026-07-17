@@ -56,7 +56,7 @@ export default function Pdp({ sec, ctx }) {
         <div style={{ minWidth: 0 }}>
           <div style={sx(pdpMain)}>
             {!assets[mainSlot] && bp.img
-              ? <img src={bp.img} alt={bp.n} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+              ? <img src={ctx.optImg ? ctx.optImg(bp.img) : bp.img} alt={bp.n} loading={ctx.lazyImgs ? 'lazy' : undefined} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
               : <ImageSlot slotId={mainSlot} assets={assets} placeholder="Main product photo" fit="cover" preview={preview} />}
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
