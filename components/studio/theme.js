@@ -26,6 +26,13 @@ export const COR = {
 
 export const SPM = { compact: { d: 48, m: 32 }, normal: { d: 76, m: 48 }, roomy: { d: 110, m: 66 } };
 
+// Resolve the active palette: 'custom' = palette extracted from the merchant's
+// logo pixels, carried in theme.custom (validated server-side as five hex colors).
+export function resolvePal(theme) {
+  if (theme && theme.p === 'custom' && theme.custom && theme.custom.bg) return theme.custom;
+  return PAL[theme && theme.p] || PAL.porcelain;
+}
+
 const mix = (a, pct, b) => 'color-mix(in oklab, ' + a + ' ' + pct + '%, ' + b + ')';
 
 // Section background resolution: choice ∈ base|card|tint|ink|accent

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { send, listen } from './bridge';
-import { PAL, FON, COR, co, sx } from './theme';
+import { FON, COR, co, sx, resolvePal } from './theme';
 import { SEC_NAMES, DEMO_CATALOG } from './catalog';
 import Editable from './Editable';
 import ImageSlot from './ImageSlot';
@@ -85,7 +85,7 @@ export default function StudioCanvas() {
 
   const { doc, catalog, curPage, device, preview, sel, building } = st;
   const theme = doc.theme;
-  const P = PAL[theme.p] || PAL.porcelain;
+  const P = resolvePal(theme);
   const F = FON[theme.f] || FON.clean;
   const C = COR[theme.c] || COR.soft;
   const mob = device === 'mobile';

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { PAL, FON, COR, co } from './theme';
+import { FON, COR, co, resolvePal } from './theme';
 import { SECTION_COMPONENTS } from './sections';
 import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
 
@@ -31,7 +31,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
   }, []);
 
   const theme = doc.theme || {};
-  const P = PAL[theme.p] || PAL.porcelain;
+  const P = resolvePal(theme);
   const F = FON[theme.f] || FON.clean;
   const C = COR[theme.c] || COR.soft;
   const padX = mob ? 20 : 48;
