@@ -1,8 +1,11 @@
 import { revalidateTag } from 'next/cache'
 import { NextResponse } from 'next/server'
 
-// Publish webhook target — dakio-api calls this after a Store Studio publish so the
-// published-site cache purges instantly instead of waiting out the revalidate window.
+// Cache-purge webhook target — dakio-api calls this so storefront caches update
+// instantly instead of waiting out the revalidate window.
+//   scope 'site' (default): after a Store Studio publish → published-site doc
+//   scope 'catalog': after a builder catalog edit → products/categories, which
+//   is what makes catalog changes go live with no republish
 export async function POST(req) {
   const secret = process.env.STORE_REVALIDATE_SECRET
   if (!secret) return NextResponse.json({ error: 'Revalidation not configured' }, { status: 503 })
@@ -19,6 +22,11 @@ export async function POST(req) {
   }
 
   // { expire: 0 } = hard expiry — next request refetches instead of serving stale
-  revalidateTag(`studio-site:${body.slug}`, { expire: 0 })
+  if (body.scope === 'catalog') {
+    revalidateTag(`store-products:${body.slug}`, { expire: 0 })
+    revalidateTag(`store-categories:${body.slug}`, { expire: 0 })
+  } else {
+    revalidateTag(`studio-site:${body.slug}`, { expire: 0 })
+  }
   return NextResponse.json({ ok: true })
 }

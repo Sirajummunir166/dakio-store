@@ -77,10 +77,15 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     }
     if (link.t === 'url') return sanitizeThemeUrl(link.ref);
     if (link.t === 'prod') {
-      const p = products.find((x) => x.n === link.ref);
+      // Refs are product ids; pre-Phase-5 docs stored display names — match both
+      const p = products.find((x) => x.id === link.ref) || products.find((x) => x.n === link.ref);
       return p && p.slug ? `${basePath}/products/${p.slug}` : null;
     }
-    return null; // collections: no public collection page yet
+    if (link.t === 'col') {
+      const c = collections.find((x) => x.id === link.ref) || collections.find((x) => x.n === link.ref);
+      return c && c.slug ? `${basePath}/collections/${c.slug}` : null;
+    }
+    return null;
   };
 
   const isExternal = (href) => /^https?:\/\//i.test(href) || href.startsWith('mailto:') || href.startsWith('tel:');
@@ -110,9 +115,9 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
 
   const ctx = {
     P, F, C, mob, padX,
-    preview: true, theme,
+    preview: true, isPublic: true, theme,
     menus: doc.menus, assets,
-    products, collections,
+    cat: { products, collections },
     isSel: false,
     onGoPage: (id) => { window.location.href = pageHref(id); },
     onLink,

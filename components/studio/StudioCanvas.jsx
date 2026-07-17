@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { send, listen } from './bridge';
 import { PAL, FON, COR, co, sx } from './theme';
-import { SEC_NAMES } from './catalog';
+import { SEC_NAMES, DEMO_CATALOG } from './catalog';
 import Editable from './Editable';
 import ImageSlot from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
@@ -96,10 +96,12 @@ export default function StudioCanvas() {
   const brandText = (theme.brandMode ?? 'text') !== 'image';
   const brandName = theme.brandName ?? 'Shahrqee';
 
+  const cat = catalog && Array.isArray(catalog.products) && catalog.products.length ? catalog : DEMO_CATALOG;
+
   const ctxFor = (sec) => ({
     P, F, C, mob, padX, preview, theme,
     menus: doc.menus, assets: doc.assets || {},
-    products: catalog?.products, collections: catalog?.collections,
+    cat,
     isSel: !preview && sel === sec.id,
     onGoPage: (id) => send('goPage', { id }),
     // Preview link clicks route to the chrome, which owns navigation + scrolling
