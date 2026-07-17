@@ -48,7 +48,7 @@ export default function StudioCanvas() {
 
   useEffect(() => {
     const off = listen((m) => {
-      if (m.t === 'state') setSt({ doc: m.doc, catalog: m.catalog, curPage: m.curPage, device: m.device, preview: m.preview, sel: m.sel, building: m.building });
+      if (m.t === 'state') setSt({ doc: m.doc, catalog: m.catalog, curPage: m.curPage, device: m.device, preview: m.preview, sel: m.sel, building: m.building, cmts: m.cmts || [], cmtOpen: m.cmtOpen || null });
       if (m.t === 'scrollToSec') {
         const el = els.current[m.id];
         if (el) send('secOffset', { id: m.id, top: el.offsetTop });
@@ -83,7 +83,7 @@ export default function StudioCanvas() {
 
   if (!st || !st.doc) return null;
 
-  const { doc, catalog, curPage, device, preview, sel, building } = st;
+  const { doc, catalog, curPage, device, preview, sel, building, cmts, cmtOpen } = st;
   const theme = doc.theme;
   const P = resolvePal(theme);
   const F = FON[theme.f] || FON.clean;
@@ -149,6 +149,56 @@ export default function StudioCanvas() {
               ...(isSel ? { outline: '3px solid #C6F035', outlineOffset: -3, boxShadow: '0 0 0 1px rgba(26,29,18,0.35) inset', zIndex: 2 } : {}),
             }}
           >
+            {!preview && (cmts || []).some((c) => c.secId === sec.id && !c.done) && (() => {
+              const scs = cmts.filter((c) => c.secId === sec.id && !c.done);
+              const open = cmtOpen === sec.id;
+              return (
+                <>
+                  <div
+                    onClick={(e) => { e.stopPropagation(); send('cmtToggle', { id: sec.id }); }}
+                    title="Comments"
+                    style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 21, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px 4px 4px', borderRadius: 99, background: '#1A1D12', color: '#f4f6ec', cursor: 'pointer', boxShadow: '0 8px 22px rgba(26,29,18,0.35)', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 11, fontWeight: 800 }}
+                  >
+                    <div style={{ width: 22, height: 22, borderRadius: 99, background: '#4C7A3F', color: '#F2F6E9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800 }}>
+                      {(scs[0].author || 'V')[0].toUpperCase()}
+                    </div>
+                    {scs.length}
+                  </div>
+                  {open && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ position: 'absolute', bottom: 56, right: 12, zIndex: 30, width: 272, borderRadius: 14, background: '#f6f7f0', border: '1px solid rgba(27,30,21,0.12)', boxShadow: '0 18px 50px rgba(20,22,14,0.3)', padding: 12, cursor: 'default', textAlign: 'left', fontFamily: "'Hanken Grotesk',sans-serif", color: '#1b1e15' }}
+                    >
+                      {scs.map((c) => (
+                        <div key={c.id} style={{ marginBottom: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                            <div style={{ width: 22, height: 22, borderRadius: 99, background: '#4C7A3F', color: '#F2F6E9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>{(c.author || 'V')[0].toUpperCase()}</div>
+                            <div style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {c.author} <span style={{ color: '#9a9e8c', fontWeight: 600 }}>· {c.role}</span>
+                            </div>
+                            <div onClick={() => send('cmtResolve', { id: c.id })} style={{ fontSize: 10, fontWeight: 800, color: '#3E7A45', cursor: 'pointer', flexShrink: 0 }}>Resolve</div>
+                          </div>
+                          <div style={{ marginTop: 5, fontSize: 12, lineHeight: 1.5 }}>{c.txt}</div>
+                          {(Array.isArray(c.replies) ? c.replies : []).map((rp, ri) => (
+                            <div key={ri} style={{ marginTop: 6, padding: '7px 9px', borderRadius: 9, background: '#eef0e6', fontSize: 11.5, lineHeight: 1.45 }}><b>{rp.author || 'You'}</b> — {rp.txt}</div>
+                          ))}
+                        </div>
+                      ))}
+                      <input
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const t = (e.target.value || '').trim();
+                            if (t) { send('cmtReply', { secId: sec.id, txt: t }); e.target.value = ''; }
+                          }
+                        }}
+                        placeholder="Reply… (Enter to send)"
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 9, border: '1.5px solid rgba(27,30,21,0.12)', background: '#fbfcf7', fontSize: 11.5, fontFamily: "'Hanken Grotesk',sans-serif", outline: 'none' }}
+                      />
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             {isSel && (
               <>
                 <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 22, padding: '4px 10px', borderRadius: 99, background: '#1A1D12', color: '#C6F035', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 10.5, fontWeight: 800, letterSpacing: '0.6px', display: 'flex', alignItems: 'center', gap: 6 }}>
