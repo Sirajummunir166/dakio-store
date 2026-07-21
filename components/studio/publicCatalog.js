@@ -64,6 +64,13 @@ export function toStudioCatalog(products = [], categories = []) {
       arch: false,
       img: (Array.isArray(p.images) && p.images[0]) || p.imageUrl || null,
       slug: p.slug,
+      desc: p.description || '',
+      // Variants-lite: size list from attributes [{k:'sizes', v:'S, M, L'}]
+      sizes: (() => {
+        const attrs = Array.isArray(p.attributes) ? p.attributes : [];
+        const a = attrs.find((x) => x && x.k === 'sizes');
+        return a && typeof a.v === 'string' ? a.v : '';
+      })(),
     })),
     collections: categories.map((c) => ({ id: c.id, n: c.name, slug: c.slug })),
   };

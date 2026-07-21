@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { co, resolveTheme } from './theme';
 import { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
+import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
 import { optImg } from './publicCatalog';
 import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
 
@@ -24,7 +25,9 @@ const FONT_HREF = {
   banglas: 'family=Hanken+Grotesk:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Serif+Bengali:wght@500;600;700',
 };
 
-export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [] }) {
+// `system` (Phase 8): render a store system page instead of a doc page —
+// { kind: 'shop'|'col'|'prod', col?, product?, q? } with nav + footer intact.
+export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], system = null }) {
   const [mob, setMob] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_QUERY);
@@ -79,14 +82,17 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     }
     if (link.t === 'url') return sanitizeThemeUrl(link.ref);
     if (link.t === 'prod') {
-      // Refs are product ids; pre-Phase-5 docs stored display names — match both
+      // Refs are product ids; pre-Phase-5 docs stored display names — match both.
+      // Product pages live behind the /p/<slug> template (Phase 8).
       const p = products.find((x) => x.id === link.ref) || products.find((x) => x.n === link.ref);
-      return p && p.slug ? `${basePath}/products/${p.slug}` : null;
+      return p && p.slug ? `${basePath}/p/${p.slug}` : null;
     }
     if (link.t === 'col') {
+      // Collections live behind the /shop/<slug> template (Phase 8)
       const c = collections.find((x) => x.id === link.ref) || collections.find((x) => x.n === link.ref);
-      return c && c.slug ? `${basePath}/collections/${c.slug}` : null;
+      return c && c.slug ? `${basePath}/shop/${c.slug}` : null;
     }
+    if (link.t === 'sys') return `${basePath}/${link.ref}` || null; // shop / cart / checkout / account
     return null;
   };
 
@@ -126,7 +132,14 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     optImg: (u) => optImg(u, seoF),
     onGoPage: (id) => { window.location.href = pageHref(id); },
     onLink,
+    // System-page navigation (Phase 8) — real URLs
+    onShop: () => { window.location.href = (basePath || '') + '/shop'; },
+    onCollection: (c2) => { if (c2 && c2.slug) window.location.href = `${basePath}/shop/${c2.slug}`; },
+    onProduct: (pr) => { if (pr && pr.slug) window.location.href = `${basePath}/p/${pr.slug}`; },
+    onClearQ: () => { window.location.href = (basePath || '') + '/shop'; },
   };
+
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // Reveal on scroll — IntersectionObserver flips each animated section once
   const [revealed, setRevealed] = useState({});
@@ -219,12 +232,32 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
           </div>
         )}
         <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+          {searchOpen && (
+            <input
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const q = (e.target.value || '').trim();
+                  window.location.href = (basePath || '') + '/shop' + (q ? '?q=' + encodeURIComponent(q) : '');
+                }
+                if (e.key === 'Escape') setSearchOpen(false);
+              }}
+              placeholder="Search products…"
+              style={{ width: 170, padding: '8px 12px', borderRadius: 99, border: '1.5px solid ' + base.line, background: base.card, color: base.fg, fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 12.5, outline: 'none' }}
+            />
+          )}
+          <svg onClick={() => setSearchOpen((v) => !v)} width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{ cursor: 'pointer' }}><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 7h12l1 14H5L6 7zM9 10V6a3 3 0 016 0v4" /></svg>
         </div>
       </div>
 
-      {(page.sections || []).map(renderSection)}
+      {system ? (
+        system.kind === 'shop' ? <ShopPage ctx={ctx} sys={doc.sys || {}} q={system.q} />
+        : system.kind === 'col' ? <CollectionPage ctx={ctx} sys={doc.sys || {}} col={system.col} />
+        : <ProductPage ctx={ctx} sys={doc.sys || {}} product={system.product} />
+      ) : (
+        (page.sections || []).map(renderSection)
+      )}
       {doc.footer && renderSection(doc.footer)}
     </div>
     </ImgCtx.Provider>

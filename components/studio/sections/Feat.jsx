@@ -10,7 +10,7 @@ import { pickFeat, prodTag, fmtPr } from '../catalog';
 export default function Feat({ sec, ctx }) {
   const { P, F, C, mob, preview, assets, cat, isPublic } = ctx;
   const p = sec.props;
-  const { c, pad, h2 } = baseStyles(sec, ctx);
+  const { c, pad, h2, sh } = baseStyles(sec, ctx);
 
   let picked = pickFeat(sec, cat);
   if (isPublic) picked = picked.filter((pr) => !pr.gone && !pr.empty);
@@ -33,7 +33,7 @@ export default function Feat({ sec, ctx }) {
     <div style={sx(pad)}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 20 }}>
         <Editable secId={sec.id} k="head" value={p.head} style={h2} preview={preview} />
-        <div style={sx(viewAll)}>View all →</div>
+        <div style={sx(viewAll)} onClick={preview && ctx.onShop ? (ev) => { ev.stopPropagation(); ctx.onShop(); } : undefined}>View all →</div>
       </div>
       <div style={sx(prodGrid)}>
         {list.map((pr, pi) => {
@@ -48,7 +48,7 @@ export default function Feat({ sec, ctx }) {
           }
           const tag = prodTag(pr);
           const sold = pr.stock === 0;
-          const imgWrap = 'aspect-ratio:3/4; border-radius:' + C.rs + 'px; overflow:hidden; position:relative; background:' + c.card + ';' + (sold ? ' opacity:0.75;' : '');
+          const imgWrap = 'aspect-ratio:3/4; border-radius:' + C.rs + 'px; overflow:hidden; position:relative; background:' + c.card + ';' + sh + (sold ? ' opacity:0.75;' : '');
           const tagStyle = 'position:absolute; top:10px; left:10px; z-index:2; padding:4px 9px; border-radius:' + Math.min(C.rs, 8) + 'px; background:' + (sold ? '#4a4a44' : P.accent) + '; color:' + (sold ? '#f4f4ef' : P.accentInk) + '; font-family:' + F.b + '; font-size:9.5px; font-weight:800; letter-spacing:0.6px; text-transform:uppercase; pointer-events:none;';
           return (
             <div

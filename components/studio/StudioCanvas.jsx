@@ -6,6 +6,7 @@ import { SEC_NAMES, DEMO_CATALOG } from './catalog';
 import Editable from './Editable';
 import ImageSlot, { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
+import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
 
 const I = {
   up: 'M12 19V5m-6 6l6-6 6 6',
@@ -44,6 +45,7 @@ function ToolBtn({ d, sw = 2, title, onClick, disabled, danger }) {
 export default function StudioCanvas() {
   const [st, setSt] = useState(null); // {doc, curPage, device, preview, sel, building}
   const [cropTarget, setCropTarget] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [revealed, setRevealed] = useState({}); // secId → true once scrolled into view (preview)
   const els = useRef({});
   const rootRef = useRef(null);
@@ -51,7 +53,7 @@ export default function StudioCanvas() {
 
   useEffect(() => {
     const off = listen((m) => {
-      if (m.t === 'state') setSt({ doc: m.doc, catalog: m.catalog, curPage: m.curPage, device: m.device, preview: m.preview, sel: m.sel, building: m.building, cmts: m.cmts || [], cmtOpen: m.cmtOpen || null });
+      if (m.t === 'state') setSt({ doc: m.doc, catalog: m.catalog, curPage: m.curPage, device: m.device, preview: m.preview, sel: m.sel, building: m.building, cmts: m.cmts || [], cmtOpen: m.cmtOpen || null, sysCol: m.sysCol || null, sysPid: m.sysPid || null, sysQ: m.sysQ || null });
       if (m.t === 'scrollToSec') {
         const el = els.current[m.id];
         if (el) send('secOffset', { id: m.id, top: el.offsetTop });
@@ -121,8 +123,11 @@ export default function StudioCanvas() {
   const { P, F, C, tsM, denM, shCard } = resolveTheme(theme);
   const mob = device === 'mobile';
   const padX = mob ? 20 : 48;
+  // Store system pages (Phase 8): sys-shop / sys-col / sys-prod render the
+  // data-bound templates instead of the page's section list.
+  const sysKind = String(curPage || '').startsWith('sys-') ? curPage.slice(4) : null;
   const page = doc.pages.find((p) => p.id === curPage) || doc.pages[0];
-  const sections = page.sections;
+  const sections = sysKind ? [] : page.sections;
   const base = co('base', P);
   const brandText = (theme.brandMode ?? 'text') !== 'image';
   const brandName = theme.brandName ?? 'Shahrqee';
@@ -133,10 +138,15 @@ export default function StudioCanvas() {
     P, F, C, tsM, denM, shCard, mob, padX, preview, theme,
     menus: doc.menus, assets: doc.assets || {},
     cat,
-    isSel: !preview && sel === sec.id,
+    isSel: !preview && sel === (sec && sec.id),
     onGoPage: (id) => send('goPage', { id }),
     // Preview link clicks route to the chrome, which owns navigation + scrolling
     onLink: (link) => send('navLink', { link }),
+    // System-page navigation (preview): shop / collection / product jumps
+    onShop: () => send('sysNav', { page: 'sys-shop' }),
+    onCollection: (c2) => send('sysNav', { page: 'sys-col', colId: c2.id }),
+    onProduct: (pr) => send('sysNav', { page: 'sys-prod', pid: pr.id }),
+    onClearQ: () => send('sysNav', { page: 'sys-shop' }),
   });
 
   const renderSection = (sec, i, last, isFooter) => {
@@ -317,7 +327,22 @@ export default function StudioCanvas() {
           </div>
         )}
         <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+          {searchOpen && preview && (
+            <input
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { send('sysNav', { page: 'sys-shop', q: (e.target.value || '').trim() || null }); setSearchOpen(false); }
+                if (e.key === 'Escape') setSearchOpen(false);
+              }}
+              placeholder="Search products…"
+              style={{ width: 170, padding: '8px 12px', borderRadius: 99, border: '1.5px solid ' + base.line, background: base.card, color: base.fg, fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 12.5, outline: 'none' }}
+            />
+          )}
+          <svg
+            onClick={(e) => { e.stopPropagation(); if (preview) setSearchOpen((v) => !v); else send('sysNav', { page: 'sys-shop' }); }}
+            width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{ cursor: 'pointer' }} title="Search — /shop?q="
+          ><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
           <div style={{ position: 'relative' }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 7h12l1 14H5L6 7zM9 10V6a3 3 0 016 0v4" /></svg>
             <div style={{
@@ -331,7 +356,24 @@ export default function StudioCanvas() {
         </div>
       </div>
 
-      {sections.length === 0 && !building && (
+      {sysKind && (() => {
+        const sysCtx = ctxFor({ id: '__sys' });
+        const edit = preview ? null : {
+          sel,
+          onSel: (id) => send('sel', { id }),
+          onSysProp: (scope, key, val) => send('prop', { id: '__sys:' + scope, key, val }),
+        };
+        const sys = doc.sys || {};
+        if (sysKind === 'shop') return <ShopPage ctx={sysCtx} sys={sys} q={st.sysQ} edit={edit} />;
+        if (sysKind === 'col') {
+          const col = cat.collections.find((c2) => c2.id === st.sysCol) || cat.collections[0];
+          return col ? <CollectionPage ctx={sysCtx} sys={sys} col={col} edit={edit} /> : null;
+        }
+        const pr = cat.products.find((p) => p.id === st.sysPid);
+        return <ProductPage ctx={sysCtx} sys={sys} product={pr} edit={edit} />;
+      })()}
+
+      {!sysKind && sections.length === 0 && !building && (
         <div style={{ padding: '90px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
           <div style={{ fontSize: 15, fontWeight: 600, opacity: 0.55 }}>Your page is empty</div>
           <div onClick={(e) => { e.stopPropagation(); send('lib', { at: null }); }}
@@ -344,7 +386,7 @@ export default function StudioCanvas() {
       {sections.map((sec, i) => renderSection(sec, i, sections.length - 1, false))}
       {doc.footer && renderSection(doc.footer, sections.length, sections.length, true)}
 
-      {!preview && sections.length > 0 && (
+      {!preview && !sysKind && sections.length > 0 && (
         <div className="st-endzone" onClick={(e) => { e.stopPropagation(); send('lib', { at: null }); }}
           style={{ padding: 16, display: 'flex', justifyContent: 'center', cursor: 'pointer' }}>
           <div style={{ padding: '8px 16px', borderRadius: 99, border: '1.5px dashed currentColor', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7, fontFamily: "'Hanken Grotesk',sans-serif" }}>
