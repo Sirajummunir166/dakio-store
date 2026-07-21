@@ -58,24 +58,50 @@ export function btnColors(choice, P) {
   return { bg: P.accent, fg: P.accentInk };
 }
 
-// Shared per-section style bits — port of the common part of buildVM()
+// Shared per-section style bits — port of the common part of buildVM().
+// Phase 3 additions: hz() scales headline sizes by the per-section mobile
+// headline size (props.mts: 's'|'l') and the theme type scale (ctx.tsM,
+// Phase 4); spY/padCenter scale by density (ctx.denM); ctx.shCard is the
+// theme depth shadow appended to cards/image wraps.
 export function baseStyles(sec, ctx) {
   const { P, F, C, mob, padX } = ctx;
   const p = sec.props;
   const c = co(p.bg, P);
   const B = btnColors(p.bg, P);
-  const spY = (SPM[p.sp] || SPM.normal)[mob ? 'm' : 'd'];
+  const denM = ctx.denM || 1;
+  const mts = mob ? ({ s: 0.88, l: 1.15 }[p.mts] || 1) : 1;
+  const hz = (n) => Math.round(n * (ctx.tsM || 1) * mts);
+  const sh = ctx.shCard || '';
+  const spY = Math.round((SPM[p.sp] || SPM.normal)[mob ? 'm' : 'd'] * denM);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
   const accCol = (p.bg === 'ink' || p.bg === 'accent' || P.accent === P.ink) ? c.sub : P.accent;
   return {
-    c, B, spY, headFont, accCol,
+    c, B, spY, headFont, accCol, hz, sh, denM,
     pad: 'padding:' + spY + 'px max(' + padX + 'px, calc((100% - 1120px)/2));',
     padNarrow: 'padding:' + spY + 'px max(' + padX + 'px, calc((100% - 760px)/2));',
-    padCenter: 'padding:' + (mob ? 66 : 112) + 'px ' + padX + 'px; text-align:center; box-sizing:border-box;',
-    h2: headFont + 'font-size:' + (mob ? 26 : 36) + 'px; line-height:1.12; min-width:0;',
-    h2Center: headFont + 'font-size:' + (mob ? 26 : 36) + 'px; line-height:1.12; text-align:center;',
+    padCenter: 'padding:' + Math.round((mob ? 66 : 112) * denM) + 'px ' + padX + 'px; text-align:center; box-sizing:border-box;',
+    h2: headFont + 'font-size:' + hz(mob ? 26 : 36) + 'px; line-height:1.12; min-width:0;',
+    h2Center: headFont + 'font-size:' + hz(mob ? 26 : 36) + 'px; line-height:1.12; text-align:center;',
     btn: 'display:inline-flex; align-items:center; gap:8px; padding:' + (mob ? '12px 22px' : '14px 28px') + '; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:600; font-size:' + (mob ? 13.5 : 14.5) + 'px; cursor:pointer; white-space:nowrap;',
     btnGhost: 'display:inline-flex; align-items:center; padding:' + (mob ? '11px 20px' : '13px 26px') + '; border-radius:' + C.btn + '; border:1.5px solid ' + c.sub + '; color:' + c.fg + '; font-family:' + F.b + '; font-weight:600; font-size:' + (mob ? 13 : 14) + 'px; cursor:pointer;',
+  };
+}
+
+// Which block types each section supports (Phase 3), and their defaults.
+// Mirror of BLK/BLKD in dakio-merchant/src/store-studio/constants.js.
+export const BLK = { hero: ['badge', 'cta2', 'trust'], story: ['badge', 'cta2'], promo: ['trust'], mail: ['trust'] };
+
+// Shared style strings for the Phase 3 blocks (badge / second button / trust row)
+export function blockStyles(sec, ctx, base) {
+  const { P, F } = ctx;
+  const p = sec.props;
+  const { c, accCol } = base;
+  return {
+    badgeRow: 'margin-bottom:16px; display:flex;',
+    badge: 'display:inline-flex; padding:5px 12px; border-radius:99px; background:' + (p.bg === 'accent' ? c.fg : P.accent) + '; color:' + (p.bg === 'accent' ? c.bg : P.accentInk) + '; font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; text-transform:uppercase;',
+    trustRow: 'margin-top:22px; display:flex; flex-wrap:wrap; gap:10px 22px; align-items:center;',
+    trustItem: 'display:flex; align-items:center; gap:7px; font-family:' + F.b + '; font-size:12.5px; font-weight:600; color:' + c.sub + ';',
+    trustTick: accCol,
   };
 }
 

@@ -2,12 +2,14 @@
 import { useEffect, useRef, useState } from 'react';
 import Editable from '../Editable';
 import { baseStyles, sx } from '../theme';
+import { TrustRow } from '../blocks';
 
 // Promo banner — band or card variant with code chip and live countdown.
 export default function Promo({ sec, ctx }) {
   const { P, F, C, mob, padX, preview } = ctx;
   const p = sec.props;
-  const { c, headFont } = baseStyles(sec, ctx);
+  const base = baseStyles(sec, ctx);
+  const { c, headFont, hz, sh } = base;
 
   const cdOn = p.cd !== false;
 
@@ -35,12 +37,12 @@ export default function Promo({ sec, ctx }) {
   let promoOuter, promoInner;
   if (sec.v === 'card') {
     promoOuter = 'padding:' + (mob ? 24 : 40) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)); background:' + P.bg + ';';
-    promoInner = inner + 'padding:' + (mob ? 36 : 52) + 'px 28px; border-radius:' + C.r + 'px;';
+    promoInner = inner + 'padding:' + (mob ? 36 : 52) + 'px 28px; border-radius:' + C.r + 'px;' + sh;
   } else {
     promoOuter = '';
     promoInner = inner + 'padding:' + (mob ? 40 : 60) + 'px ' + padX + 'px;';
   }
-  const promoHead = headFont + 'font-size:' + (mob ? 28 : 42) + 'px; line-height:1.08;';
+  const promoHead = headFont + 'font-size:' + hz(mob ? 28 : 42) + 'px; line-height:1.08;';
   const promoSub = 'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 15) + 'px; color:' + c.sub + '; margin-top:12px; white-space:pre-wrap;';
   const codeChip = 'padding:11px 18px; border:1.5px dashed ' + c.sub + '; border-radius:' + C.btn + '; font-family:' + F.b + '; font-size:13.5px; font-weight:600; letter-spacing:0.4px;';
   const cdBox = 'min-width:' + (mob ? 52 : 62) + 'px; padding:10px 8px 8px; background:color-mix(in oklab, ' + c.fg + ' 10%, ' + c.bg + '); border-radius:' + C.rs + 'px; text-align:center;';
@@ -78,6 +80,11 @@ export default function Promo({ sec, ctx }) {
             </div>
           )}
         </div>
+        {p.trustOn && (
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <TrustRow sec={sec} ctx={ctx} base={base} />
+          </div>
+        )}
       </div>
     </div>
   );

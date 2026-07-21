@@ -19,6 +19,9 @@ export default function StudioCanvasPage() {
         html, body { margin:0; background:transparent; }
         @keyframes popIn { 0% { opacity:0; transform:scale(0.97) translateY(8px); } 100% { opacity:1; transform:scale(1) translateY(0); } }
         @keyframes marquee { 0% { transform:translateX(0); } 100% { transform:translateX(-33.333%); } }
+        @keyframes rvrise { 0% { opacity:0; transform:translateY(30px); } 100% { opacity:1; transform:translateY(0); } }
+        @keyframes rvfade { 0% { opacity:0; } 100% { opacity:1; } }
+        @keyframes rvzoom { 0% { opacity:0; transform:scale(0.94); } 100% { opacity:1; transform:scale(1); } }
         input::placeholder { color: currentColor; opacity: .38; }
         [contenteditable] { outline:none; }
         [contenteditable]:focus { box-shadow:0 0 0 2px rgba(198,240,53,0.9), 0 0 0 4px rgba(26,29,18,0.85); border-radius:4px; }

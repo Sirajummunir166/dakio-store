@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FON, COR, co, resolvePal } from './theme';
+import { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
 import { optImg } from './publicCatalog';
 import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
@@ -127,13 +128,42 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     onLink,
   };
 
+  // Reveal on scroll — IntersectionObserver flips each animated section once
+  const [revealed, setRevealed] = useState({});
+  const revEls = useRef({});
+  const hasAnim = doc.pages.some((pg) => pg.sections.some((s) => s.props.anim && s.props.anim !== 'none'));
+  useEffect(() => {
+    if (!hasAnim || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver((ents) => {
+      const add = {};
+      ents.forEach((en) => {
+        if (en.isIntersecting) {
+          const id = en.target.getAttribute('data-rv');
+          if (id) { add[id] = true; io.unobserve(en.target); }
+        }
+      });
+      if (Object.keys(add).length) setRevealed((r) => ({ ...r, ...add }));
+    }, { threshold: 0.05 });
+    Object.values(revEls.current).forEach((el) => { if (el && el.isConnected) io.observe(el); });
+    return () => io.disconnect();
+  }, [hasAnim, page.id]);
+
   const renderSection = (sec) => {
     if (!sec || sec.hidden) return null;
+    if (mob && sec.props.hideMob) return null; // per-device control: hidden on phones
     const Comp = SECTION_COMPONENTS[sec.type];
     if (!Comp) return null;
     const cc = co(sec.props.bg, P);
+    const anim = sec.props.anim && sec.props.anim !== 'none' ? sec.props.anim : null;
+    const animStyle = anim
+      ? (revealed[sec.id] ? { animation: 'rv' + anim + ' .7s cubic-bezier(.16,1,.3,1) both' } : { opacity: 0 })
+      : {};
     return (
-      <div key={sec.id} id={'sec-' + sec.id} data-section-type={sec.type} style={{ position: 'relative', background: cc.bg, color: cc.fg }}>
+      <div
+        key={sec.id} id={'sec-' + sec.id} data-section-type={sec.type}
+        {...(anim ? { 'data-rv': sec.id, ref: (el) => { if (el) revEls.current[sec.id] = el; } } : {})}
+        style={{ position: 'relative', background: cc.bg, color: cc.fg, ...animStyle }}
+      >
         <Comp sec={sec} ctx={ctx} />
       </div>
     );
@@ -142,12 +172,16 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
   const navItems = (doc.menus?.header || []).slice(0, 6);
 
   return (
+    <ImgCtx.Provider value={{ crops: doc.crops || {}, cropTarget: null, setCropTarget: null, onCrop: null }}>
     <div style={{ background: P.bg, color: P.ink, fontFamily: F.b, overflow: 'hidden', minHeight: '100vh' }}>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link href={`https://fonts.googleapis.com/css2?${FONT_HREF[theme.f] || FONT_HREF.clean}&display=swap`} rel="stylesheet" />
       <style>{`
         html, body { margin:0; scroll-behavior:smooth; }
         @keyframes marquee { 0% { transform:translateX(0); } 100% { transform:translateX(-33.333%); } }
+        @keyframes rvrise { 0% { opacity:0; transform:translateY(30px); } 100% { opacity:1; transform:translateY(0); } }
+        @keyframes rvfade { 0% { opacity:0; } 100% { opacity:1; } }
+        @keyframes rvzoom { 0% { opacity:0; transform:scale(0.94); } 100% { opacity:1; transform:scale(1); } }
         input::placeholder { color: currentColor; opacity: .38; }
         .studio-nav-link { color: inherit; text-decoration: none; }
       `}</style>
@@ -193,5 +227,6 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
       {(page.sections || []).map(renderSection)}
       {doc.footer && renderSection(doc.footer)}
     </div>
+    </ImgCtx.Provider>
   );
 }

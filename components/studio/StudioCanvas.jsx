@@ -4,7 +4,7 @@ import { send, listen } from './bridge';
 import { FON, COR, co, sx, resolvePal } from './theme';
 import { SEC_NAMES, DEMO_CATALOG } from './catalog';
 import Editable from './Editable';
-import ImageSlot from './ImageSlot';
+import ImageSlot, { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
 
 const I = {
@@ -43,8 +43,11 @@ function ToolBtn({ d, sw = 2, title, onClick, disabled, danger }) {
 
 export default function StudioCanvas() {
   const [st, setSt] = useState(null); // {doc, curPage, device, preview, sel, building}
+  const [cropTarget, setCropTarget] = useState(null);
+  const [revealed, setRevealed] = useState({}); // secId → true once scrolled into view (preview)
   const els = useRef({});
   const rootRef = useRef(null);
+  const stR = useRef(null);
 
   useEffect(() => {
     const off = listen((m) => {
@@ -53,10 +56,40 @@ export default function StudioCanvas() {
         const el = els.current[m.id];
         if (el) send('secOffset', { id: m.id, top: el.offsetTop });
       }
+      // Chrome asks a specific slot to enter focus & crop mode
+      if (m.t === 'cropSlot') setCropTarget(m.slotId || null);
+      // Parent owns the scroll (auto-height iframe) — it streams its viewport so
+      // reveal-on-scroll can fire as sections come into view during preview.
+      if (m.t === 'viewport') {
+        const cur = stR.current;
+        if (!cur || !cur.preview) return;
+        const bottom = (m.top || 0) + (m.h || 0);
+        setRevealed((r) => {
+          let next = null;
+          for (const [id, el] of Object.entries(els.current)) {
+            if (r[id] || !el || !el.isConnected) continue;
+            if (el.offsetTop < bottom - 40) { next = next || { ...r }; next[id] = true; }
+          }
+          return next || r;
+        });
+      }
     });
     send('ready');
     return off;
   }, []);
+
+  stR.current = st;
+
+  // Leaving preview resets reveals so the animations replay next time
+  useEffect(() => {
+    if (st && !st.preview) setRevealed({});
+  }, [st && st.preview]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Crop mode ends if the slot's image disappears or preview starts
+  useEffect(() => {
+    if (!cropTarget || !st) return;
+    if (st.preview || !(st.doc.assets || {})[cropTarget]) setCropTarget(null);
+  }, [cropTarget, st]);
 
   // Report content height so the parent can size the iframe and own the scroll
   useEffect(() => {
@@ -114,6 +147,13 @@ export default function StudioCanvas() {
     const isSel = !preview && sel === sec.id;
     const hid = !!sec.hidden && !preview;
     const name = SEC_NAMES[sec.type] || 'Section';
+    // Per-device control: hidden on phones (desktop keeps it)
+    const mobOff = mob && !!sec.props.hideMob && !sec.hidden;
+    // Reveal on scroll — plays in preview as the section enters the viewport
+    const anim = sec.props.anim && sec.props.anim !== 'none' ? sec.props.anim : null;
+    const animStyle = preview && anim
+      ? (revealed[sec.id] ? { animation: 'rv' + anim + ' .7s cubic-bezier(.16,1,.3,1) both' } : { opacity: 0 })
+      : { animation: 'popIn .35s ease both' };
 
     return (
       <div key={sec.id}>
@@ -136,7 +176,15 @@ export default function StudioCanvas() {
           </div>
         )}
 
-        {!sec.hidden && (
+        {mobOff && !preview && (
+          <div onClick={() => send('act', { a: 'mobShow', id: sec.id })}
+            style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, borderTop: '1.5px dashed rgba(128,128,128,0.3)', borderBottom: '1.5px dashed rgba(128,128,128,0.3)', opacity: 0.55, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M4 4l16 16" /></svg>
+            {name} is hidden on phones — click to show it here too
+          </div>
+        )}
+
+        {!sec.hidden && !mobOff && (
           <div
             ref={(el) => { if (el) els.current[sec.id] = el; }}
             onClick={(e) => { e.stopPropagation(); if (!preview) send('sel', { id: sec.id }); }}
@@ -144,7 +192,7 @@ export default function StudioCanvas() {
             data-section-type={sec.type}
             style={{
               position: 'relative', background: co(sec.props.bg, P).bg, color: co(sec.props.bg, P).fg,
-              animation: 'popIn .35s ease both',
+              ...animStyle,
               ...(preview ? {} : { cursor: 'pointer' }),
               ...(isSel ? { outline: '3px solid #C6F035', outlineOffset: -3, boxShadow: '0 0 0 1px rgba(26,29,18,0.35) inset', zIndex: 2 } : {}),
             }}
@@ -223,6 +271,12 @@ export default function StudioCanvas() {
   const navItems = (doc.menus.header || []).slice(0, 6);
 
   return (
+    <ImgCtx.Provider value={{
+      crops: doc.crops || {},
+      cropTarget,
+      setCropTarget: preview ? null : setCropTarget,
+      onCrop: (slotId, val) => send('crop', { slotId, val }),
+    }}>
     <div
       ref={rootRef}
       onClick={() => { if (!preview) send('sel', { id: null }); }}
@@ -301,5 +355,6 @@ export default function StudioCanvas() {
         </div>
       )}
     </div>
+    </ImgCtx.Provider>
   );
 }
