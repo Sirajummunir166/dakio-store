@@ -126,8 +126,10 @@ export default function StudioCanvas() {
   // Store system pages (Phase 8): sys-shop / sys-col / sys-prod render the
   // data-bound templates instead of the page's section list.
   const sysKind = String(curPage || '').startsWith('sys-') ? curPage.slice(4) : null;
+  // Funnels (Phase 9): chrome-free ad pages — their own section stack, no nav.
+  const fn = String(curPage || '').startsWith('fn-') ? (doc.funnels || []).find((f2) => f2.id === curPage.slice(3)) : null;
   const page = doc.pages.find((p) => p.id === curPage) || doc.pages[0];
-  const sections = sysKind ? [] : page.sections;
+  const sections = fn ? fn.sections : sysKind ? [] : page.sections;
   const base = co('base', P);
   const brandText = (theme.brandMode ?? 'text') !== 'image';
   const brandName = theme.brandName ?? 'Shahrqee';
@@ -147,6 +149,13 @@ export default function StudioCanvas() {
     onCollection: (c2) => send('sysNav', { page: 'sys-col', colId: c2.id }),
     onProduct: (pr) => send('sysNav', { page: 'sys-prod', pid: pr.id }),
     onClearQ: () => send('sysNav', { page: 'sys-shop' }),
+    // Funnels: the one product this page sells + scroll-to-form
+    fnPid: fn ? fn.pid : null,
+    onOrderForm: fn ? () => {
+      const q = fn.sections.find((s2) => s2.type === 'qform');
+      const el = q && els.current[q.id];
+      if (el) send('secOffset', { id: q.id, top: el.offsetTop });
+    } : undefined,
   });
 
   const renderSection = (sec, i, last, isFooter) => {
@@ -290,7 +299,19 @@ export default function StudioCanvas() {
       onClick={() => { if (!preview) send('sel', { id: null }); }}
       style={{ background: P.bg, color: P.ink, fontFamily: F.b, overflow: 'hidden', minHeight: 400 }}
     >
-      {/* store nav (theme-owned) */}
+      {/* Funnel chrome-free banner (edit mode): no nav, no menus, no leaks */}
+      {fn && !preview && (
+        <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 16px', background: '#1A1D12', color: '#f4f6ec', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 11.5, fontWeight: 600 }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="#C6F035" style={{ flexShrink: 0 }}><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
+          <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            Chrome-free ad page — no header, footer or menus to leak clicks. Hidden from search engines.
+          </span>
+          <div onClick={() => send('fnSettings', { id: fn.id })} style={{ flexShrink: 0, padding: '5px 11px', borderRadius: 99, background: '#C6F035', color: '#1A1D12', fontSize: 10.5, fontWeight: 800, cursor: 'pointer' }}>Funnel settings</div>
+        </div>
+      )}
+
+      {/* store nav (theme-owned) — funnels are chrome-free */}
+      {!fn && (
       <div
         onClick={(e) => { e.stopPropagation(); if (!preview) send('navMenus', {}); }}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, padding: mob ? '15px 20px' : '18px 48px', borderBottom: '1px solid ' + base.line, cursor: 'pointer' }}
@@ -355,6 +376,7 @@ export default function StudioCanvas() {
           </div>
         </div>
       </div>
+      )}
 
       {sysKind && (() => {
         const sysCtx = ctxFor({ id: '__sys' });
@@ -384,7 +406,37 @@ export default function StudioCanvas() {
       )}
 
       {sections.map((sec, i) => renderSection(sec, i, sections.length - 1, false))}
-      {doc.footer && renderSection(doc.footer, sections.length, sections.length, true)}
+      {!fn && doc.footer && renderSection(doc.footer, sections.length, sections.length, true)}
+
+      {/* Funnel sticky order bar — price + Order now pinned while scrolling */}
+      {fn && fn.bar !== false && (() => {
+        const bp = cat.products.find((x) => x.id === fn.pid) || cat.products[0];
+        if (!bp) return null;
+        return (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            title="Sticky order bar — toggle it in Funnel settings"
+            style={{ position: 'sticky', bottom: 0, zIndex: 40, display: 'flex', alignItems: 'center', gap: 14, padding: mob ? '10px 16px' : '12px 28px', background: P.ink, color: P.bg, fontFamily: F.b, boxShadow: '0 -10px 30px rgba(10,11,8,0.25)' }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: mob ? 12.5 : 13.5, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bp.n}</div>
+              <div style={{ fontSize: mob ? 12 : 13, fontWeight: 800, fontVariantNumeric: 'tabular-nums', opacity: 0.85 }}>
+                ৳{Number(bp.pr || 0).toLocaleString('en-IN')}{bp.was ? <span style={{ textDecoration: 'line-through', opacity: 0.55, marginLeft: 8, fontWeight: 600 }}>৳{Number(bp.was).toLocaleString('en-IN')}</span> : null}
+              </div>
+            </div>
+            <div
+              onClick={() => {
+                const q = fn.sections.find((s2) => s2.type === 'qform');
+                const el = q && els.current[q.id];
+                if (el) send('secOffset', { id: q.id, top: el.offsetTop });
+              }}
+              style={{ flexShrink: 0, padding: mob ? '10px 20px' : '11px 26px', borderRadius: 99, background: P.accent, color: P.accentInk, fontSize: mob ? 12.5 : 13.5, fontWeight: 800, cursor: 'pointer' }}
+            >
+              Order now
+            </div>
+          </div>
+        );
+      })()}
 
       {!preview && !sysKind && sections.length > 0 && (
         <div className="st-endzone" onClick={(e) => { e.stopPropagation(); send('lib', { at: null }); }}

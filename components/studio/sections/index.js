@@ -13,9 +13,12 @@ import Contact from './Contact';
 import Text from './Text';
 import Pdp from './Pdp';
 import Footer from './Footer';
+import Offer from './Offer';
+import Qform from './Qform';
 
 export const SECTION_COMPONENTS = {
   ann: Ann, hero: Hero, feat: Feat, cols: Cols, story: Story, promo: Promo, quotes: Quotes,
   faq: Faq, mail: Mail, video: Video, insta: Insta, contact: Contact, text: Text, pdp: Pdp,
   footer: Footer,
+  offer: Offer, qform: Qform,
 };

@@ -21,6 +21,8 @@ export default function StudioCanvasPage() {
         @keyframes marquee { 0% { transform:translateX(0); } 100% { transform:translateX(-33.333%); } }
         @keyframes rvrise { 0% { opacity:0; transform:translateY(30px); } 100% { opacity:1; transform:translateY(0); } }
         @keyframes rvfade { 0% { opacity:0; } 100% { opacity:1; } }
+        @keyframes checkPop { 0% { transform:scale(0.4); opacity:0; } 60% { transform:scale(1.12); } 100% { transform:scale(1); opacity:1; } }
+        @keyframes spin { to { transform:rotate(360deg); } }
         @keyframes rvzoom { 0% { opacity:0; transform:scale(0.94); } 100% { opacity:1; transform:scale(1); } }
         input::placeholder { color: currentColor; opacity: .38; }
         [contenteditable] { outline:none; }

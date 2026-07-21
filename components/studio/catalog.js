@@ -65,6 +65,7 @@ export function pickFeat(sec, cat) {
 }
 
 export const SEC_NAMES = {
+  offer: 'Funnel offer', qform: 'Quick order form',
   ann: 'Announcement bar', hero: 'Hero', feat: 'Featured products', cols: 'Collection grid',
   story: 'Image + text', promo: 'Promo banner', quotes: 'Testimonials', faq: 'FAQ',
   mail: 'Newsletter', video: 'Video', insta: 'Instagram feed', contact: 'Contact',
