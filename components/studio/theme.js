@@ -16,6 +16,8 @@ export const FON = {
   editorial: { name: 'Editorial', sub: 'Instrument Serif · Hanken', h: "'Instrument Serif',serif", b: "'Hanken Grotesk',sans-serif", hw: 400, ls: '-0.015em' },
   bold: { name: 'Statement', sub: 'Archivo', h: "'Archivo',sans-serif", b: "'Archivo',sans-serif", hw: 800, ls: '-0.04em' },
   boutique: { name: 'Boutique', sub: 'Cormorant · Karla', h: "'Cormorant Garamond',serif", b: "'Karla',sans-serif", hw: 600, ls: '-0.005em' },
+  banglam: { name: 'Bangla Modern', sub: 'Noto Sans Bengali', h: "'Noto Sans Bengali','Hanken Grotesk',sans-serif", b: "'Noto Sans Bengali','Hanken Grotesk',sans-serif", hw: 700, ls: '-0.01em', g: 'অ', bn: true },
+  banglas: { name: 'Bangla Heritage', sub: 'Noto Serif Bengali · Noto Sans', h: "'Noto Serif Bengali',serif", b: "'Noto Sans Bengali','Hanken Grotesk',sans-serif", hw: 600, ls: '0em', g: 'অ', bn: true },
 };
 
 export const COR = {
@@ -26,11 +28,58 @@ export const COR = {
 
 export const SPM = { compact: { d: 48, m: 32 }, normal: { d: 76, m: 48 }, roomy: { d: 110, m: 66 } };
 
+// Theme Studio axes (Phase 4) — type scale, density, depth. One-tap segments;
+// every value multiplies/decorates the base render, nothing per-section.
+export const TSC = { compact: { n: 'Compact', m: 0.86 }, regular: { n: 'Regular', m: 1 }, display: { n: 'Display', m: 1.18 } };
+export const DEN = { cozy: { n: 'Cozy', m: 0.68 }, normal: { n: 'Normal', m: 1 }, airy: { n: 'Airy', m: 1.38 } };
+export const SHA = { flat: { n: 'Flat', css: '' }, soft: { n: 'Soft', css: ' box-shadow:0 12px 30px rgba(15,16,10,0.10);' }, float: { n: 'Float', css: ' box-shadow:0 30px 70px rgba(15,16,10,0.17);' } };
+
 // Resolve the active palette: 'custom' = palette extracted from the merchant's
 // logo pixels, carried in theme.custom (validated server-side as five hex colors).
 export function resolvePal(theme) {
   if (theme && theme.p === 'custom' && theme.custom && theme.custom.bg) return theme.custom;
   return PAL[theme && theme.p] || PAL.porcelain;
+}
+
+// Perceived luminance of a #rrggbb color (0–1); non-hex input reads as mid-grey
+export function lum(h) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(h || '').trim());
+  if (!m) return 0.5;
+  const n = parseInt(m[1], 16);
+  return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+}
+
+// Dark storefront: derive night colors from the current palette. A palette
+// that is already dark passes through untouched; a dark accent flips to the
+// paper color so buttons stay readable.
+export function dkPal(P) {
+  if (lum(P.bg) < 0.45) return P;
+  const accDark = lum(P.accent) < 0.34;
+  return {
+    name: (P.name || '') + ' — dark',
+    bg: P.ink,
+    surface: mix(P.ink, 86, P.bg),
+    ink: P.bg,
+    accent: accDark ? P.bg : P.accent,
+    accentInk: accDark ? P.ink : P.accentInk,
+  };
+}
+
+// Full theme resolution — palette (accent role + dark mode applied), fonts,
+// corners (button-shape override), and the Phase 4 render multipliers.
+export function resolveTheme(theme) {
+  let P = resolvePal(theme);
+  if (theme && theme.acc && theme.acc.a) P = { ...P, accent: theme.acc.a, accentInk: theme.acc.i || P.accentInk };
+  if (theme && theme.mode === 'dark') P = dkPal(P);
+  const F = FON[theme && theme.f] || FON.clean;
+  const C0 = COR[theme && theme.c] || COR.soft;
+  const C = theme && theme.btn ? { ...C0, btn: theme.btn === 'pill' ? '99px' : '3px' } : C0;
+  return {
+    P, F, C,
+    tsM: (TSC[theme && theme.ts] || TSC.regular).m,
+    denM: (DEN[theme && theme.den] || DEN.normal).m,
+    shCard: (SHA[theme && theme.sh] || SHA.flat).css,
+  };
 }
 
 const mix = (a, pct, b) => 'color-mix(in oklab, ' + a + ' ' + pct + '%, ' + b + ')';

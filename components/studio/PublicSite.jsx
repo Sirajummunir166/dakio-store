@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { FON, COR, co, resolvePal } from './theme';
+import { co, resolveTheme } from './theme';
 import { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
 import { optImg } from './publicCatalog';
@@ -20,6 +20,8 @@ const FONT_HREF = {
   editorial: 'family=Hanken+Grotesk:wght@400;500;600;700;800&family=Instrument+Serif',
   bold: 'family=Hanken+Grotesk:wght@400;500;600;700;800&family=Archivo:wght@500;600;700;800;900',
   boutique: 'family=Hanken+Grotesk:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&family=Karla:wght@400;500;600;700',
+  banglam: 'family=Hanken+Grotesk:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700',
+  banglas: 'family=Hanken+Grotesk:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Serif+Bengali:wght@500;600;700',
 };
 
 export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [] }) {
@@ -33,9 +35,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
   }, []);
 
   const theme = doc.theme || {};
-  const P = resolvePal(theme);
-  const F = FON[theme.f] || FON.clean;
-  const C = COR[theme.c] || COR.soft;
+  const { P, F, C, tsM, denM, shCard } = resolveTheme(theme);
   const padX = mob ? 20 : 48;
   const page = doc.pages.find((p) => p.id === pageId) || doc.pages[0];
   const base = co('base', P);
@@ -117,7 +117,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
 
   const seoF = doc.seo || {};
   const ctx = {
-    P, F, C, mob, padX,
+    P, F, C, tsM, denM, shCard, mob, padX,
     preview: true, isPublic: true, theme,
     menus: doc.menus, assets,
     cat: { products, collections },

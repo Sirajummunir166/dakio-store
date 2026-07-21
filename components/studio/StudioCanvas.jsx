@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { send, listen } from './bridge';
-import { FON, COR, co, sx, resolvePal } from './theme';
+import { co, sx, resolveTheme } from './theme';
 import { SEC_NAMES, DEMO_CATALOG } from './catalog';
 import Editable from './Editable';
 import ImageSlot, { ImgCtx } from './ImageSlot';
@@ -118,9 +118,7 @@ export default function StudioCanvas() {
 
   const { doc, catalog, curPage, device, preview, sel, building, cmts, cmtOpen } = st;
   const theme = doc.theme;
-  const P = resolvePal(theme);
-  const F = FON[theme.f] || FON.clean;
-  const C = COR[theme.c] || COR.soft;
+  const { P, F, C, tsM, denM, shCard } = resolveTheme(theme);
   const mob = device === 'mobile';
   const padX = mob ? 20 : 48;
   const page = doc.pages.find((p) => p.id === curPage) || doc.pages[0];
@@ -132,7 +130,7 @@ export default function StudioCanvas() {
   const cat = catalog && Array.isArray(catalog.products) && catalog.products.length ? catalog : DEMO_CATALOG;
 
   const ctxFor = (sec) => ({
-    P, F, C, mob, padX, preview, theme,
+    P, F, C, tsM, denM, shCard, mob, padX, preview, theme,
     menus: doc.menus, assets: doc.assets || {},
     cat,
     isSel: !preview && sel === sec.id,
