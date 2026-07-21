@@ -40,6 +40,7 @@ export default async function ProductRoute({ params }) {
 
   return (
     <PublicSite
+      storeSlug={slug}
       doc={siteData.site}
       pageId="home"
       basePath={`/${slug}`}

@@ -48,6 +48,7 @@ export default async function StorePage({ params }) {
     const catalog = toStudioCatalog(products, categories)
     return (
       <PublicSite
+      storeSlug={slug}
         doc={siteData.site}
         pageId="home"
         basePath={`/${slug}`}

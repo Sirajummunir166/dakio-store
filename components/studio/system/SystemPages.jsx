@@ -324,7 +324,10 @@ export function ProductPage({ ctx, sys, product, edit }) {
                 <div style={sx('display:flex; align-items:center; gap:14px; padding:0 16px; border-radius:' + C.btn + '; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-size:14px; user-select:none; cursor:pointer;')}>
                   <span>−</span><span style={{ fontWeight: 800 }}>1</span><span>+</span>
                 </div>
-                <div style={sx('flex:1; display:flex; align-items:center; justify-content:center; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:14.5px; cursor:pointer; white-space:nowrap;' + ((bp.stock === 0 || bp.arch) ? ' opacity:0.45;' : ''))}>
+                <div
+                  onClick={ctx.preview && ctx.addToBag && bp.stock > 0 && !bp.arch ? (ev) => { ev.stopPropagation(); ctx.addToBag(bp, 1, sizes[0] || null); } : ctx.preview && ctx.onCart && bp.stock > 0 ? (ev) => { ev.stopPropagation(); ctx.onCart(); } : undefined}
+                  style={sx('flex:1; display:flex; align-items:center; justify-content:center; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:14.5px; cursor:pointer; white-space:nowrap;' + ((bp.stock === 0 || bp.arch) ? ' opacity:0.45;' : ''))}
+                >
                   <Editable secId="__sys:prod" k="btn" value={pp.btn} style={''} preview={ctx.preview} tag="span" />
                 </div>
               </div>

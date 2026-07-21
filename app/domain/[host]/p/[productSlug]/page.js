@@ -35,6 +35,6 @@ export default async function DomainProductRoute({ params }) {
   if (!product) notFound()
 
   return (
-    <PublicSite doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} system={{ kind: 'prod', product }} />
+    <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} system={{ kind: 'prod', product }} />
   )
 }

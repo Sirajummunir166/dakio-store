@@ -34,6 +34,7 @@ export default async function CollectionRoute({ params }) {
 
   return (
     <PublicSite
+      storeSlug={slug}
       doc={siteData.site}
       pageId="home"
       basePath={`/${slug}`}

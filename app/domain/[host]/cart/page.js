@@ -4,7 +4,7 @@ import PublicSite from '../../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
 
-// /shop on a custom domain — mirrors app/[slug]/shop.
+// /cart on a custom domain — mirrors app/[slug]/cart.
 
 export async function generateMetadata({ params }) {
   const { host } = await params
@@ -13,14 +13,11 @@ export async function generateMetadata({ params }) {
   const siteData = await getPublishedSite(data.store.slug)
   if (!siteData?.site) return { title: 'Not Found' }
   const brand = siteData.site.theme?.brandName || 'Store'
-  return { ...studioMetadata(siteData.site, null), title: `Shop — ${brand}` }
+  return { ...studioMetadata(siteData.site, null), title: 'Your bag — ' + brand, robots: { index: false, follow: false } }
 }
 
-export default async function DomainShopRoute({ params, searchParams }) {
+export default async function DomainCartRoute({ params }) {
   const { host } = await params
-  const sp = await searchParams
-  const q = typeof sp?.q === 'string' && sp.q.trim() ? sp.q.trim().slice(0, 80) : null
-
   const storeData = await getStoreByDomain(host)
   if (storeData.notFound) notFound()
   if (storeData.unavailable) return <StoreUnavailable />
@@ -33,6 +30,6 @@ export default async function DomainShopRoute({ params, searchParams }) {
   const catalog = toStudioCatalog(products, categories)
 
   return (
-    <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} system={{ kind: 'shop', q }} />
+    <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} system={{ kind: 'cart' }} />
   )
 }

@@ -7,6 +7,7 @@ import Editable from './Editable';
 import ImageSlot, { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
 import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
+import { CartPage, CheckoutPage, AccountPage } from './system/CommercePages';
 
 const I = {
   up: 'M12 19V5m-6 6l6-6 6 6',
@@ -364,7 +365,7 @@ export default function StudioCanvas() {
             onClick={(e) => { e.stopPropagation(); if (preview) setSearchOpen((v) => !v); else send('sysNav', { page: 'sys-shop' }); }}
             width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{ cursor: 'pointer' }} title="Search — /shop?q="
           ><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', cursor: 'pointer' }} title="Cart — /cart" onClick={(e) => { e.stopPropagation(); send('sysNav', { page: 'sys-cart' }); }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 7h12l1 14H5L6 7zM9 10V6a3 3 0 016 0v4" /></svg>
             <div style={{
               position: 'absolute', top: -6, right: -9, minWidth: 15, height: 15, borderRadius: 99,
@@ -391,8 +392,21 @@ export default function StudioCanvas() {
           const col = cat.collections.find((c2) => c2.id === st.sysCol) || cat.collections[0];
           return col ? <CollectionPage ctx={sysCtx} sys={sys} col={col} edit={edit} /> : null;
         }
+        if (sysKind === 'cart' || sysKind === 'checkout') {
+          // Canvas shows a believable demo bag from the live catalog
+          const live = cat.products.filter((p) => !p.arch && p.stock > 0);
+          const demoCtx = {
+            ...sysCtx,
+            demoBag: live.slice(0, 2).map((p, i) => ({ pid: p.id, qty: i + 1, size: null })),
+            onCart: () => send('sysNav', { page: 'sys-cart' }),
+            onCheckout: () => send('sysNav', { page: 'sys-checkout' }),
+            onAccount: () => send('sysNav', { page: 'sys-account' }),
+          };
+          return sysKind === 'cart' ? <CartPage ctx={demoCtx} sys={sys} edit={edit} /> : <CheckoutPage ctx={demoCtx} sys={sys} edit={edit} />;
+        }
+        if (sysKind === 'account') return <AccountPage ctx={{ ...sysCtx, onAccount: () => {} }} sys={sys} edit={edit} />;
         const pr = cat.products.find((p) => p.id === st.sysPid);
-        return <ProductPage ctx={sysCtx} sys={sys} product={pr} edit={edit} />;
+        return <ProductPage ctx={{ ...sysCtx, onCart: () => send('sysNav', { page: 'sys-cart' }) }} sys={sys} product={pr} edit={edit} />;
       })()}
 
       {!sysKind && sections.length === 0 && !building && (

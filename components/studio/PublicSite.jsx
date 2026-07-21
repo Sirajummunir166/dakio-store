@@ -4,6 +4,8 @@ import { co, resolveTheme } from './theme';
 import { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
 import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
+import { CartPage, CheckoutPage, AccountPage } from './system/CommercePages';
+import { cartCount, onCartChange, addToCart } from './cartStore';
 import { optImg } from './publicCatalog';
 import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
 
@@ -13,6 +15,7 @@ import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
 //
 // basePath: '/{tenantSlug}' on the path-based tree, '' on a custom domain.
 
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://dakio-api-production.up.railway.app/api';
 const MOBILE_QUERY = '(max-width: 767px)';
 
 // Hanken Grotesk is always needed (hardcoded UI bits in sections); the rest per pair.
@@ -27,7 +30,7 @@ const FONT_HREF = {
 
 // `system` (Phase 8): render a store system page instead of a doc page —
 // { kind: 'shop'|'col'|'prod', col?, product?, q? } with nav + footer intact.
-export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], system = null }) {
+export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], system = null, storeSlug = null }) {
   const [mob, setMob] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_QUERY);
@@ -137,9 +140,51 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     onCollection: (c2) => { if (c2 && c2.slug) window.location.href = `${basePath}/shop/${c2.slug}`; },
     onProduct: (pr) => { if (pr && pr.slug) window.location.href = `${basePath}/p/${pr.slug}`; },
     onClearQ: () => { window.location.href = (basePath || '') + '/shop'; },
+    // Phase 10 — the buying path
+    storeSlug,
+    onCart: () => { window.location.href = (basePath || '') + '/cart'; },
+    onCheckout: () => { window.location.href = (basePath || '') + '/checkout'; },
+    onAccount: () => { window.location.href = (basePath || '') + '/account'; },
+    addToBag: storeSlug ? (pr, qty = 1, size = null) => { addToCart(storeSlug, pr.id, qty, size); window.location.href = (basePath || '') + '/cart'; } : undefined,
+    placeCartOrder: storeSlug ? async ({ bag, name, phone, address, pay }) => {
+      const payLbl = pay === 'bkash' ? 'bKash' : pay === 'nagad' ? 'Nagad' : 'COD';
+      const res = await fetch(API + '/store/' + storeSlug + '/orders', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(), phone: phone.trim(),
+          address: (address || '').trim() || '\u2014', city: '\u2014', district: '\u2014',
+          items: bag.map((l) => ({ productId: l.pid, qty: l.qty, name: l.p.n })),
+          paymentMethod: payLbl,
+          note: 'Store Studio checkout' + bag.filter((l) => l.size).map((l) => ' \u00b7 ' + l.p.n + ': ' + l.size).join(''),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Couldn\u2019t place the order \u2014 try again.');
+      return { num: data.orderNumber, msg: 'We call ' + phone.trim() + ' to confirm before shipping. Track it anytime in your account.' };
+    } : undefined,
+    accountOtp: storeSlug ? async (phone) => {
+      const res = await fetch(API + '/store/' + storeSlug + '/account/otp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Couldn\u2019t send the code');
+      return data;
+    } : undefined,
+    accountOrders: storeSlug ? async (sessionToken, otp) => {
+      const res = await fetch(API + '/store/' + storeSlug + '/account/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionToken, otp }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'That code isn\u2019t right');
+      return data;
+    } : undefined,
   };
 
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Live cart badge — updates as the bag changes
+  const [bagN, setBagN] = useState(0);
+  useEffect(() => {
+    if (!storeSlug) return;
+    setBagN(cartCount(storeSlug));
+    return onCartChange(() => setBagN(cartCount(storeSlug)));
+  }, [storeSlug]);
 
   // Reveal on scroll — IntersectionObserver flips each animated section once
   const [revealed, setRevealed] = useState({});
@@ -195,6 +240,8 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         @keyframes rvrise { 0% { opacity:0; transform:translateY(30px); } 100% { opacity:1; transform:translateY(0); } }
         @keyframes rvfade { 0% { opacity:0; } 100% { opacity:1; } }
         @keyframes rvzoom { 0% { opacity:0; transform:scale(0.94); } 100% { opacity:1; transform:scale(1); } }
+        @keyframes checkPop { 0% { transform:scale(0.4); opacity:0; } 60% { transform:scale(1.12); } 100% { transform:scale(1); opacity:1; } }
+        @keyframes spin { to { transform:rotate(360deg); } }
         input::placeholder { color: currentColor; opacity: .38; }
         .studio-nav-link { color: inherit; text-decoration: none; }
       `}</style>
@@ -247,13 +294,29 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
             />
           )}
           <svg onClick={() => setSearchOpen((v) => !v)} width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{ cursor: 'pointer' }}><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 7h12l1 14H5L6 7zM9 10V6a3 3 0 016 0v4" /></svg>
+          <a href={(basePath || '') + '/cart'} className="studio-nav-link" style={{ position: 'relative', display: 'flex' }} title="Cart">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 7h12l1 14H5L6 7zM9 10V6a3 3 0 016 0v4" /></svg>
+            {bagN > 0 && (
+              <div style={{
+                position: 'absolute', top: -6, right: -9, minWidth: 15, height: 15, borderRadius: 99,
+                background: P.accent, color: P.accentInk, fontSize: 9, fontWeight: 800,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px',
+                fontFamily: "'Hanken Grotesk',sans-serif",
+              }}>{bagN}</div>
+            )}
+          </a>
+          <a href={(basePath || '') + '/account'} className="studio-nav-link" style={{ display: 'flex' }} title="Your orders">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 11a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 3.6-6 8-6s8 2 8 6" /></svg>
+          </a>
         </div>
       </div>
 
       {system ? (
         system.kind === 'shop' ? <ShopPage ctx={ctx} sys={doc.sys || {}} q={system.q} />
         : system.kind === 'col' ? <CollectionPage ctx={ctx} sys={doc.sys || {}} col={system.col} />
+        : system.kind === 'cart' ? <CartPage ctx={ctx} sys={doc.sys || {}} />
+        : system.kind === 'checkout' ? <CheckoutPage ctx={ctx} sys={doc.sys || {}} />
+        : system.kind === 'account' ? <AccountPage ctx={ctx} sys={doc.sys || {}} />
         : <ProductPage ctx={ctx} sys={doc.sys || {}} product={system.product} />
       ) : (
         (page.sections || []).map(renderSection)
