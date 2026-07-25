@@ -20,5 +20,10 @@ export async function middleware(req) {
 }
 
 export const config = {
-  matcher: ['/((?!_next|favicon\\.ico|api|_vercel).*)'],
+  // Exclude anything that looks like a static file (has a dot in the last
+  // segment, e.g. /fashion-theme.css, /dakio-logo-white.svg) in addition to
+  // _next/api/_vercel — otherwise those public/ assets get rewritten to
+  // /domain/{host}/... on any custom-domain host, 404, and the theme CSS
+  // silently never loads (confirmed live on demo.dakio.shop).
+  matcher: ['/((?!_next|favicon\\.ico|api|_vercel|.*\\..*).*)'],
 }
