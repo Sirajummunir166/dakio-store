@@ -138,7 +138,7 @@ export function baseStyles(sec, ctx) {
 
 // Which block types each section supports (Phase 3), and their defaults.
 // Mirror of BLK/BLKD in dakio-merchant/src/store-studio/constants.js.
-export const BLK = { hero: ['badge', 'cta2', 'trust'], story: ['badge', 'cta2'], promo: ['trust'], mail: ['trust'] };
+export const BLK = { hero: ['badge', 'cta2', 'trust'], story: ['badge', 'cta2'], promo: ['trust'], mail: ['trust'], offer: ['trust'] };
 
 // Shared style strings for the Phase 3 blocks (badge / second button / trust row)
 export function blockStyles(sec, ctx, base) {

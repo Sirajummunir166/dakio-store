@@ -6,14 +6,24 @@
 import { useMemo, useState } from 'react';
 import Editable from '../Editable';
 import ImageSlot from '../ImageSlot';
-import { co, btnColors, sx } from '../theme';
+import { co, btnColors, sx, SPM } from '../theme';
 import { fmtPr, prodTag, colCount, liveProds } from '../catalog';
 
 export const SYS_DEFAULTS = {
   shop: { head: 'Shop all', cols: 4 },
-  col: { v: 'plain', sub: 'Woven slow, delivered fast — every piece from the live catalog.' },
+  col: {
+    v: 'centered', sub: 'Woven slow, delivered fast — every piece from the live catalog.',
+    bg: 'tint', sp: 'normal', gridBg: 'base', gridSp: 'normal', gridCols: 3,
+  },
   prod: { btn: 'Add to bag', note: 'Free delivery in Dhaka · Cash on delivery', alsoOn: true, alsoHead: 'You may also like' },
 };
+
+// spY() — the same density-scaled vertical padding every normal section uses
+// (theme.js baseStyles), applied here so template sections' SPACING control
+// (Cozy/Normal/Roomy) has a real, consistent effect.
+function spY(spKey, ctx) {
+  return Math.round((SPM[spKey] || SPM.normal)[ctx.mob ? 'm' : 'd'] * (ctx.denM || 1));
+}
 
 export const sysProps = (sys, k) => ({ ...SYS_DEFAULTS[k], ...((sys || {})[k] || {}) });
 
@@ -77,10 +87,9 @@ function ProductCard({ pr, ctx, c, seo }) {
 }
 
 // Shared filterable product grid — the heart of /shop and the collection template
-function FilterGrid({ ctx, sys, products, lockedCol, q, edit, partPrefix, label }) {
+function FilterGrid({ ctx, products, lockedCol, q, edit, partPrefix, label, cols, bg, spKey }) {
   const { P, F, C, mob, padX, cat } = ctx;
-  const c = co('base', P);
-  const sp = sysProps(sys, 'shop');
+  const c = co(bg || 'base', P);
   const [fCol, setFCol] = useState(null);
   const [fPr, setFPr] = useState(null);
   const [fSz, setFSz] = useState(null);
@@ -114,11 +123,12 @@ function FilterGrid({ ctx, sys, products, lockedCol, q, edit, partPrefix, label 
   const fRow = (act) => 'display:flex; align-items:center; gap:8px; padding:7px 4px; font-family:' + F.b + '; font-size:13px; cursor:pointer; color:' + (act ? c.fg : c.sub) + ';' + (act ? ' font-weight:700;' : '');
   const szChip = (act) => 'min-width:38px; padding:8px 0; text-align:center; border-radius:' + Math.min(C.rs, 10) + 'px; border:1.5px solid ' + (act ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:12.5px; font-weight:700; cursor:pointer;' + (act ? ' background:' + c.fg + '; color:' + c.bg + ';' : '');
   const clearSt = 'margin-top:14px; font-family:' + F.b + '; font-size:12.5px; font-weight:700; text-decoration:underline; text-underline-offset:3px; cursor:pointer; color:' + c.fg + ';';
-  const gridCols = mob ? 2 : (sp.cols || 4);
+  const gridCols = mob ? 2 : (cols || 4);
+  const padY = spY(spKey, ctx);
 
   return (
     <Part id={partPrefix + '-grid'} label={label} edit={edit}>
-      <div style={sx('padding:26px max(' + padX + 'px, calc((100% - 1120px)/2)) 70px; background:' + c.bg + '; color:' + c.fg + ';')}>
+      <div style={sx('padding:' + Math.round(padY * 0.35) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) ' + padY + 'px; background:' + c.bg + '; color:' + c.fg + ';')}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
           <div style={{ flex: 1 }} />
           <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -218,7 +228,7 @@ export function ShopPage({ ctx, sys, q, edit }) {
           ) : null}
         </div>
       </Part>
-      <FilterGrid ctx={ctx} sys={sys} products={cat.products} q={q} edit={edit} partPrefix="shop" label="GRID & FILTERS — TEMPLATE" />
+      <FilterGrid ctx={ctx} products={cat.products} q={q} edit={edit} partPrefix="shop" label="GRID & FILTERS — TEMPLATE" cols={sp.cols} bg="base" spKey="normal" />
     </>
   );
 }
@@ -226,24 +236,19 @@ export function ShopPage({ ctx, sys, q, edit }) {
 // ── Collection template (/shop/<collection>) ────────────────────────────────
 export function CollectionPage({ ctx, sys, col, edit }) {
   const { P, F, C, mob, padX, cat } = ctx;
-  const c = co('base', P);
   const cp = sysProps(sys, 'col');
+  const c = co(cp.bg || 'tint', P);
   const cnt = colCount(cat, col.id);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
   const crumb = 'font-family:' + F.b + '; font-size:11.5px; font-weight:800; letter-spacing:1.6px; text-transform:uppercase; color:' + c.sub + '; cursor:pointer;';
-  const banner = cp.v === 'banner';
+  // Legacy 'plain' (pre-Style-tab) reads as left-aligned.
+  const layout = cp.v === 'banner' ? 'banner' : (cp.v === 'left' || cp.v === 'plain') ? 'left' : 'centered';
+  const padY = spY(cp.sp, ctx);
 
   return (
     <>
       <Part id="col-hero" label="COLLECTION HERO — TEMPLATE" edit={edit}>
-        {!banner ? (
-          <div style={sx('padding:' + (mob ? 40 : 64) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) 8px; background:' + c.bg + '; color:' + c.fg + ';')}>
-            <div onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={sx(crumb)}>Shop <span style={{ opacity: 0.5 }}>/</span> {col.n}</div>
-            <div style={sx(headFont + 'font-size:' + (mob ? 30 : 44) + 'px; line-height:1.06; margin-top:10px;')}>{col.n}</div>
-            <Editable secId="__sys:col" k="sub" value={cp.sub} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 15) + 'px; color:' + c.sub + '; margin-top:10px; max-width:520px;'} multiline preview={ctx.preview} />
-            <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:10px;')}>{cnt} {cnt === 1 ? 'piece' : 'pieces'}</div>
-          </div>
-        ) : (
+        {layout === 'banner' ? (
           <div style={sx('position:relative; height:' + (mob ? 260 : 340) + 'px; overflow:hidden; background:' + c.card + ';')}>
             <div style={{ position: 'absolute', inset: 0 }}>
               <ImageSlot slotId={'st-col-' + col.id} assets={ctx.assets || {}} fit="cover" placeholder="Collection banner — shared with your collection tiles" preview={ctx.preview} />
@@ -256,9 +261,23 @@ export function CollectionPage({ ctx, sys, col, edit }) {
               <div style={sx('font-family:' + F.b + '; font-size:12.5px; color:rgba(255,255,255,0.75); margin-top:8px;')}>{cnt} {cnt === 1 ? 'piece' : 'pieces'}</div>
             </div>
           </div>
+        ) : layout === 'left' ? (
+          <div style={sx('padding:' + Math.round(padY * 0.5) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) ' + Math.round(padY * 0.1) + 'px; background:' + c.bg + '; color:' + c.fg + ';')}>
+            <div onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={sx(crumb)}>Shop <span style={{ opacity: 0.5 }}>/</span> {col.n}</div>
+            <div style={sx(headFont + 'font-size:' + (mob ? 30 : 44) + 'px; line-height:1.06; margin-top:10px;')}>{col.n}</div>
+            <Editable secId="__sys:col" k="sub" value={cp.sub} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 15) + 'px; color:' + c.sub + '; margin-top:10px; max-width:520px;'} multiline preview={ctx.preview} />
+            <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:10px;')}>{cnt} {cnt === 1 ? 'piece' : 'pieces'}</div>
+          </div>
+        ) : (
+          <div style={sx('padding:' + Math.round(padY * 0.7) + 'px ' + padX + 'px ' + Math.round(padY * 0.2) + 'px; background:' + c.bg + '; color:' + c.fg + '; text-align:center;')}>
+            <div onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={sx(crumb)}>Shop <span style={{ opacity: 0.5 }}>/</span> {col.n}</div>
+            <div style={sx(headFont + 'font-size:' + (mob ? 30 : 44) + 'px; line-height:1.06; margin-top:10px;')}>{col.n}</div>
+            <Editable secId="__sys:col" k="sub" value={cp.sub} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 15) + 'px; color:' + c.sub + '; margin-top:10px; max-width:520px; margin-left:auto; margin-right:auto;'} multiline preview={ctx.preview} />
+            <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:10px;')}>{cnt} {cnt === 1 ? 'piece' : 'pieces'}</div>
+          </div>
         )}
       </Part>
-      <FilterGrid ctx={ctx} sys={sys} products={cat.products} lockedCol={col.id} edit={edit} partPrefix="col" label="COLLECTION GRID — TEMPLATE" />
+      <FilterGrid ctx={ctx} products={cat.products} lockedCol={col.id} edit={edit} partPrefix="col" label="COLLECTION GRID — TEMPLATE" cols={cp.gridCols} bg={cp.gridBg} spKey={cp.gridSp} />
     </>
   );
 }

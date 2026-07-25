@@ -387,12 +387,36 @@ export default function StudioCanvas() {
           onSysProp: (scope, key, val) => send('prop', { id: '__sys:' + scope, key, val }),
         };
         const sys = doc.sys || {};
-        if (sysKind === 'shop') return <ShopPage ctx={sysCtx} sys={sys} q={st.sysQ} edit={edit} />;
-        if (sysKind === 'col') {
+
+        // Collection/Product template: a "Viewing as" switcher lets the merchant
+        // preview any real collection/product through this one template without
+        // leaving the page — matches the design; not shown in preview/public.
+        const banner = !preview && (sysKind === 'col' || sysKind === 'prod') && (() => {
+          const isCol = sysKind === 'col';
+          const list = isCol ? cat.collections : cat.products.filter((p) => !p.arch);
+          const curId = isCol ? (st.sysCol || (list[0] && list[0].id)) : (st.sysPid || (list[0] && list[0].id));
+          return (
+            <div onClick={(e2) => e2.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 16px', background: '#1A1D12', color: '#f4f6ec', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 11.5, fontWeight: 600 }}>
+              <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {isCol ? 'Collection template — every collection renders through this one page.' : 'Product template — edit it once, every product follows.'}
+              </span>
+              <select
+                value={curId || ''}
+                onChange={(ev) => send('sysNav', isCol ? { page: 'sys-col', colId: ev.target.value } : { page: 'sys-prod', pid: ev.target.value })}
+                style={{ flexShrink: 0, padding: '5px 11px', borderRadius: 99, background: '#C6F035', color: '#1A1D12', fontSize: 10.5, fontWeight: 800, border: 'none', cursor: 'pointer' }}
+              >
+                {list.map((it) => <option key={it.id} value={it.id}>{it.n}</option>)}
+              </select>
+            </div>
+          );
+        })();
+
+        let content;
+        if (sysKind === 'shop') content = <ShopPage ctx={sysCtx} sys={sys} q={st.sysQ} edit={edit} />;
+        else if (sysKind === 'col') {
           const col = cat.collections.find((c2) => c2.id === st.sysCol) || cat.collections[0];
-          return col ? <CollectionPage ctx={sysCtx} sys={sys} col={col} edit={edit} /> : null;
-        }
-        if (sysKind === 'cart' || sysKind === 'checkout') {
+          content = col ? <CollectionPage ctx={sysCtx} sys={sys} col={col} edit={edit} /> : null;
+        } else if (sysKind === 'cart' || sysKind === 'checkout') {
           // Canvas shows a believable demo bag from the live catalog
           const live = cat.products.filter((p) => !p.arch && p.stock > 0);
           const demoCtx = {
@@ -402,11 +426,14 @@ export default function StudioCanvas() {
             onCheckout: () => send('sysNav', { page: 'sys-checkout' }),
             onAccount: () => send('sysNav', { page: 'sys-account' }),
           };
-          return sysKind === 'cart' ? <CartPage ctx={demoCtx} sys={sys} edit={edit} /> : <CheckoutPage ctx={demoCtx} sys={sys} edit={edit} />;
+          content = sysKind === 'cart' ? <CartPage ctx={demoCtx} sys={sys} edit={edit} /> : <CheckoutPage ctx={demoCtx} sys={sys} edit={edit} />;
+        } else if (sysKind === 'account') {
+          content = <AccountPage ctx={{ ...sysCtx, onAccount: () => {} }} sys={sys} edit={edit} />;
+        } else {
+          const pr = cat.products.find((p) => p.id === st.sysPid);
+          content = <ProductPage ctx={{ ...sysCtx, onCart: () => send('sysNav', { page: 'sys-cart' }) }} sys={sys} product={pr} edit={edit} />;
         }
-        if (sysKind === 'account') return <AccountPage ctx={{ ...sysCtx, onAccount: () => {} }} sys={sys} edit={edit} />;
-        const pr = cat.products.find((p) => p.id === st.sysPid);
-        return <ProductPage ctx={{ ...sysCtx, onCart: () => send('sysNav', { page: 'sys-cart' }) }} sys={sys} product={pr} edit={edit} />;
+        return <>{banner}{content}</>;
       })()}
 
       {!sysKind && sections.length === 0 && !building && (
