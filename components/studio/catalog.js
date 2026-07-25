@@ -3,7 +3,7 @@
 // bridge (editor) or via publicCatalog.js (published pages).
 //
 // Shape (keep in sync with dakio-api/src/lib/studioCatalog.js and
-// dakio-merchant/src/store-studio/constants.js):
+// dakio-merchant/src/store-studio/catalogUtils.js):
 //   products:    { id, n, pr, was, col, stock, rank, isNew, arch, img?, slug? }
 //   collections: { id, n, slug? }
 

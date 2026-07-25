@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { send, listen } from './bridge';
 import { co, sx, resolveTheme } from './theme';
-import { SEC_NAMES, DEMO_CATALOG } from './catalog';
+import { SEC_NAMES, DEMO_CATALOG, colCount, liveProds, fmtPr } from './catalog';
 import Editable from './Editable';
 import ImageSlot, { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
@@ -16,6 +16,17 @@ const I = {
   trash: 'M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m3 0l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6',
   eyeOff: 'M3 3l18 18M10.6 10.7a3 3 0 004.2 4.2M9.9 4.7A10 10 0 0122 12c-.6 1.2-1.5 2.5-2.6 3.6M6.2 6.2A10.6 10.6 0 002 12s3.5 7 10 7c1.4 0 2.7-.3 3.8-.8',
   plus: 'M12 5v14M5 12h14',
+};
+
+// Store system pages (Phase 8) — the dark strip above the canvas that tells an
+// editor which data-bound template they're looking at. Edit mode only.
+const SYS_BANNER_TXT = {
+  shop: 'Store page · /shop — data-bound to your catalog. Filters and search work right here.',
+  col: 'Collection template — every collection renders through this one page.',
+  prod: 'Product template — edit it once, every product follows.',
+  cart: 'System page · /cart — themed by your tokens. The bag works right here; try the flow in Preview.',
+  checkout: 'System page · /checkout — a fixed layout where money moves. Settings live in the inspector →',
+  account: 'System page · /account — order lookup by phone + OTP. No passwords, ever.',
 };
 
 function Icon({ d, size = 13, sw = 2, style }) {
@@ -48,6 +59,7 @@ export default function StudioCanvas() {
   const [cropTarget, setCropTarget] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [revealed, setRevealed] = useState({}); // secId → true once scrolled into view (preview)
+  const [vaOpen, setVaOpen] = useState(false); // "Viewing as" picker (collection/product templates)
   const els = useRef({});
   const rootRef = useRef(null);
   const stR = useRef(null);
@@ -87,6 +99,13 @@ export default function StudioCanvas() {
   useEffect(() => {
     if (st && !st.preview) setRevealed({});
   }, [st && st.preview]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "Viewing as" picker closes on page/selection change — Part sections stop
+  // click propagation for their own selection, so the root deselect handler
+  // never sees those clicks to close it itself.
+  useEffect(() => {
+    setVaOpen(false);
+  }, [st && st.curPage, st && st.sel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Crop mode ends if the slot's image disappears or preview starts
   useEffect(() => {
@@ -297,7 +316,7 @@ export default function StudioCanvas() {
     }}>
     <div
       ref={rootRef}
-      onClick={() => { if (!preview) send('sel', { id: null }); }}
+      onClick={() => { setVaOpen(false); if (!preview) send('sel', { id: null }); }}
       style={{ background: P.bg, color: P.ink, fontFamily: F.b, overflow: 'hidden', minHeight: 400 }}
     >
       {/* Funnel chrome-free banner (edit mode): no nav, no menus, no leaks */}
@@ -380,33 +399,84 @@ export default function StudioCanvas() {
       )}
 
       {sysKind && (() => {
-        const sysCtx = ctxFor({ id: '__sys' });
-        const edit = preview ? null : {
-          sel,
-          onSel: (id) => send('sel', { id }),
-          onSysProp: (scope, key, val) => send('prop', { id: '__sys:' + scope, key, val }),
-        };
-        const sys = doc.sys || {};
-        if (sysKind === 'shop') return <ShopPage ctx={sysCtx} sys={sys} q={st.sysQ} edit={edit} />;
-        if (sysKind === 'col') {
-          const col = cat.collections.find((c2) => c2.id === st.sysCol) || cat.collections[0];
-          return col ? <CollectionPage ctx={sysCtx} sys={sys} col={col} edit={edit} /> : null;
-        }
-        if (sysKind === 'cart' || sysKind === 'checkout') {
-          // Canvas shows a believable demo bag from the live catalog
-          const live = cat.products.filter((p) => !p.arch && p.stock > 0);
-          const demoCtx = {
-            ...sysCtx,
-            demoBag: live.slice(0, 2).map((p, i) => ({ pid: p.id, qty: i + 1, size: null })),
-            onCart: () => send('sysNav', { page: 'sys-cart' }),
-            onCheckout: () => send('sysNav', { page: 'sys-checkout' }),
-            onAccount: () => send('sysNav', { page: 'sys-account' }),
-          };
-          return sysKind === 'cart' ? <CartPage ctx={demoCtx} sys={sys} edit={edit} /> : <CheckoutPage ctx={demoCtx} sys={sys} edit={edit} />;
-        }
-        if (sysKind === 'account') return <AccountPage ctx={{ ...sysCtx, onAccount: () => {} }} sys={sys} edit={edit} />;
-        const pr = cat.products.find((p) => p.id === st.sysPid);
-        return <ProductPage ctx={{ ...sysCtx, onCart: () => send('sysNav', { page: 'sys-cart' }) }} sys={sys} product={pr} edit={edit} />;
+        // Collection/product templates render one live record at a time —
+        // this picker lets an editor preview the template against any of them.
+        const curCol = cat.collections.find((c2) => c2.id === st.sysCol) || cat.collections[0];
+        const curPr = cat.products.find((p) => p.id === st.sysPid) || liveProds(cat)[0] || cat.products[0];
+        const vaKind = sysKind === 'col' ? 'col' : sysKind === 'prod' ? 'prod' : null;
+        const vaRows = vaKind === 'col'
+          ? cat.collections.map((c2) => ({ id: c2.id, n: c2.n, sub: colCount(cat, c2.id) + ' pieces', active: curCol && c2.id === curCol.id, on: () => { send('sysNav', { page: 'sys-col', colId: c2.id }); setVaOpen(false); } }))
+          : vaKind === 'prod'
+          ? liveProds(cat).map((p) => ({ id: p.id, n: p.n, sub: fmtPr(p.pr), active: curPr && p.id === curPr.id, on: () => { send('sysNav', { page: 'sys-prod', pid: p.id }); setVaOpen(false); } }))
+          : [];
+
+        return (
+          <>
+            {!preview && SYS_BANNER_TXT[sysKind] && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{ position: 'relative', zIndex: 5, display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', background: '#1A1D12', color: '#f4f6ec', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 11.5, fontWeight: 600 }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#C6F035" style={{ flexShrink: 0 }}><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9L12 2z" /></svg>
+                <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{SYS_BANNER_TXT[sysKind]}</span>
+                {vaKind && (curCol || curPr) && (
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <div
+                      onClick={(e) => { e.stopPropagation(); setVaOpen((v) => !v); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 99, background: 'rgba(198,240,53,0.14)', color: '#C6F035', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      Viewing as: <b>{vaKind === 'col' ? (curCol && curCol.n) : (curPr && curPr.n)}</b>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                    </div>
+                    {vaOpen && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ position: 'absolute', top: 34, right: 0, zIndex: 40, width: 250, maxHeight: 280, overflowY: 'auto', borderRadius: 14, background: '#f6f7f0', color: '#1b1e15', border: '1px solid rgba(27,30,21,0.12)', boxShadow: '0 18px 50px rgba(20,22,14,0.35)', padding: 6, cursor: 'default' }}
+                      >
+                        {vaRows.map((r) => (
+                          <div
+                            key={r.id}
+                            onClick={r.on}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 9, cursor: 'pointer', fontSize: 12, fontWeight: 600, ...(r.active ? { background: '#e9ebe0' } : {}) }}
+                          >
+                            <div style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.n}</div>
+                            <div style={{ fontSize: 11, color: '#9a9e8c', flexShrink: 0 }}>{r.sub}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(() => {
+              const sysCtx = ctxFor({ id: '__sys' });
+              const edit = preview ? null : {
+                sel,
+                onSel: (id) => send('sel', { id }),
+                onSysProp: (scope, key, val) => send('prop', { id: '__sys:' + scope, key, val }),
+              };
+              const sys = doc.sys || {};
+              if (sysKind === 'shop') return <ShopPage ctx={sysCtx} sys={sys} q={st.sysQ} edit={edit} />;
+              if (sysKind === 'col') return curCol ? <CollectionPage ctx={sysCtx} sys={sys} col={curCol} edit={edit} /> : null;
+              if (sysKind === 'cart' || sysKind === 'checkout') {
+                // Canvas shows a believable demo bag from the live catalog
+                const live = cat.products.filter((p) => !p.arch && p.stock > 0);
+                const demoCtx = {
+                  ...sysCtx,
+                  demoBag: live.slice(0, 2).map((p, i) => ({ pid: p.id, qty: i + 1, size: null })),
+                  onCart: () => send('sysNav', { page: 'sys-cart' }),
+                  onCheckout: () => send('sysNav', { page: 'sys-checkout' }),
+                  onAccount: () => send('sysNav', { page: 'sys-account' }),
+                };
+                return sysKind === 'cart' ? <CartPage ctx={demoCtx} sys={sys} edit={edit} /> : <CheckoutPage ctx={demoCtx} sys={sys} edit={edit} />;
+              }
+              if (sysKind === 'account') return <AccountPage ctx={{ ...sysCtx, onAccount: () => {} }} sys={sys} edit={edit} />;
+              return <ProductPage ctx={{ ...sysCtx, onCart: () => send('sysNav', { page: 'sys-cart' }) }} sys={sys} product={curPr} edit={edit} />;
+            })()}
+          </>
+        );
       })()}
 
       {!sysKind && sections.length === 0 && !building && (
