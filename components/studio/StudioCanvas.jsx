@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { send, listen } from './bridge';
 import { co, sx, resolveTheme } from './theme';
-import { SEC_NAMES, DEMO_CATALOG } from './catalog';
+import { SEC_NAMES, DEMO_CATALOG, colCount, liveProds, fmtPr } from './catalog';
 import Editable from './Editable';
 import ImageSlot, { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
@@ -16,6 +16,17 @@ const I = {
   trash: 'M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m3 0l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6',
   eyeOff: 'M3 3l18 18M10.6 10.7a3 3 0 004.2 4.2M9.9 4.7A10 10 0 0122 12c-.6 1.2-1.5 2.5-2.6 3.6M6.2 6.2A10.6 10.6 0 002 12s3.5 7 10 7c1.4 0 2.7-.3 3.8-.8',
   plus: 'M12 5v14M5 12h14',
+};
+
+// Store system pages (Phase 8) — the dark strip above the canvas that tells an
+// editor which data-bound template they're looking at. Edit mode only.
+const SYS_BANNER_TXT = {
+  shop: 'Store page · /shop — data-bound to your catalog. Filters and search work right here.',
+  col: 'Collection template — every collection renders through this one page.',
+  prod: 'Product template — edit it once, every product follows.',
+  cart: 'System page · /cart — themed by your tokens. The bag works right here; try the flow in Preview.',
+  checkout: 'System page · /checkout — a fixed layout where money moves. Settings live in the inspector →',
+  account: 'System page · /account — order lookup by phone + OTP. No passwords, ever.',
 };
 
 function Icon({ d, size = 13, sw = 2, style }) {
@@ -48,6 +59,7 @@ export default function StudioCanvas() {
   const [cropTarget, setCropTarget] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [revealed, setRevealed] = useState({}); // secId → true once scrolled into view (preview)
+  const [vaOpen, setVaOpen] = useState(false); // "Viewing as" picker (collection/product templates)
   const els = useRef({});
   const rootRef = useRef(null);
   const stR = useRef(null);
@@ -87,6 +99,13 @@ export default function StudioCanvas() {
   useEffect(() => {
     if (st && !st.preview) setRevealed({});
   }, [st && st.preview]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "Viewing as" picker closes on page/selection change — Part sections stop
+  // click propagation for their own selection, so the root deselect handler
+  // never sees those clicks to close it itself.
+  useEffect(() => {
+    setVaOpen(false);
+  }, [st && st.curPage, st && st.sel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Crop mode ends if the slot's image disappears or preview starts
   useEffect(() => {
@@ -295,199 +314,223 @@ export default function StudioCanvas() {
       setCropTarget: preview ? null : setCropTarget,
       onCrop: (slotId, val) => send('crop', { slotId, val }),
     }}>
-    <div
-      ref={rootRef}
-      onClick={() => { if (!preview) send('sel', { id: null }); }}
-      style={{ background: P.bg, color: P.ink, fontFamily: F.b, overflow: 'hidden', minHeight: 400 }}
-    >
-      {/* Funnel chrome-free banner (edit mode): no nav, no menus, no leaks */}
-      {fn && !preview && (
-        <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 16px', background: '#1A1D12', color: '#f4f6ec', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 11.5, fontWeight: 600 }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="#C6F035" style={{ flexShrink: 0 }}><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
-          <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            Chrome-free ad page — no header, footer or menus to leak clicks. Hidden from search engines.
-          </span>
-          <div onClick={() => send('fnSettings', { id: fn.id })} style={{ flexShrink: 0, padding: '5px 11px', borderRadius: 99, background: '#C6F035', color: '#1A1D12', fontSize: 10.5, fontWeight: 800, cursor: 'pointer' }}>Funnel settings</div>
-        </div>
-      )}
-
-      {/* store nav (theme-owned) — funnels are chrome-free */}
-      {!fn && (
       <div
-        onClick={(e) => { e.stopPropagation(); if (!preview) send('navMenus', {}); }}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, padding: mob ? '15px 20px' : '18px 48px', borderBottom: '1px solid ' + base.line, cursor: 'pointer' }}
+        ref={rootRef}
+        onClick={() => { setVaOpen(false); if (!preview) send('sel', { id: null }); }}
+        style={{ background: P.bg, color: P.ink, fontFamily: F.b, overflow: 'hidden', minHeight: 400 }}
       >
-        {brandText ? (
-          <Editable
-            secId="__brand" k="brand" value={brandName} preview={preview} tag="div"
-            style={'font-family:' + F.h + '; font-weight:' + Math.max(F.hw, 600) + '; font-size:' + (mob ? 20 : 23) + 'px; letter-spacing:' + F.ls + ';'}
-            onClick={(e) => { if (preview) { e.stopPropagation(); send('goPage', { id: 'home' }); } }}
-          />
-        ) : (
-          <div
-            onClick={(e) => { e.stopPropagation(); if (preview) send('goPage', { id: 'home' }); }}
-            style={{ height: mob ? 26 : 32, width: mob ? 110 : 150, cursor: 'pointer', position: 'relative' }}
-          >
-            <ImageSlot slotId="st-brand-logo" assets={doc.assets || {}} fit="contain" placeholder="Logo" preview={preview} />
+        {/* Funnel chrome-free banner (edit mode): no nav, no menus, no leaks */}
+        {fn && !preview && (
+          <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 16px', background: '#1A1D12', color: '#f4f6ec', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 11.5, fontWeight: 600 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="#C6F035" style={{ flexShrink: 0 }}><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" /></svg>
+            <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Chrome-free ad page — no header, footer or menus to leak clicks. Hidden from search engines.
+            </span>
+            <div onClick={() => send('fnSettings', { id: fn.id })} style={{ flexShrink: 0, padding: '5px 11px', borderRadius: 99, background: '#C6F035', color: '#1A1D12', fontSize: 10.5, fontWeight: 800, cursor: 'pointer' }}>Funnel settings</div>
           </div>
         )}
-        {!mob && (
-          <div style={{ display: 'flex', gap: 26, fontSize: 13, fontWeight: 600, color: base.sub }}>
-            {navItems.map((it) => (
-              <span
-                key={it.id}
-                style={{ cursor: 'pointer', whiteSpace: 'nowrap', ...(it.link.t === 'page' && it.link.ref === page.id ? { color: P.ink, textDecoration: 'underline', textUnderlineOffset: 5 } : {}) }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (preview) send('navLink', { link: it.link });
-                  else send('navMenus', { label: it.label });
-                }}
-              >
-                {it.label}
-              </span>
-            ))}
-          </div>
-        )}
-        <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
-          {searchOpen && preview && (
-            <input
-              autoFocus
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') { send('sysNav', { page: 'sys-shop', q: (e.target.value || '').trim() || null }); setSearchOpen(false); }
-                if (e.key === 'Escape') setSearchOpen(false);
-              }}
-              placeholder="Search products…"
-              style={{ width: 170, padding: '8px 12px', borderRadius: 99, border: '1.5px solid ' + base.line, background: base.card, color: base.fg, fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 12.5, outline: 'none' }}
-            />
-          )}
-          <svg
-            onClick={(e) => { e.stopPropagation(); if (preview) setSearchOpen((v) => !v); else send('sysNav', { page: 'sys-shop' }); }}
-            width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{ cursor: 'pointer' }} title="Search — /shop?q="
-          ><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          <div style={{ position: 'relative', cursor: 'pointer' }} title="Cart — /cart" onClick={(e) => { e.stopPropagation(); send('sysNav', { page: 'sys-cart' }); }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 7h12l1 14H5L6 7zM9 10V6a3 3 0 016 0v4" /></svg>
-            <div style={{
-              position: 'absolute', top: -6, right: -9, minWidth: 15, height: 15, borderRadius: 99,
-              background: P.accent, color: P.accentInk, fontSize: 9, fontWeight: 800,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px',
-              fontFamily: "'Hanken Grotesk',sans-serif",
-              ...(P.accent === P.ink ? { outline: '1.5px solid ' + P.bg } : {}),
-            }}>2</div>
-          </div>
-        </div>
-      </div>
-      )}
 
-      {sysKind && (() => {
-        const sysCtx = ctxFor({ id: '__sys' });
-        const edit = preview ? null : {
-          sel,
-          onSel: (id) => send('sel', { id }),
-          onSysProp: (scope, key, val) => send('prop', { id: '__sys:' + scope, key, val }),
-        };
-        const sys = doc.sys || {};
-
-        // Collection/Product template: a "Viewing as" switcher lets the merchant
-        // preview any real collection/product through this one template without
-        // leaving the page — matches the design; not shown in preview/public.
-        const banner = !preview && (sysKind === 'col' || sysKind === 'prod') && (() => {
-          const isCol = sysKind === 'col';
-          const list = isCol ? cat.collections : cat.products.filter((p) => !p.arch);
-          const curId = isCol ? (st.sysCol || (list[0] && list[0].id)) : (st.sysPid || (list[0] && list[0].id));
-          return (
-            <div onClick={(e2) => e2.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 16px', background: '#1A1D12', color: '#f4f6ec', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 11.5, fontWeight: 600 }}>
-              <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {isCol ? 'Collection template — every collection renders through this one page.' : 'Product template — edit it once, every product follows.'}
-              </span>
-              <select
-                value={curId || ''}
-                onChange={(ev) => send('sysNav', isCol ? { page: 'sys-col', colId: ev.target.value } : { page: 'sys-prod', pid: ev.target.value })}
-                style={{ flexShrink: 0, padding: '5px 11px', borderRadius: 99, background: '#C6F035', color: '#1A1D12', fontSize: 10.5, fontWeight: 800, border: 'none', cursor: 'pointer' }}
-              >
-                {list.map((it) => <option key={it.id} value={it.id}>{it.n}</option>)}
-              </select>
-            </div>
-          );
-        })();
-
-        let content;
-        if (sysKind === 'shop') content = <ShopPage ctx={sysCtx} sys={sys} q={st.sysQ} edit={edit} />;
-        else if (sysKind === 'col') {
-          const col = cat.collections.find((c2) => c2.id === st.sysCol) || cat.collections[0];
-          content = col ? <CollectionPage ctx={sysCtx} sys={sys} col={col} edit={edit} /> : null;
-        } else if (sysKind === 'cart' || sysKind === 'checkout') {
-          // Canvas shows a believable demo bag from the live catalog
-          const live = cat.products.filter((p) => !p.arch && p.stock > 0);
-          const demoCtx = {
-            ...sysCtx,
-            demoBag: live.slice(0, 2).map((p, i) => ({ pid: p.id, qty: i + 1, size: null })),
-            onCart: () => send('sysNav', { page: 'sys-cart' }),
-            onCheckout: () => send('sysNav', { page: 'sys-checkout' }),
-            onAccount: () => send('sysNav', { page: 'sys-account' }),
-          };
-          content = sysKind === 'cart' ? <CartPage ctx={demoCtx} sys={sys} edit={edit} /> : <CheckoutPage ctx={demoCtx} sys={sys} edit={edit} />;
-        } else if (sysKind === 'account') {
-          content = <AccountPage ctx={{ ...sysCtx, onAccount: () => {} }} sys={sys} edit={edit} />;
-        } else {
-          const pr = cat.products.find((p) => p.id === st.sysPid);
-          content = <ProductPage ctx={{ ...sysCtx, onCart: () => send('sysNav', { page: 'sys-cart' }) }} sys={sys} product={pr} edit={edit} />;
-        }
-        return <>{banner}{content}</>;
-      })()}
-
-      {!sysKind && sections.length === 0 && !building && (
-        <div style={{ padding: '90px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          <div style={{ fontSize: 15, fontWeight: 600, opacity: 0.55 }}>Your page is empty</div>
-          <div onClick={(e) => { e.stopPropagation(); send('lib', { at: null }); }}
-            style={{ marginTop: 14, padding: '11px 20px', borderRadius: 99, background: '#1A1D12', color: '#C6F035', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-            + Add your first section
-          </div>
-        </div>
-      )}
-
-      {sections.map((sec, i) => renderSection(sec, i, sections.length - 1, false))}
-      {!fn && doc.footer && renderSection(doc.footer, sections.length, sections.length, true)}
-
-      {/* Funnel sticky order bar — price + Order now pinned while scrolling */}
-      {fn && fn.bar !== false && (() => {
-        const bp = cat.products.find((x) => x.id === fn.pid) || cat.products[0];
-        if (!bp) return null;
-        return (
+        {/* store nav (theme-owned) — funnels are chrome-free */}
+        {!fn && (
           <div
-            onClick={(e) => e.stopPropagation()}
-            title="Sticky order bar — toggle it in Funnel settings"
-            style={{ position: 'sticky', bottom: 0, zIndex: 40, display: 'flex', alignItems: 'center', gap: 14, padding: mob ? '10px 16px' : '12px 28px', background: P.ink, color: P.bg, fontFamily: F.b, boxShadow: '0 -10px 30px rgba(10,11,8,0.25)' }}
+            onClick={(e) => { e.stopPropagation(); if (!preview) send('navMenus', {}); }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, padding: mob ? '15px 20px' : '18px 48px', borderBottom: '1px solid ' + base.line, cursor: 'pointer' }}
           >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: mob ? 12.5 : 13.5, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bp.n}</div>
-              <div style={{ fontSize: mob ? 12 : 13, fontWeight: 800, fontVariantNumeric: 'tabular-nums', opacity: 0.85 }}>
-                ৳{Number(bp.pr || 0).toLocaleString('en-IN')}{bp.was ? <span style={{ textDecoration: 'line-through', opacity: 0.55, marginLeft: 8, fontWeight: 600 }}>৳{Number(bp.was).toLocaleString('en-IN')}</span> : null}
+            {brandText ? (
+              <Editable
+                secId="__brand" k="brand" value={brandName} preview={preview} tag="div"
+                style={'font-family:' + F.h + '; font-weight:' + Math.max(F.hw, 600) + '; font-size:' + (mob ? 20 : 23) + 'px; letter-spacing:' + F.ls + ';'}
+                onClick={(e) => { if (preview) { e.stopPropagation(); send('goPage', { id: 'home' }); } }}
+              />
+            ) : (
+              <div
+                onClick={(e) => { e.stopPropagation(); if (preview) send('goPage', { id: 'home' }); }}
+                style={{ height: mob ? 26 : 32, width: mob ? 110 : 150, cursor: 'pointer', position: 'relative' }}
+              >
+                <ImageSlot slotId="st-brand-logo" assets={doc.assets || {}} fit="contain" placeholder="Logo" preview={preview} />
+              </div>
+            )}
+            {!mob && (
+              <div style={{ display: 'flex', gap: 26, fontSize: 13, fontWeight: 600, color: base.sub }}>
+                {navItems.map((it) => (
+                  <span
+                    key={it.id}
+                    style={{ cursor: 'pointer', whiteSpace: 'nowrap', ...(it.link.t === 'page' && it.link.ref === page.id ? { color: P.ink, textDecoration: 'underline', textUnderlineOffset: 5 } : {}) }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (preview) send('navLink', { link: it.link });
+                      else send('navMenus', { label: it.label });
+                    }}
+                  >
+                    {it.label}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
+              {searchOpen && preview && (
+                <input
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { send('sysNav', { page: 'sys-shop', q: (e.target.value || '').trim() || null }); setSearchOpen(false); }
+                    if (e.key === 'Escape') setSearchOpen(false);
+                  }}
+                  placeholder="Search products…"
+                  style={{ width: 170, padding: '8px 12px', borderRadius: 99, border: '1.5px solid ' + base.line, background: base.card, color: base.fg, fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 12.5, outline: 'none' }}
+                />
+              )}
+              <svg
+                onClick={(e) => { e.stopPropagation(); if (preview) setSearchOpen((v) => !v); else send('sysNav', { page: 'sys-shop' }); }}
+                width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{ cursor: 'pointer' }} title="Search — /shop?q="
+              ><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+              <div style={{ position: 'relative', cursor: 'pointer' }} title="Cart — /cart" onClick={(e) => { e.stopPropagation(); send('sysNav', { page: 'sys-cart' }); }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 7h12l1 14H5L6 7zM9 10V6a3 3 0 016 0v4" /></svg>
+                <div style={{
+                  position: 'absolute', top: -6, right: -9, minWidth: 15, height: 15, borderRadius: 99,
+                  background: P.accent, color: P.accentInk, fontSize: 9, fontWeight: 800,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px',
+                  fontFamily: "'Hanken Grotesk',sans-serif",
+                  ...(P.accent === P.ink ? { outline: '1.5px solid ' + P.bg } : {}),
+                }}>2</div>
               </div>
             </div>
-            <div
-              onClick={() => {
-                const q = fn.sections.find((s2) => s2.type === 'qform');
-                const el = q && els.current[q.id];
-                if (el) send('secOffset', { id: q.id, top: el.offsetTop });
-              }}
-              style={{ flexShrink: 0, padding: mob ? '10px 20px' : '11px 26px', borderRadius: 99, background: P.accent, color: P.accentInk, fontSize: mob ? 12.5 : 13.5, fontWeight: 800, cursor: 'pointer' }}
-            >
-              Order now
+          </div>
+        )}
+
+        {sysKind && (() => {
+          // Collection/product templates render one live record at a time —
+          // this picker lets an editor preview the template against any of them.
+          const curCol = cat.collections.find((c2) => c2.id === st.sysCol) || cat.collections[0];
+          const curPr = cat.products.find((p) => p.id === st.sysPid) || liveProds(cat)[0] || cat.products[0];
+          const vaKind = sysKind === 'col' ? 'col' : sysKind === 'prod' ? 'prod' : null;
+          const vaRows = vaKind === 'col'
+            ? cat.collections.map((c2) => ({ id: c2.id, n: c2.n, sub: colCount(cat, c2.id) + ' pieces', active: curCol && c2.id === curCol.id, on: () => { send('sysNav', { page: 'sys-col', colId: c2.id }); setVaOpen(false); } }))
+            : vaKind === 'prod'
+              ? liveProds(cat).map((p) => ({ id: p.id, n: p.n, sub: fmtPr(p.pr), active: curPr && p.id === curPr.id, on: () => { send('sysNav', { page: 'sys-prod', pid: p.id }); setVaOpen(false); } }))
+              : [];
+
+          return (
+            <>
+              {!preview && SYS_BANNER_TXT[sysKind] && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ position: 'relative', zIndex: 5, display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px', background: '#1A1D12', color: '#f4f6ec', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 11.5, fontWeight: 600 }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="#C6F035" style={{ flexShrink: 0 }}><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9L12 2z" /></svg>
+                  <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{SYS_BANNER_TXT[sysKind]}</span>
+                  {vaKind && (curCol || curPr) && (
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <div
+                        onClick={(e) => { e.stopPropagation(); setVaOpen((v) => !v); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 99, background: 'rgba(198,240,53,0.14)', color: '#C6F035', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        Viewing as: <b>{vaKind === 'col' ? (curCol && curCol.n) : (curPr && curPr.n)}</b>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                      </div>
+                      {vaOpen && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ position: 'absolute', top: 34, right: 0, zIndex: 40, width: 250, maxHeight: 280, overflowY: 'auto', borderRadius: 14, background: '#f6f7f0', color: '#1b1e15', border: '1px solid rgba(27,30,21,0.12)', boxShadow: '0 18px 50px rgba(20,22,14,0.35)', padding: 6, cursor: 'default' }}
+                        >
+                          {vaRows.map((r) => (
+                            <div
+                              key={r.id}
+                              onClick={r.on}
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 9, cursor: 'pointer', fontSize: 12, fontWeight: 600, ...(r.active ? { background: '#e9ebe0' } : {}) }}
+                            >
+                              <div style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.n}</div>
+                              <div style={{ fontSize: 11, color: '#9a9e8c', flexShrink: 0 }}>{r.sub}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {(() => {
+                const sysCtx = ctxFor({ id: '__sys' });
+                const edit = preview ? null : {
+                  sel,
+                  onSel: (id) => send('sel', { id }),
+                  onSysProp: (scope, key, val) => send('prop', { id: '__sys:' + scope, key, val }),
+                };
+                const sys = doc.sys || {};
+                if (sysKind === 'shop') return <ShopPage ctx={sysCtx} sys={sys} q={st.sysQ} edit={edit} />;
+                if (sysKind === 'col') return curCol ? <CollectionPage ctx={sysCtx} sys={sys} col={curCol} edit={edit} /> : null;
+                if (sysKind === 'cart' || sysKind === 'checkout') {
+                  // Canvas shows a believable demo bag from the live catalog
+                  const live = cat.products.filter((p) => !p.arch && p.stock > 0);
+                  const demoCtx = {
+                    ...sysCtx,
+                    demoBag: live.slice(0, 2).map((p, i) => ({ pid: p.id, qty: i + 1, size: null })),
+                    onCart: () => send('sysNav', { page: 'sys-cart' }),
+                    onCheckout: () => send('sysNav', { page: 'sys-checkout' }),
+                    onAccount: () => send('sysNav', { page: 'sys-account' }),
+                  };
+                  return sysKind === 'cart' ? <CartPage ctx={demoCtx} sys={sys} edit={edit} /> : <CheckoutPage ctx={demoCtx} sys={sys} edit={edit} />;
+                }
+                if (sysKind === 'account') return <AccountPage ctx={{ ...sysCtx, onAccount: () => { } }} sys={sys} edit={edit} />;
+                return <ProductPage ctx={{ ...sysCtx, onCart: () => send('sysNav', { page: 'sys-cart' }) }} sys={sys} product={curPr} edit={edit} />;
+              })()}
+            </>
+          );
+        })()}
+
+        {!sysKind && sections.length === 0 && !building && (
+          <div style={{ padding: '90px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+            <div style={{ fontSize: 15, fontWeight: 600, opacity: 0.55 }}>Your page is empty</div>
+            <div onClick={(e) => { e.stopPropagation(); send('lib', { at: null }); }}
+              style={{ marginTop: 14, padding: '11px 20px', borderRadius: 99, background: '#1A1D12', color: '#C6F035', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              + Add your first section
             </div>
           </div>
-        );
-      })()}
+        )}
 
-      {!preview && !sysKind && sections.length > 0 && (
-        <div className="st-endzone" onClick={(e) => { e.stopPropagation(); send('lib', { at: null }); }}
-          style={{ padding: 16, display: 'flex', justifyContent: 'center', cursor: 'pointer' }}>
-          <div style={{ padding: '8px 16px', borderRadius: 99, border: '1.5px dashed currentColor', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7, fontFamily: "'Hanken Grotesk',sans-serif" }}>
-            + Add section
+        {sections.map((sec, i) => renderSection(sec, i, sections.length - 1, false))}
+        {!fn && doc.footer && renderSection(doc.footer, sections.length, sections.length, true)}
+
+        {/* Funnel sticky order bar — price + Order now pinned while scrolling */}
+        {fn && fn.bar !== false && (() => {
+          const bp = cat.products.find((x) => x.id === fn.pid) || cat.products[0];
+          if (!bp) return null;
+          return (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              title="Sticky order bar — toggle it in Funnel settings"
+              style={{ position: 'sticky', bottom: 0, zIndex: 40, display: 'flex', alignItems: 'center', gap: 14, padding: mob ? '10px 16px' : '12px 28px', background: P.ink, color: P.bg, fontFamily: F.b, boxShadow: '0 -10px 30px rgba(10,11,8,0.25)' }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: mob ? 12.5 : 13.5, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bp.n}</div>
+                <div style={{ fontSize: mob ? 12 : 13, fontWeight: 800, fontVariantNumeric: 'tabular-nums', opacity: 0.85 }}>
+                  ৳{Number(bp.pr || 0).toLocaleString('en-IN')}{bp.was ? <span style={{ textDecoration: 'line-through', opacity: 0.55, marginLeft: 8, fontWeight: 600 }}>৳{Number(bp.was).toLocaleString('en-IN')}</span> : null}
+                </div>
+              </div>
+              <div
+                onClick={() => {
+                  const q = fn.sections.find((s2) => s2.type === 'qform');
+                  const el = q && els.current[q.id];
+                  if (el) send('secOffset', { id: q.id, top: el.offsetTop });
+                }}
+                style={{ flexShrink: 0, padding: mob ? '10px 20px' : '11px 26px', borderRadius: 99, background: P.accent, color: P.accentInk, fontSize: mob ? 12.5 : 13.5, fontWeight: 800, cursor: 'pointer' }}
+              >
+                Order now
+              </div>
+            </div>
+          );
+        })()}
+
+        {!preview && !sysKind && sections.length > 0 && (
+          <div className="st-endzone" onClick={(e) => { e.stopPropagation(); send('lib', { at: null }); }}
+            style={{ padding: 16, display: 'flex', justifyContent: 'center', cursor: 'pointer' }}>
+            <div style={{ padding: '8px 16px', borderRadius: 99, border: '1.5px dashed currentColor', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7, fontFamily: "'Hanken Grotesk',sans-serif" }}>
+              + Add section
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
     </ImgCtx.Provider>
   );
 }

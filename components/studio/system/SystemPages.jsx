@@ -10,12 +10,13 @@ import { co, btnColors, sx, SPM } from '../theme';
 import { fmtPr, prodTag, colCount, liveProds } from '../catalog';
 
 export const SYS_DEFAULTS = {
-  shop: { head: 'Shop all', cols: 4 },
-  col: {
-    v: 'centered', sub: 'Woven slow, delivered fast — every piece from the live catalog.',
-    bg: 'tint', sp: 'normal', gridBg: 'base', gridSp: 'normal', gridCols: 3,
+  shop: { head: 'Shop all', cols: 4, hd: { v: 'left', bg: 'base', count: true }, gr: { bg: 'base', sp: 'normal', fCol: true, fPr: true, fSz: true, fStock: true, sort: true } },
+  col: { v: 'left', sub: 'Woven slow, delivered fast — every piece from the live catalog.', bg: 'base', sp: 'normal', cols: 3, gr: { bg: 'base', sp: 'normal', filters: false } },
+  prod: {
+    btn: 'Add to bag', note: 'Free delivery in Dhaka · Cash on delivery', alsoOn: true, alsoHead: 'You may also like',
+    pd: { v: 'left', bg: 'base', stock: true, sizes: true, note: true },
+    also: { src: 'rule', rule: 'best', count: 4, picks: [], prices: true, bg: 'base' },
   },
-  prod: { btn: 'Add to bag', note: 'Free delivery in Dhaka · Cash on delivery', alsoOn: true, alsoHead: 'You may also like' },
 };
 
 // spY() — the same density-scaled vertical padding every normal section uses
@@ -66,7 +67,7 @@ function Part({ id, label, edit, children, style }) {
   );
 }
 
-function ProductCard({ pr, ctx, c, seo }) {
+function ProductCard({ pr, ctx, c, showPrice = true }) {
   const { P, F, C, mob } = ctx;
   const t = prodTag(pr);
   const go = ctx.preview && ctx.onProduct ? (e) => { e.stopPropagation(); ctx.onProduct(pr); } : undefined;
@@ -79,17 +80,31 @@ function ProductCard({ pr, ctx, c, seo }) {
         )}
       </div>
       <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 13 : 14) + 'px; font-weight:600; margin-top:11px;')}>{pr.n}</div>
-      <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 12.5 : 13) + 'px; color:' + c.sub + '; margin-top:3px; font-variant-numeric:tabular-nums;')}>
-        {fmtPr(pr.pr)}{pr.was ? <span style={{ textDecoration: 'line-through', opacity: 0.6, marginLeft: 8 }}>{fmtPr(pr.was)}</span> : null}
-      </div>
+      {showPrice && (
+        <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 12.5 : 13) + 'px; color:' + c.sub + '; margin-top:3px; font-variant-numeric:tabular-nums;')}>
+          {fmtPr(pr.pr)}{pr.was ? <span style={{ textDecoration: 'line-through', opacity: 0.6, marginLeft: 8 }}>{fmtPr(pr.was)}</span> : null}
+        </div>
+      )}
     </div>
   );
 }
 
 // Shared filterable product grid — the heart of /shop and the collection template
-function FilterGrid({ ctx, products, lockedCol, q, edit, partPrefix, label, cols, bg, spKey }) {
+const GR_SPP = { compact: { d: 44, m: 28 }, normal: { d: 64, m: 40 }, roomy: { d: 94, m: 56 } };
+
+function FilterGrid({ ctx, sys, products, lockedCol, q, edit, partPrefix, label }) {
   const { P, F, C, mob, padX, cat } = ctx;
-  const c = co(bg || 'base', P);
+  const c = co('base', P);
+  // Shop and collection grids are template-independent — each reads/writes
+  // its own scope (sys.shop.gr vs sys.col.gr) rather than sharing shop's.
+  const scope = partPrefix === 'col' ? 'col' : 'shop';
+  const sp = sysProps(sys, scope);
+  const grDefaults = scope === 'col'
+    ? { bg: 'base', sp: 'normal', filters: false }
+    : { bg: 'base', sp: 'normal', fCol: true, fPr: true, fSz: true, fStock: true, sort: true };
+  const gr = { ...grDefaults, ...(sp.gr || {}) };
+  const cG = co(gr.bg || 'base', P);
+  const padY = Math.round((GR_SPP[gr.sp] || GR_SPP.normal)[mob ? 'm' : 'd'] * (ctx.denM || 1));
   const [fCol, setFCol] = useState(null);
   const [fPr, setFPr] = useState(null);
   const [fSz, setFSz] = useState(null);
@@ -123,35 +138,45 @@ function FilterGrid({ ctx, products, lockedCol, q, edit, partPrefix, label, cols
   const fRow = (act) => 'display:flex; align-items:center; gap:8px; padding:7px 4px; font-family:' + F.b + '; font-size:13px; cursor:pointer; color:' + (act ? c.fg : c.sub) + ';' + (act ? ' font-weight:700;' : '');
   const szChip = (act) => 'min-width:38px; padding:8px 0; text-align:center; border-radius:' + Math.min(C.rs, 10) + 'px; border:1.5px solid ' + (act ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:12.5px; font-weight:700; cursor:pointer;' + (act ? ' background:' + c.fg + '; color:' + c.bg + ';' : '');
   const clearSt = 'margin-top:14px; font-family:' + F.b + '; font-size:12.5px; font-weight:700; text-decoration:underline; text-underline-offset:3px; cursor:pointer; color:' + c.fg + ';';
-  const gridCols = mob ? 2 : (cols || 4);
-  const padY = spY(spKey, ctx);
+  const gridCols = mob ? 2 : (sp.cols || (scope === 'col' ? 3 : 4));
+
+  // Collection grid bundles price/size/stock behind one "Quick filters"
+  // toggle (no per-collection picker — the page is already locked to one).
+  const showCol = scope === 'shop' && gr.fCol !== false && !lockedCol;
+  const showPr = scope === 'col' ? gr.filters !== false : gr.fPr !== false;
+  const showSz = (scope === 'col' ? gr.filters !== false : gr.fSz !== false) && allSizes.length > 0;
+  const showStock = scope === 'col' ? gr.filters !== false : gr.fStock !== false;
+  const showSort = scope === 'col' ? true : gr.sort !== false;
+  const showSidebar = showCol || showPr || showSz || showStock;
 
   return (
     <Part id={partPrefix + '-grid'} label={label} edit={edit}>
-      <div style={sx('padding:' + Math.round(padY * 0.35) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) ' + padY + 'px; background:' + c.bg + '; color:' + c.fg + ';')}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-          <div style={{ flex: 1 }} />
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <div
-              onClick={interactive ? (e) => { e.stopPropagation(); setSortOpen((v) => !v); } : undefined}
-              style={sx('display:flex; align-items:center; gap:7px; padding:9px 14px; border-radius:' + C.btn + '; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-size:12.5px; font-weight:700; cursor:pointer; background:' + c.card + ';')}
-            >
-              {SORTS.find((s) => s.k === sort).n}
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
-            </div>
-            {sortOpen && (
-              <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', right: 0, top: 42, zIndex: 30, width: 200, borderRadius: 14, background: c.card, border: '1px solid ' + c.line, boxShadow: '0 18px 50px rgba(20,22,14,0.25)', padding: 6 }}>
-                {SORTS.map((s) => (
-                  <div key={s.k} onClick={() => { setSort(s.k); setSortOpen(false); }} style={sx('padding:9px 11px; border-radius:9px; font-family:' + F.b + '; font-size:12.5px; cursor:pointer;' + (sort === s.k ? ' font-weight:800;' : ''))}>{s.n}</div>
-                ))}
+      <div style={sx('padding:' + Math.round(padY * 0.55) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) ' + padY + 'px; background:' + cG.bg + '; color:' + cG.fg + ';')}>
+        {showSort && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+            <div style={{ flex: 1 }} />
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <div
+                onClick={interactive ? (e) => { e.stopPropagation(); setSortOpen((v) => !v); } : undefined}
+                style={sx('display:flex; align-items:center; gap:7px; padding:9px 14px; border-radius:' + C.btn + '; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-size:12.5px; font-weight:700; cursor:pointer; background:' + c.card + ';')}
+              >
+                {SORTS.find((s) => s.k === sort).n}
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
               </div>
-            )}
+              {sortOpen && (
+                <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', right: 0, top: 42, zIndex: 30, width: 200, borderRadius: 14, background: c.card, border: '1px solid ' + c.line, boxShadow: '0 18px 50px rgba(20,22,14,0.25)', padding: 6 }}>
+                  {SORTS.map((s) => (
+                    <div key={s.k} onClick={() => { setSort(s.k); setSortOpen(false); }} style={sx('padding:9px 11px; border-radius:9px; font-family:' + F.b + '; font-size:12.5px; cursor:pointer;' + (sort === s.k ? ' font-weight:800;' : ''))}>{s.n}</div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-        <div style={{ display: mob ? 'block' : 'grid', gridTemplateColumns: '190px 1fr', gap: 34 }}>
-          {!mob && (
+        )}
+        <div style={{ display: mob ? 'block' : 'grid', gridTemplateColumns: showSidebar ? '190px 1fr' : '1fr', gap: 34 }}>
+          {!mob && showSidebar && (
             <div style={{ minWidth: 0 }}>
-              {!lockedCol && (
+              {showCol && (
                 <>
                   <div style={sx(fCap)}>COLLECTION</div>
                   <div style={{ margin: '8px 0 20px' }}>
@@ -164,13 +189,17 @@ function FilterGrid({ ctx, products, lockedCol, q, edit, partPrefix, label, cols
                   </div>
                 </>
               )}
-              <div style={sx(fCap)}>PRICE</div>
-              <div style={{ margin: '8px 0 20px' }}>
-                {PRICE_BUCKETS.map((b) => (
-                  <div key={b.k} onClick={interactive ? () => setFPr(fPr === b.k ? null : b.k) : undefined} style={sx(fRow(fPr === b.k))}>{b.n}</div>
-                ))}
-              </div>
-              {allSizes.length > 0 && (
+              {showPr && (
+                <>
+                  <div style={sx(fCap)}>PRICE</div>
+                  <div style={{ margin: '8px 0 20px' }}>
+                    {PRICE_BUCKETS.map((b) => (
+                      <div key={b.k} onClick={interactive ? () => setFPr(fPr === b.k ? null : b.k) : undefined} style={sx(fRow(fPr === b.k))}>{b.n}</div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {showSz && (
                 <>
                   <div style={sx(fCap)}>SIZE</div>
                   <div style={{ margin: '8px 0 20px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -180,10 +209,12 @@ function FilterGrid({ ctx, products, lockedCol, q, edit, partPrefix, label, cols
                   </div>
                 </>
               )}
-              <div onClick={interactive ? () => setFStock((v) => !v) : undefined} style={sx(fRow(fStock))}>
-                <div style={sx('width:17px; height:17px; border-radius:5px; border:1.5px solid ' + (fStock ? c.fg : c.line) + '; display:flex; align-items:center; justify-content:center;' + (fStock ? ' background:' + c.fg + '; color:' + c.bg + ';' : ''))}>{fStock ? '✓' : ''}</div>
-                In stock only
-              </div>
+              {showStock && (
+                <div onClick={interactive ? () => setFStock((v) => !v) : undefined} style={sx(fRow(fStock))}>
+                  <div style={sx('width:17px; height:17px; border-radius:5px; border:1.5px solid ' + (fStock ? c.fg : c.line) + '; display:flex; align-items:center; justify-content:center;' + (fStock ? ' background:' + c.fg + '; color:' + c.bg + ';' : ''))}>{fStock ? '✓' : ''}</div>
+                  In stock only
+                </div>
+              )}
               {anyFilter && interactive && <div onClick={clearAll} style={sx(clearSt)}>Clear all filters</div>}
             </div>
           )}
@@ -209,15 +240,20 @@ export function ShopPage({ ctx, sys, q, edit }) {
   const { P, F, mob, padX, cat } = ctx;
   const c = co('base', P);
   const sp = sysProps(sys, 'shop');
+  const hd = { v: 'left', bg: 'base', count: true, ...(sp.hd || {}) };
+  const cH = co(hd.bg || 'base', P);
   const live = liveProds(cat);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
+  const centered = hd.v === 'center';
 
   return (
     <>
       <Part id="shop-head" label="SHOP HEADER — TEMPLATE" edit={edit}>
-        <div style={sx('padding:' + (mob ? 40 : 64) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) 8px; background:' + c.bg + '; color:' + c.fg + ';')}>
+        <div style={sx('padding:' + (mob ? 30 : 44) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) ' + (mob ? 18 : 26) + 'px; background:' + cH.bg + '; color:' + cH.fg + ';' + (centered ? ' text-align:center; display:flex; flex-direction:column; align-items:center;' : ''))}>
           <Editable secId="__sys:shop" k="head" value={sp.head} style={headFont + 'font-size:' + (mob ? 30 : 44) + 'px; line-height:1.06;'} preview={ctx.preview} />
-          <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:10px;')}>{live.length} {live.length === 1 ? 'piece' : 'pieces'}</div>
+          {hd.count !== false && (
+            <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + cH.sub + '; margin-top:8px;')}>{live.length} {live.length === 1 ? 'piece' : 'pieces'}</div>
+          )}
           {q ? (
             <div style={{ marginTop: 12 }}>
               <div style={sx('display:inline-flex; align-items:center; padding:8px 14px; border-radius:99px; background:' + c.card + '; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-size:12.5px; font-weight:700;')}>
@@ -241,14 +277,22 @@ export function CollectionPage({ ctx, sys, col, edit }) {
   const cnt = colCount(cat, col.id);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
   const crumb = 'font-family:' + F.b + '; font-size:11.5px; font-weight:800; letter-spacing:1.6px; text-transform:uppercase; color:' + c.sub + '; cursor:pointer;';
-  // Legacy 'plain' (pre-Style-tab) reads as left-aligned.
-  const layout = cp.v === 'banner' ? 'banner' : (cp.v === 'left' || cp.v === 'plain') ? 'left' : 'centered';
-  const padY = spY(cp.sp, ctx);
+  const banner = cp.v === 'banner';
+  const centered = cp.v === 'center';
+  const cHero = co(cp.bg || 'base', P);
+  const heroPadY = Math.round((GR_SPP[cp.sp] || GR_SPP.normal)[mob ? 'm' : 'd'] * (ctx.denM || 1));
 
   return (
     <>
       <Part id="col-hero" label="COLLECTION HERO — TEMPLATE" edit={edit}>
-        {layout === 'banner' ? (
+        {!banner ? (
+          <div style={sx('padding:' + Math.round(heroPadY * 0.55) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) ' + heroPadY + 'px; background:' + cHero.bg + '; color:' + cHero.fg + ';' + (centered ? ' text-align:center; display:flex; flex-direction:column; align-items:center;' : ''))}>
+            <div onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={sx(crumb)}>Shop <span style={{ opacity: 0.5 }}>/</span> {col.n}</div>
+            <div style={sx(headFont + 'font-size:' + (mob ? 30 : 44) + 'px; line-height:1.06; margin-top:10px;')}>{col.n}</div>
+            <Editable secId="__sys:col" k="sub" value={cp.sub} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 15) + 'px; color:' + cHero.sub + '; margin-top:10px; max-width:520px;'} multiline preview={ctx.preview} />
+            <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + cHero.sub + '; margin-top:10px;')}>{cnt} {cnt === 1 ? 'piece' : 'pieces'}</div>
+          </div>
+        ) : (
           <div style={sx('position:relative; height:' + (mob ? 260 : 340) + 'px; overflow:hidden; background:' + c.card + ';')}>
             <div style={{ position: 'absolute', inset: 0 }}>
               <ImageSlot slotId={'st-col-' + col.id} assets={ctx.assets || {}} fit="cover" placeholder="Collection banner — shared with your collection tiles" preview={ctx.preview} />
@@ -262,24 +306,41 @@ export function CollectionPage({ ctx, sys, col, edit }) {
             </div>
           </div>
         ) : layout === 'left' ? (
-          <div style={sx('padding:' + Math.round(padY * 0.5) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) ' + Math.round(padY * 0.1) + 'px; background:' + c.bg + '; color:' + c.fg + ';')}>
-            <div onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={sx(crumb)}>Shop <span style={{ opacity: 0.5 }}>/</span> {col.n}</div>
-            <div style={sx(headFont + 'font-size:' + (mob ? 30 : 44) + 'px; line-height:1.06; margin-top:10px;')}>{col.n}</div>
-            <Editable secId="__sys:col" k="sub" value={cp.sub} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 15) + 'px; color:' + c.sub + '; margin-top:10px; max-width:520px;'} multiline preview={ctx.preview} />
-            <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:10px;')}>{cnt} {cnt === 1 ? 'piece' : 'pieces'}</div>
-          </div>
+        <div style={sx('padding:' + Math.round(padY * 0.5) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) ' + Math.round(padY * 0.1) + 'px; background:' + c.bg + '; color:' + c.fg + ';')}>
+          <div onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={sx(crumb)}>Shop <span style={{ opacity: 0.5 }}>/</span> {col.n}</div>
+          <div style={sx(headFont + 'font-size:' + (mob ? 30 : 44) + 'px; line-height:1.06; margin-top:10px;')}>{col.n}</div>
+          <Editable secId="__sys:col" k="sub" value={cp.sub} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 15) + 'px; color:' + c.sub + '; margin-top:10px; max-width:520px;'} multiline preview={ctx.preview} />
+          <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:10px;')}>{cnt} {cnt === 1 ? 'piece' : 'pieces'}</div>
+        </div>
         ) : (
-          <div style={sx('padding:' + Math.round(padY * 0.7) + 'px ' + padX + 'px ' + Math.round(padY * 0.2) + 'px; background:' + c.bg + '; color:' + c.fg + '; text-align:center;')}>
-            <div onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={sx(crumb)}>Shop <span style={{ opacity: 0.5 }}>/</span> {col.n}</div>
-            <div style={sx(headFont + 'font-size:' + (mob ? 30 : 44) + 'px; line-height:1.06; margin-top:10px;')}>{col.n}</div>
-            <Editable secId="__sys:col" k="sub" value={cp.sub} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 15) + 'px; color:' + c.sub + '; margin-top:10px; max-width:520px; margin-left:auto; margin-right:auto;'} multiline preview={ctx.preview} />
-            <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:10px;')}>{cnt} {cnt === 1 ? 'piece' : 'pieces'}</div>
-          </div>
+        <div style={sx('padding:' + Math.round(padY * 0.7) + 'px ' + padX + 'px ' + Math.round(padY * 0.2) + 'px; background:' + c.bg + '; color:' + c.fg + '; text-align:center;')}>
+          <div onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={sx(crumb)}>Shop <span style={{ opacity: 0.5 }}>/</span> {col.n}</div>
+          <div style={sx(headFont + 'font-size:' + (mob ? 30 : 44) + 'px; line-height:1.06; margin-top:10px;')}>{col.n}</div>
+          <Editable secId="__sys:col" k="sub" value={cp.sub} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 15) + 'px; color:' + c.sub + '; margin-top:10px; max-width:520px; margin-left:auto; margin-right:auto;'} multiline preview={ctx.preview} />
+          <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:10px;')}>{cnt} {cnt === 1 ? 'piece' : 'pieces'}</div>
+        </div>
         )}
       </Part>
       <FilterGrid ctx={ctx} products={cat.products} lockedCol={col.id} edit={edit} partPrefix="col" label="COLLECTION GRID — TEMPLATE" cols={cp.gridCols} bg={cp.gridBg} spKey={cp.gridSp} />
     </>
   );
+}
+
+// Resolve the "You may also like" list from the also-config — rule-based
+// (relative to the product being viewed) or hand-picked.
+function pickAlso(also, bp, cat) {
+  if ((also.src || 'rule') === 'manual') {
+    return (also.picks || [])
+      .map((id) => cat.products.find((q) => q.id === id))
+      .filter((x) => x && !x.arch && x.id !== bp.id);
+  }
+  let list = liveProds(cat).filter((p) => p.id !== bp.id);
+  const r = also.rule || 'best';
+  if (r === 'best') list = list.slice().sort((a, b) => (a.rank || 999) - (b.rank || 999));
+  else if (r === 'new') list = list.slice().sort((a, b) => ((b.isNew ? 1 : 0) - (a.isNew ? 1 : 0)) || ((a.rank || 999) - (b.rank || 999)));
+  else if (r === 'sale') list = list.filter((x) => x.was);
+  else if (r === 'samecol') list = list.filter((x) => x.col === bp.col);
+  return list.slice(0, Math.max(2, Math.min(8, also.count || 4)));
 }
 
 // ── Product template (/p/<slug>) ────────────────────────────────────────────
@@ -290,17 +351,82 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const pp = sysProps(sys, 'prod');
   const bp = product || liveProds(cat)[0] || cat.products[0];
   if (!bp) return null;
+  const pd = { v: 'left', bg: 'base', stock: true, sizes: true, note: true, thumbs: true, ...(pp.pd || {}) };
+  const cPd = co(pd.bg || 'base', P);
+  const rightGallery = pd.v === 'right';
+  const also = { src: 'rule', rule: 'best', count: 4, picks: [], prices: true, bg: 'base', ...(pp.also || {}) };
+  const cAlso = co(also.bg || 'base', P);
   const sizes = sizeList(bp);
   const col2 = cat.collections.find((x) => x.id === bp.col);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
-  const also = liveProds(cat).filter((p) => p.id !== bp.id && p.stock > 0).sort((a, b) => (a.rank || 999) - (b.rank || 999)).slice(0, mob ? 2 : 4);
-  const lbl = 'font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + c.sub + '; margin-top:24px;';
+  const alsoList = pickAlso(also, bp, cat);
+  const lbl = 'font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + cPd.sub + '; margin-top:24px;';
+
+  const galleryBlock = (
+    <div key="gallery" style={{ minWidth: 0 }}>
+      <div style={sx('aspect-ratio:4/5; border-radius:' + C.r + 'px; overflow:hidden; position:relative; background:' + cPd.card + ';' + (ctx.shCard || ''))}>
+        <ImageSlot slotId={'st-prod-' + bp.id} assets={{ ...(ctx.assets || {}), ['st-prod-' + bp.id]: (ctx.assets || {})['st-prod-' + bp.id] || bp.img }} fit="cover" placeholder="Main product photo" preview={ctx.preview} />
+      </div>
+      {pd.thumbs !== false && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} style={sx('flex:1; aspect-ratio:1/1; border-radius:' + Math.min(C.rs, 10) + 'px; overflow:hidden; position:relative; background:' + cPd.card + ';')}>
+              <ImageSlot slotId={'st-pdpt-' + i} assets={ctx.assets || {}} fit="cover" placeholder="Alt view" preview={ctx.preview} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const detailsBlock = (
+    <div key="details" style={{ minWidth: 0 }}>
+      <Editable secId={'__cat:' + bp.id} k="n" value={bp.n} style={headFont + 'font-size:' + (mob ? 30 : 40) + 'px; line-height:1.08; min-width:0; overflow-wrap:break-word;'} preview={ctx.preview} />
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginTop: 12 }}>
+        <Editable secId={'__cat:' + bp.id} k="pr" value={fmtPr(bp.pr)} style={'font-family:' + F.b + '; font-size:' + (mob ? 20 : 23) + 'px; font-weight:800; font-variant-numeric:tabular-nums;'} preview={ctx.preview} tag="span" />
+        {bp.was ? <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 14 : 15) + 'px; color:' + cPd.sub + '; text-decoration:line-through; font-variant-numeric:tabular-nums;')}>{fmtPr(bp.was)}</div> : null}
+      </div>
+      {pd.stock !== false && (bp.arch || bp.stock <= 3) && (
+        <div style={sx('margin-top:12px; font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + ((bp.arch || bp.stock === 0) ? '#B03A2E' : '#B07A2A') + ';')}>
+          {bp.arch ? 'Hidden from your store — unhide it in Catalog' : bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : 'Only ' + bp.stock + ' left in stock'}
+        </div>
+      )}
+      <Editable secId={'__cat:' + bp.id} k="desc" value={bp.desc || 'Add a description in the Catalog tab — fabric, fit, care.'} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 14.5) + 'px; line-height:1.7; color:' + cPd.sub + '; margin-top:16px; white-space:pre-wrap;'} multiline preview={ctx.preview} />
+      {pd.sizes !== false && sizes.length > 0 && (
+        <>
+          <div style={sx(lbl)}>SIZE</div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+            {sizes.map((z, zi) => (
+              <div key={z} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (zi === 0 ? cPd.fg : cPd.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (zi === 0 ? ' background:' + cPd.fg + '; color:' + cPd.bg + ';' : ''))}>{z}</div>
+            ))}
+          </div>
+        </>
+      )}
+      <div style={{ display: 'flex', gap: 10, marginTop: 24, alignItems: 'stretch' }}>
+        <div style={sx('display:flex; align-items:center; gap:14px; padding:0 16px; border-radius:' + C.btn + '; border:1.5px solid ' + cPd.line + '; font-family:' + F.b + '; font-size:14px; user-select:none; cursor:pointer;')}>
+          <span>−</span><span style={{ fontWeight: 800 }}>1</span><span>+</span>
+        </div>
+        <div
+          onClick={ctx.preview && ctx.addToBag && bp.stock > 0 && !bp.arch ? (ev) => { ev.stopPropagation(); ctx.addToBag(bp, 1, sizes[0] || null); } : ctx.preview && ctx.onCart && bp.stock > 0 ? (ev) => { ev.stopPropagation(); ctx.onCart(); } : undefined}
+          style={sx('flex:1; display:flex; align-items:center; justify-content:center; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:14.5px; cursor:pointer; white-space:nowrap;' + ((bp.stock === 0 || bp.arch) ? ' opacity:0.45;' : ''))}
+        >
+          <Editable secId="__sys:prod" k="btn" value={pp.btn} style={''} preview={ctx.preview} tag="span" />
+        </div>
+      </div>
+      {pd.note !== false && (
+        <div style={sx('margin-top:14px; display:flex; align-items:center; gap:8px; font-family:' + F.b + '; font-size:12.5px; color:' + cPd.sub + ';')}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M1 5h13v11H1zM14 9h4l3 3v4h-7zM6 19a2 2 0 100-4 2 2 0 000 4zM17 19a2 2 0 100-4 2 2 0 000 4z" /></svg>
+          <Editable secId="__sys:prod" k="note" value={pp.note} style={''} preview={ctx.preview} tag="span" />
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <>
       <Part id="prod-main" label="PRODUCT DETAIL — TEMPLATE" edit={edit}>
-        <div style={sx('padding:' + (mob ? 26 : 44) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) ' + (mob ? 40 : 64) + 'px; background:' + c.bg + '; color:' + c.fg + ';')}>
-          <div style={sx('font-family:' + F.b + '; font-size:12px; color:' + c.sub + '; margin-bottom:' + (mob ? 16 : 24) + 'px; display:flex; gap:7px; flex-wrap:wrap;')}>
+        <div style={sx('padding:' + (mob ? 26 : 44) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) ' + (mob ? 40 : 64) + 'px; background:' + cPd.bg + '; color:' + cPd.fg + ';')}>
+          <div style={sx('font-family:' + F.b + '; font-size:12px; color:' + cPd.sub + '; margin-bottom:' + (mob ? 16 : 24) + 'px; display:flex; gap:7px; flex-wrap:wrap;')}>
             <span onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={{ cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>Shop</span>
             <span style={{ opacity: 0.5 }}>/</span>
             {col2 && (
@@ -311,50 +437,8 @@ export function ProductPage({ ctx, sys, product, edit }) {
             )}
             <span>{bp.n}</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr' : '1.02fr 0.98fr', gap: mob ? 26 : 64, alignItems: 'start' }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={sx('aspect-ratio:4/5; border-radius:' + C.r + 'px; overflow:hidden; position:relative; background:' + c.card + ';' + (ctx.shCard || ''))}>
-                <ImageSlot slotId={'st-prod-' + bp.id} assets={{ ...(ctx.assets || {}), ['st-prod-' + bp.id]: (ctx.assets || {})['st-prod-' + bp.id] || bp.img }} fit="cover" placeholder="Main product photo" preview={ctx.preview} />
-              </div>
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <Editable secId={'__cat:' + bp.id} k="n" value={bp.n} style={headFont + 'font-size:' + (mob ? 30 : 40) + 'px; line-height:1.08; min-width:0; overflow-wrap:break-word;'} preview={ctx.preview} />
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginTop: 12 }}>
-                <Editable secId={'__cat:' + bp.id} k="pr" value={fmtPr(bp.pr)} style={'font-family:' + F.b + '; font-size:' + (mob ? 20 : 23) + 'px; font-weight:800; font-variant-numeric:tabular-nums;'} preview={ctx.preview} tag="span" />
-                {bp.was ? <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 14 : 15) + 'px; color:' + c.sub + '; text-decoration:line-through; font-variant-numeric:tabular-nums;')}>{fmtPr(bp.was)}</div> : null}
-              </div>
-              {(bp.arch || bp.stock <= 3) && (
-                <div style={sx('margin-top:12px; font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + ((bp.arch || bp.stock === 0) ? '#B03A2E' : '#B07A2A') + ';')}>
-                  {bp.arch ? 'Hidden from your store — unhide it in Catalog' : bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : 'Only ' + bp.stock + ' left in stock'}
-                </div>
-              )}
-              <Editable secId={'__cat:' + bp.id} k="desc" value={bp.desc || 'Add a description in the Catalog tab — fabric, fit, care.'} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 14.5) + 'px; line-height:1.7; color:' + c.sub + '; margin-top:16px; white-space:pre-wrap;'} multiline preview={ctx.preview} />
-              {sizes.length > 0 && (
-                <>
-                  <div style={sx(lbl)}>SIZE</div>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                    {sizes.map((z, zi) => (
-                      <div key={z} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (zi === 0 ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (zi === 0 ? ' background:' + c.fg + '; color:' + c.bg + ';' : ''))}>{z}</div>
-                    ))}
-                  </div>
-                </>
-              )}
-              <div style={{ display: 'flex', gap: 10, marginTop: 24, alignItems: 'stretch' }}>
-                <div style={sx('display:flex; align-items:center; gap:14px; padding:0 16px; border-radius:' + C.btn + '; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-size:14px; user-select:none; cursor:pointer;')}>
-                  <span>−</span><span style={{ fontWeight: 800 }}>1</span><span>+</span>
-                </div>
-                <div
-                  onClick={ctx.preview && ctx.addToBag && bp.stock > 0 && !bp.arch ? (ev) => { ev.stopPropagation(); ctx.addToBag(bp, 1, sizes[0] || null); } : ctx.preview && ctx.onCart && bp.stock > 0 ? (ev) => { ev.stopPropagation(); ctx.onCart(); } : undefined}
-                  style={sx('flex:1; display:flex; align-items:center; justify-content:center; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:14.5px; cursor:pointer; white-space:nowrap;' + ((bp.stock === 0 || bp.arch) ? ' opacity:0.45;' : ''))}
-                >
-                  <Editable secId="__sys:prod" k="btn" value={pp.btn} style={''} preview={ctx.preview} tag="span" />
-                </div>
-              </div>
-              <div style={sx('margin-top:14px; display:flex; align-items:center; gap:8px; font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + ';')}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M1 5h13v11H1zM14 9h4l3 3v4h-7zM6 19a2 2 0 100-4 2 2 0 000 4zM17 19a2 2 0 100-4 2 2 0 000 4z" /></svg>
-                <Editable secId="__sys:prod" k="note" value={pp.note} style={''} preview={ctx.preview} tag="span" />
-              </div>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr' : (rightGallery ? '0.98fr 1.02fr' : '1.02fr 0.98fr'), gap: mob ? 26 : 64, alignItems: 'start' }}>
+            {!mob && rightGallery ? [detailsBlock, galleryBlock] : [galleryBlock, detailsBlock]}
           </div>
         </div>
       </Part>
@@ -366,12 +450,12 @@ export function ProductPage({ ctx, sys, product, edit }) {
           You may also like is hidden — click to show
         </div>
       )}
-      {pp.alsoOn && also.length > 0 && (
+      {pp.alsoOn && alsoList.length > 0 && (
         <Part id="prod-also" label="YOU MAY ALSO LIKE — TEMPLATE" edit={edit}>
-          <div style={sx('padding:' + (mob ? 36 : 56) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)); background:' + c.bg + '; color:' + c.fg + '; border-top:1px solid ' + c.line + ';')}>
+          <div style={sx('padding:' + (mob ? 36 : 56) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)); background:' + cAlso.bg + '; color:' + cAlso.fg + '; border-top:1px solid ' + cAlso.line + ';')}>
             <Editable secId="__sys:prod" k="alsoHead" value={pp.alsoHead} style={headFont + 'font-size:' + (mob ? 22 : 28) + 'px; line-height:1.12;'} preview={ctx.preview} />
             <div style={{ marginTop: 26, display: 'grid', gridTemplateColumns: 'repeat(' + (mob ? 2 : 4) + ',1fr)', gap: mob ? '18px 14px' : '30px 20px' }}>
-              {also.map((pr) => <ProductCard key={pr.id} pr={pr} ctx={ctx} c={c} />)}
+              {alsoList.map((pr) => <ProductCard key={pr.id} pr={pr} ctx={ctx} c={cAlso} showPrice={also.prices !== false} />)}
             </div>
           </div>
         </Part>
