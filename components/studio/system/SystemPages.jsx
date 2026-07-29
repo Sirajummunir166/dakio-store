@@ -305,20 +305,6 @@ export function CollectionPage({ ctx, sys, col, edit }) {
               <div style={sx('font-family:' + F.b + '; font-size:12.5px; color:rgba(255,255,255,0.75); margin-top:8px;')}>{cnt} {cnt === 1 ? 'piece' : 'pieces'}</div>
             </div>
           </div>
-        ) : layout === 'left' ? (
-        <div style={sx('padding:' + Math.round(padY * 0.5) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) ' + Math.round(padY * 0.1) + 'px; background:' + c.bg + '; color:' + c.fg + ';')}>
-          <div onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={sx(crumb)}>Shop <span style={{ opacity: 0.5 }}>/</span> {col.n}</div>
-          <div style={sx(headFont + 'font-size:' + (mob ? 30 : 44) + 'px; line-height:1.06; margin-top:10px;')}>{col.n}</div>
-          <Editable secId="__sys:col" k="sub" value={cp.sub} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 15) + 'px; color:' + c.sub + '; margin-top:10px; max-width:520px;'} multiline preview={ctx.preview} />
-          <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:10px;')}>{cnt} {cnt === 1 ? 'piece' : 'pieces'}</div>
-        </div>
-        ) : (
-        <div style={sx('padding:' + Math.round(padY * 0.7) + 'px ' + padX + 'px ' + Math.round(padY * 0.2) + 'px; background:' + c.bg + '; color:' + c.fg + '; text-align:center;')}>
-          <div onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={sx(crumb)}>Shop <span style={{ opacity: 0.5 }}>/</span> {col.n}</div>
-          <div style={sx(headFont + 'font-size:' + (mob ? 30 : 44) + 'px; line-height:1.06; margin-top:10px;')}>{col.n}</div>
-          <Editable secId="__sys:col" k="sub" value={cp.sub} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 15) + 'px; color:' + c.sub + '; margin-top:10px; max-width:520px; margin-left:auto; margin-right:auto;'} multiline preview={ctx.preview} />
-          <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:10px;')}>{cnt} {cnt === 1 ? 'piece' : 'pieces'}</div>
-        </div>
         )}
       </Part>
       <FilterGrid ctx={ctx} products={cat.products} lockedCol={col.id} edit={edit} partPrefix="col" label="COLLECTION GRID — TEMPLATE" cols={cp.gridCols} bg={cp.gridBg} spKey={cp.gridSp} />
