@@ -1,8 +1,10 @@
 'use client';
+import { useState } from 'react';
 import { baseStyles, sx } from '../theme';
 import Editable from '../Editable';
 import ImageSlot from '../ImageSlot';
 import { fmtPr } from '../catalog';
+import { sizeList } from '../system/SystemPages';
 
 // Product detail — bound to ONE real catalog product (props.pid). Name, price
 // and compare-at render from the catalog; editing them on the canvas edits the
@@ -15,6 +17,8 @@ export default function Pdp({ sec, ctx }) {
   const p = sec.props;
 
   const bp = cat.products.find((x) => x.id === p.pid) || cat.products[0];
+  const [sel, setSel] = useState(null);
+  const [open, setOpen] = useState({});
   if (!bp) return null; // empty catalog — nothing honest to render
 
   const soldOrHidden = bp.stock === 0 || bp.arch;
@@ -33,22 +37,31 @@ export default function Pdp({ sec, ctx }) {
   const pdpStock = 'margin-top:12px; font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + (soldOrHidden ? '#B03A2E' : '#B07A2A') + ';';
   const pdpDesc = 'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 14.5) + 'px; line-height:1.7; color:' + c.sub + '; margin-top:16px; white-space:pre-wrap;';
   const pdpLbl = 'font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + c.sub + '; margin-top:24px;';
-  const sizes = ['S', 'M', 'L', 'XL'].map((z, zi) => ({
-    n: z,
-    style: 'min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (zi === 1 ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (zi === 1 ? ' background:' + c.fg + '; color:' + c.bg + ';' : ''),
-  }));
+  const sizes = sizeList(bp);
+  const curSize = sel || sizes[0] || null;
+  const sizeStyle = (on) => 'min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (on ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (on ? ' background:' + c.fg + '; color:' + c.bg + ';' : '');
   const qtyBox = 'display:flex; align-items:center; gap:14px; padding:0 16px; border-radius:' + C.btn + '; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-size:14px; user-select:none; cursor:pointer;';
   const pdpBtn = 'flex:1; display:flex; align-items:center; justify-content:center; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:14.5px; cursor:pointer; white-space:nowrap;' + (soldOrHidden ? ' opacity:0.45;' : '');
   const pdpNote = 'margin-top:14px; display:flex; align-items:center; gap:8px; font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + ';';
   const pdpRows = 'margin-top:26px; border-top:1px solid ' + c.line + ';';
   const pdpRow = 'padding:15px 2px; border-bottom:1px solid ' + c.line + '; display:flex; align-items:center; justify-content:space-between; font-family:' + F.b + '; font-size:13.5px; font-weight:700; cursor:pointer;';
+  const pdpRowBody = 'padding:0 2px 16px; font-family:' + F.b + '; font-size:13px; line-height:1.65; color:' + c.sub + '; white-space:pre-wrap;';
+  const chevStyle = (on) => 'display:flex; color:' + c.sub + '; transition:transform .2s ease; transform:rotate(' + (on ? 180 : 0) + 'deg); flex-shrink:0;';
 
   const catId = '__cat:' + bp.id;
   const mainSlot = 'st-pdp-' + bp.id;
 
-  const chev = (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+  const chev = (on) => (
+    <div style={sx(chevStyle(on))}>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+    </div>
   );
+
+  const buy = preview && ctx.addToBag && !soldOrHidden
+    ? (e) => { e.stopPropagation(); ctx.addToBag(bp, 1, curSize); }
+    : preview && ctx.onCart && !soldOrHidden
+      ? (e) => { e.stopPropagation(); ctx.onCart(); }
+      : undefined;
 
   return (
     <div style={sx(s.pad)}>
@@ -75,15 +88,19 @@ export default function Pdp({ sec, ctx }) {
           </div>
           {(stockOn || pubStockOn) && <div style={sx(pdpStock)}>{isPublic ? 'Only ' + bp.stock + ' left in stock' : stockTxt}</div>}
           <Editable secId={sec.id} k="desc" value={p.desc} style={pdpDesc} multiline preview={preview} />
-          <div style={sx(pdpLbl)}>SIZE</div>
-          <div style={sx('display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;')}>
-            {sizes.map((z) => (
-              <div key={z.n} style={sx(z.style)}>{z.n}</div>
-            ))}
-          </div>
+          {sizes.length > 0 && (
+            <>
+              <div style={sx(pdpLbl)}>SIZE</div>
+              <div style={sx('display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;')}>
+                {sizes.map((z) => (
+                  <div key={z} onClick={preview ? (e) => { e.stopPropagation(); setSel(z); } : undefined} style={sx(sizeStyle(z === curSize))}>{z}</div>
+                ))}
+              </div>
+            </>
+          )}
           <div style={sx('display:flex; gap:10px; margin-top:24px; align-items:stretch;')}>
             <div style={sx(qtyBox)}><span>−</span><span style={{ fontWeight: 800 }}>1</span><span>+</span></div>
-            <div style={sx(pdpBtn)}>
+            <div onClick={buy} style={sx(pdpBtn)}>
               <Editable secId={sec.id} k="btn" value={isPublic && bp.stock === 0 ? 'Sold out' : p.btn} style={''} tag="span" preview={preview} />
             </div>
           </div>
@@ -92,8 +109,10 @@ export default function Pdp({ sec, ctx }) {
             <Editable secId={sec.id} k="note" value={p.note} style={''} tag="span" preview={preview} />
           </div>
           <div style={sx(pdpRows)}>
-            <div style={sx(pdpRow)}>Fabric &amp; care{chev}</div>
-            <div style={sx(pdpRow)}>Delivery &amp; returns{chev}</div>
+            <div onClick={(e) => { e.stopPropagation(); setOpen((o) => ({ ...o, care: !o.care })); }} style={sx(pdpRow)}>Fabric &amp; care{chev(!!open.care)}</div>
+            {open.care && <Editable secId={sec.id} k="care" value={p.care || 'Add fabric & care notes — wash, iron, fabric blend.'} style={pdpRowBody} multiline preview={preview} />}
+            <div onClick={(e) => { e.stopPropagation(); setOpen((o) => ({ ...o, delivery: !o.delivery })); }} style={sx(pdpRow)}>Delivery &amp; returns{chev(!!open.delivery)}</div>
+            {open.delivery && <Editable secId={sec.id} k="delivery" value={p.delivery || 'Add delivery & returns copy — timelines, exchange policy.'} style={pdpRowBody} multiline preview={preview} />}
           </div>
         </div>
       </div>
