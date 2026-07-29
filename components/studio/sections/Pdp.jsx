@@ -32,7 +32,7 @@ export default function Pdp({ sec, ctx }) {
 
   const pdpGrid = 'display:grid; grid-template-columns:' + (mob ? '1fr' : '1.02fr 0.98fr') + '; gap:' + (mob ? 26 : 64) + 'px; align-items:start;';
   const pdpMain = 'aspect-ratio:4/5; border-radius:' + C.r + 'px; overflow:hidden; position:relative; background:' + c.card + ';';
-  const pdpThumb = (on) => 'flex:1; aspect-ratio:1/1; border-radius:' + C.rs + 'px; overflow:hidden; position:relative; background:' + c.card + '; cursor:pointer;' + (on ? ' outline:2px solid ' + c.fg + '; outline-offset:-2px;' : '');
+  const pdpThumb = (on) => 'aspect-ratio:1/1; border-radius:' + C.rs + 'px; overflow:hidden; position:relative; background:' + c.card + '; cursor:pointer;' + (on ? ' outline:2px solid ' + c.fg + '; outline-offset:-2px;' : '');
   const pdpName = s.headFont + 'font-size:' + (mob ? 30 : 40) + 'px; line-height:1.08; min-width:0; overflow-wrap:break-word;';
   const pdpPrice = 'font-family:' + F.b + '; font-size:' + (mob ? 20 : 23) + 'px; font-weight:800; font-variant-numeric:tabular-nums;';
   const pdpWas = 'font-family:' + F.b + '; font-size:' + (mob ? 14 : 15) + 'px; color:' + c.sub + '; text-decoration:line-through; font-variant-numeric:tabular-nums;';
@@ -54,6 +54,7 @@ export default function Pdp({ sec, ctx }) {
   const mainSlot = 'st-pdp-' + bp.id;
   const thumbSlots = [0, 1, 2].map((ti) => 'st-pdpt-' + ti);
   const shownSlot = activeThumb !== null ? thumbSlots[activeThumb] : mainSlot;
+  const thumbsLeft = p.thumbPos === 'left' && !mob;
 
   const chev = (on) => (
     <div style={sx(chevStyle(on))}>
@@ -71,18 +72,27 @@ export default function Pdp({ sec, ctx }) {
     <div style={sx(s.pad)}>
       <div style={sx(pdpGrid)}>
         <div style={{ minWidth: 0 }}>
-          <div style={sx(pdpMain)}>
-            {activeThumb === null && !assets[mainSlot] && bp.img
-              ? <img src={ctx.optImg ? ctx.optImg(bp.img) : bp.img} alt={bp.n} loading={ctx.lazyImgs ? 'lazy' : undefined} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <ImageSlot slotId={shownSlot} assets={assets} placeholder={activeThumb === null ? 'Main product photo' : 'Alt view'} fit="cover" preview={preview} />}
-          </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-            {[0, 1, 2].map((ti) => (
-              <div key={ti} onClick={preview ? (e) => { e.stopPropagation(); setActiveThumb(ti); } : undefined} style={sx(pdpThumb(activeThumb === ti))}>
-                <ImageSlot slotId={'st-pdpt-' + ti} assets={assets} placeholder="Alt view" fit="cover" preview={preview} />
+          {(() => {
+            const mainImg = (
+              <div style={sx(pdpMain + (thumbsLeft ? ' flex:1; min-width:0;' : ''))}>
+                {activeThumb === null && !assets[mainSlot] && bp.img
+                  ? <img src={ctx.optImg ? ctx.optImg(bp.img) : bp.img} alt={bp.n} loading={ctx.lazyImgs ? 'lazy' : undefined} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <ImageSlot slotId={shownSlot} assets={assets} placeholder={activeThumb === null ? 'Main product photo' : 'Alt view'} fit="cover" preview={preview} />}
               </div>
-            ))}
-          </div>
+            );
+            const thumbs = (
+              <div style={{ display: 'flex', flexDirection: thumbsLeft ? 'column' : 'row', gap: 10, ...(thumbsLeft ? { width: 76, flexShrink: 0 } : { marginTop: 10 }) }}>
+                {[0, 1, 2].map((ti) => (
+                  <div key={ti} onClick={preview ? (e) => { e.stopPropagation(); setActiveThumb(ti); } : undefined} style={sx((thumbsLeft ? '' : 'flex:1; ') + pdpThumb(activeThumb === ti))}>
+                    <ImageSlot slotId={'st-pdpt-' + ti} assets={assets} placeholder="Alt view" fit="cover" preview={preview} />
+                  </div>
+                ))}
+              </div>
+            );
+            return thumbsLeft
+              ? <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>{thumbs}{mainImg}</div>
+              : <>{mainImg}{thumbs}</>;
+          })()}
         </div>
         <div style={{ minWidth: 0 }}>
           <Editable secId={catId} k="n" value={bp.n} style={pdpName} preview={preview} />

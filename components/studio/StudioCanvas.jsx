@@ -334,7 +334,7 @@ export default function StudioCanvas() {
         {!fn && (
           <div
             onClick={(e) => { e.stopPropagation(); if (!preview) send('navMenus', {}); }}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, padding: mob ? '15px 20px' : '18px 48px', borderBottom: '1px solid ' + base.line, cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, padding: mob ? '15px 20px' : `18px max(${padX}px, calc((100% - 1120px)/2))`, borderBottom: '1px solid ' + base.line, cursor: 'pointer' }}
           >
             {brandText ? (
               <Editable

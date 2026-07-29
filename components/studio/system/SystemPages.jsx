@@ -339,7 +339,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const [activeThumb, setActiveThumb] = useState(null);
   useEffect(() => { setActiveThumb(null); }, [bp && bp.id]);
   if (!bp) return null;
-  const pd = { v: 'left', bg: 'base', stock: true, sizes: true, note: true, thumbs: true, ...(pp.pd || {}) };
+  const pd = { v: 'left', bg: 'base', stock: true, sizes: true, note: true, thumbs: true, thumbPos: 'bottom', ...(pp.pd || {}) };
   const cPd = co(pd.bg || 'base', P);
   const rightGallery = pd.v === 'right';
   const also = { src: 'rule', rule: 'best', count: 4, picks: [], prices: true, bg: 'base', ...(pp.also || {}) };
@@ -357,23 +357,40 @@ export function ProductPage({ ctx, sys, product, edit }) {
     ? (ctx.assets || {})
     : { ...(ctx.assets || {}), [mainSlotId]: (ctx.assets || {})[mainSlotId] || bp.img };
 
+  const thumbsLeft = pd.thumbPos === 'left' && !mob;
+
+  const thumbsEl = pd.thumbs !== false && (
+    <div style={{ display: 'flex', flexDirection: thumbsLeft ? 'column' : 'row', gap: 8, ...(thumbsLeft ? { width: 76, flexShrink: 0 } : { marginTop: 10 }) }}>
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          onClick={ctx.preview ? (e) => { e.stopPropagation(); setActiveThumb(i); } : undefined}
+          style={sx((thumbsLeft ? '' : 'flex:1; ') + 'aspect-ratio:1/1; border-radius:' + Math.min(C.rs, 10) + 'px; overflow:hidden; position:relative; background:' + cPd.card + ';' + (ctx.preview ? ' cursor:pointer;' : '') + (activeThumb === i ? ' outline:2px solid ' + cPd.fg + '; outline-offset:-2px;' : ''))}
+        >
+          <ImageSlot slotId={'st-pdpt-' + i} assets={ctx.assets || {}} fit="cover" placeholder="Alt view" preview={ctx.preview} />
+        </div>
+      ))}
+    </div>
+  );
+
+  const mainEl = (
+    <div style={sx('aspect-ratio:4/5; border-radius:' + C.r + 'px; overflow:hidden; position:relative; background:' + cPd.card + ';' + (ctx.shCard || '') + (thumbsLeft ? ' flex:1; min-width:0;' : ''))}>
+      <ImageSlot slotId={shownSlotId} assets={shownAssets} fit="cover" placeholder={activeThumb !== null ? 'Alt view' : 'Main product photo'} preview={ctx.preview} />
+    </div>
+  );
+
   const galleryBlock = (
     <div key="gallery" style={{ minWidth: 0 }}>
-      <div style={sx('aspect-ratio:4/5; border-radius:' + C.r + 'px; overflow:hidden; position:relative; background:' + cPd.card + ';' + (ctx.shCard || ''))}>
-        <ImageSlot slotId={shownSlotId} assets={shownAssets} fit="cover" placeholder={activeThumb !== null ? 'Alt view' : 'Main product photo'} preview={ctx.preview} />
-      </div>
-      {pd.thumbs !== false && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              onClick={ctx.preview ? (e) => { e.stopPropagation(); setActiveThumb(i); } : undefined}
-              style={sx('flex:1; aspect-ratio:1/1; border-radius:' + Math.min(C.rs, 10) + 'px; overflow:hidden; position:relative; background:' + cPd.card + ';' + (ctx.preview ? ' cursor:pointer;' : '') + (activeThumb === i ? ' outline:2px solid ' + cPd.fg + '; outline-offset:-2px;' : ''))}
-            >
-              <ImageSlot slotId={'st-pdpt-' + i} assets={ctx.assets || {}} fit="cover" placeholder="Alt view" preview={ctx.preview} />
-            </div>
-          ))}
+      {thumbsLeft ? (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          {thumbsEl}
+          {mainEl}
         </div>
+      ) : (
+        <>
+          {mainEl}
+          {thumbsEl}
+        </>
       )}
     </div>
   );

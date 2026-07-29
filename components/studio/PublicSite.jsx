@@ -247,7 +247,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
       `}</style>
 
       {/* store nav */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, padding: mob ? '15px 20px' : '18px 48px', borderBottom: '1px solid ' + base.line }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, padding: mob ? '15px 20px' : `18px max(${padX}px, calc((100% - 1120px)/2))`, borderBottom: '1px solid ' + base.line }}>
         <a href={basePath || '/'} className="studio-nav-link" style={{ display: 'block' }}>
           {brandText ? (
             <div style={{ fontFamily: F.h, fontWeight: Math.max(F.hw, 600), fontSize: mob ? 20 : 23, letterSpacing: F.ls }}>
