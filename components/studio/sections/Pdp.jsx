@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { baseStyles, sx } from '../theme';
 import Editable from '../Editable';
 import ImageSlot from '../ImageSlot';
@@ -19,6 +19,8 @@ export default function Pdp({ sec, ctx }) {
   const bp = cat.products.find((x) => x.id === p.pid) || cat.products[0];
   const [sel, setSel] = useState(null);
   const [open, setOpen] = useState({});
+  const [activeThumb, setActiveThumb] = useState(null);
+  useEffect(() => { setActiveThumb(null); }, [bp && bp.id]);
   if (!bp) return null; // empty catalog — nothing honest to render
 
   const soldOrHidden = bp.stock === 0 || bp.arch;
@@ -30,7 +32,7 @@ export default function Pdp({ sec, ctx }) {
 
   const pdpGrid = 'display:grid; grid-template-columns:' + (mob ? '1fr' : '1.02fr 0.98fr') + '; gap:' + (mob ? 26 : 64) + 'px; align-items:start;';
   const pdpMain = 'aspect-ratio:4/5; border-radius:' + C.r + 'px; overflow:hidden; position:relative; background:' + c.card + ';';
-  const pdpThumb = 'flex:1; aspect-ratio:1/1; border-radius:' + C.rs + 'px; overflow:hidden; position:relative; background:' + c.card + '; cursor:pointer;';
+  const pdpThumb = (on) => 'flex:1; aspect-ratio:1/1; border-radius:' + C.rs + 'px; overflow:hidden; position:relative; background:' + c.card + '; cursor:pointer;' + (on ? ' outline:2px solid ' + c.fg + '; outline-offset:-2px;' : '');
   const pdpName = s.headFont + 'font-size:' + (mob ? 30 : 40) + 'px; line-height:1.08; min-width:0; overflow-wrap:break-word;';
   const pdpPrice = 'font-family:' + F.b + '; font-size:' + (mob ? 20 : 23) + 'px; font-weight:800; font-variant-numeric:tabular-nums;';
   const pdpWas = 'font-family:' + F.b + '; font-size:' + (mob ? 14 : 15) + 'px; color:' + c.sub + '; text-decoration:line-through; font-variant-numeric:tabular-nums;';
@@ -50,6 +52,8 @@ export default function Pdp({ sec, ctx }) {
 
   const catId = '__cat:' + bp.id;
   const mainSlot = 'st-pdp-' + bp.id;
+  const thumbSlots = [0, 1, 2].map((ti) => 'st-pdpt-' + ti);
+  const shownSlot = activeThumb !== null ? thumbSlots[activeThumb] : mainSlot;
 
   const chev = (on) => (
     <div style={sx(chevStyle(on))}>
@@ -68,13 +72,13 @@ export default function Pdp({ sec, ctx }) {
       <div style={sx(pdpGrid)}>
         <div style={{ minWidth: 0 }}>
           <div style={sx(pdpMain)}>
-            {!assets[mainSlot] && bp.img
+            {activeThumb === null && !assets[mainSlot] && bp.img
               ? <img src={ctx.optImg ? ctx.optImg(bp.img) : bp.img} alt={bp.n} loading={ctx.lazyImgs ? 'lazy' : undefined} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <ImageSlot slotId={mainSlot} assets={assets} placeholder="Main product photo" fit="cover" preview={preview} />}
+              : <ImageSlot slotId={shownSlot} assets={assets} placeholder={activeThumb === null ? 'Main product photo' : 'Alt view'} fit="cover" preview={preview} />}
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
             {[0, 1, 2].map((ti) => (
-              <div key={ti} style={sx(pdpThumb)}>
+              <div key={ti} onClick={preview ? (e) => { e.stopPropagation(); setActiveThumb(ti); } : undefined} style={sx(pdpThumb(activeThumb === ti))}>
                 <ImageSlot slotId={'st-pdpt-' + ti} assets={assets} placeholder="Alt view" fit="cover" preview={preview} />
               </div>
             ))}

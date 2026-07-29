@@ -3,7 +3,7 @@
 // template. Data-bound to the live catalog and template-driven: the merchant
 // edits the template once (doc.sys), every collection & product follows.
 // Rendered by the studio canvas (edit + preview) and the public storefront.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Editable from '../Editable';
 import ImageSlot from '../ImageSlot';
 import { co, btnColors, sx, SPM } from '../theme';
@@ -336,6 +336,8 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const B = btnColors('base', P);
   const pp = sysProps(sys, 'prod');
   const bp = product || liveProds(cat)[0] || cat.products[0];
+  const [activeThumb, setActiveThumb] = useState(null);
+  useEffect(() => { setActiveThumb(null); }, [bp && bp.id]);
   if (!bp) return null;
   const pd = { v: 'left', bg: 'base', stock: true, sizes: true, note: true, thumbs: true, ...(pp.pd || {}) };
   const cPd = co(pd.bg || 'base', P);
@@ -348,15 +350,26 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const alsoList = pickAlso(also, bp, cat);
   const lbl = 'font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + cPd.sub + '; margin-top:24px;';
 
+  const mainSlotId = 'st-prod-' + bp.id;
+  const thumbSlotIds = [0, 1, 2].map((i) => 'st-pdpt-' + i);
+  const shownSlotId = activeThumb !== null ? thumbSlotIds[activeThumb] : mainSlotId;
+  const shownAssets = activeThumb !== null
+    ? (ctx.assets || {})
+    : { ...(ctx.assets || {}), [mainSlotId]: (ctx.assets || {})[mainSlotId] || bp.img };
+
   const galleryBlock = (
     <div key="gallery" style={{ minWidth: 0 }}>
       <div style={sx('aspect-ratio:4/5; border-radius:' + C.r + 'px; overflow:hidden; position:relative; background:' + cPd.card + ';' + (ctx.shCard || ''))}>
-        <ImageSlot slotId={'st-prod-' + bp.id} assets={{ ...(ctx.assets || {}), ['st-prod-' + bp.id]: (ctx.assets || {})['st-prod-' + bp.id] || bp.img }} fit="cover" placeholder="Main product photo" preview={ctx.preview} />
+        <ImageSlot slotId={shownSlotId} assets={shownAssets} fit="cover" placeholder={activeThumb !== null ? 'Alt view' : 'Main product photo'} preview={ctx.preview} />
       </div>
       {pd.thumbs !== false && (
         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
           {[0, 1, 2].map((i) => (
-            <div key={i} style={sx('flex:1; aspect-ratio:1/1; border-radius:' + Math.min(C.rs, 10) + 'px; overflow:hidden; position:relative; background:' + cPd.card + ';')}>
+            <div
+              key={i}
+              onClick={ctx.preview ? (e) => { e.stopPropagation(); setActiveThumb(i); } : undefined}
+              style={sx('flex:1; aspect-ratio:1/1; border-radius:' + Math.min(C.rs, 10) + 'px; overflow:hidden; position:relative; background:' + cPd.card + ';' + (ctx.preview ? ' cursor:pointer;' : '') + (activeThumb === i ? ' outline:2px solid ' + cPd.fg + '; outline-offset:-2px;' : ''))}
+            >
               <ImageSlot slotId={'st-pdpt-' + i} assets={ctx.assets || {}} fit="cover" placeholder="Alt view" preview={ctx.preview} />
             </div>
           ))}
