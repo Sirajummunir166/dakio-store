@@ -22,7 +22,7 @@ export default function Insta({ sec, ctx }) {
       <div style={sx(instaGrid)}>
         {[0, 1, 2, 3, 4, 5].map((gi) => (
           <div key={gi} style={sx(tile)}>
-            <ImageSlot slotId={'st-ig-' + gi} assets={assets} placeholder="IG post" fit="cover" preview={preview} />
+            <ImageSlot slotId={'st-ig-' + gi} assets={assets} placeholder="IG post" fit="cover" preview={preview} aspect="1/1" hint="Square, ~1080×1080px." />
           </div>
         ))}
       </div>

@@ -18,7 +18,7 @@ export default function Video({ sec, ctx }) {
       <Editable secId={sec.id} k="head" value={p.head} style={s.h2Center} preview={preview} />
       <div style={sx(videoBox)}>
         <div style={{ position: 'absolute', inset: 0 }}>
-          <ImageSlot slotId={'st-video-' + sec.id} assets={assets} placeholder="Video poster frame" fit="cover" preview={preview} />
+          <ImageSlot slotId={'st-video-' + sec.id} assets={assets} placeholder="Video poster frame" fit="cover" preview={preview} aspect="16/9" hint="Widescreen, ~1600×900px — the thumbnail shown before play." />
         </div>
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(10,11,8,0.25)', pointerEvents: 'none' }} />
         <div style={sx(playBtn)}>

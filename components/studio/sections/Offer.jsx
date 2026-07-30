@@ -28,7 +28,7 @@ export default function Offer({ sec, ctx }) {
       <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr' : '1.02fr 0.98fr', gap: mob ? 26 : 64, alignItems: 'start' }}>
         <div style={{ minWidth: 0 }}>
           <div style={sx('aspect-ratio:4/5; border-radius:' + C.r + 'px; overflow:hidden; position:relative; background:' + c.card + ';' + sh)}>
-            <ImageSlot slotId={'st-prod-' + bp.id} assets={{ ...(ctx.assets || {}), ['st-prod-' + bp.id]: (ctx.assets || {})['st-prod-' + bp.id] || bp.img }} fit="cover" placeholder="Product photo — shared with your product page" preview={preview} />
+            <ImageSlot slotId={'st-prod-' + bp.id} assets={{ ...(ctx.assets || {}), ['st-prod-' + bp.id]: (ctx.assets || {})['st-prod-' + bp.id] || bp.img }} fit="cover" placeholder="Product photo — shared with your product page" preview={preview} aspect="4/5" hint="Portrait, ~1200×1500px (4:5), shared with your product page." />
           </div>
         </div>
         <div style={{ minWidth: 0 }}>

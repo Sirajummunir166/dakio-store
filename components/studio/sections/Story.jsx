@@ -19,7 +19,7 @@ export default function Story({ sec, ctx }) {
     <div style={sx(pad)}>
       <div style={sx(storyGrid)}>
         <div style={sx(storyImgWrap)}>
-          <ImageSlot slotId={'st-story-' + sec.id} assets={assets} fit="cover" placeholder="Story image — workshop, founder, fabric detail" preview={preview} />
+          <ImageSlot slotId={'st-story-' + sec.id} assets={assets} fit="cover" placeholder="Story image — workshop, founder, fabric detail" preview={preview} aspect="4/3.4" hint="Landscape-ish, ~1200×1030px. Keep the subject centered." />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
           <BadgeChip sec={sec} ctx={ctx} base={base} />

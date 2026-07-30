@@ -347,7 +347,7 @@ export default function StudioCanvas() {
                 onClick={(e) => { e.stopPropagation(); if (preview) send('goPage', { id: 'home' }); }}
                 style={{ height: mob ? 26 : 32, width: mob ? 110 : 150, cursor: 'pointer', position: 'relative' }}
               >
-                <ImageSlot slotId="st-brand-logo" assets={doc.assets || {}} fit="contain" placeholder="Logo" preview={preview} />
+                <ImageSlot slotId="st-brand-logo" assets={doc.assets || {}} fit="contain" placeholder="Logo" preview={preview} hint="Wide wordmark or icon, ~4:1 to 5:1, transparent PNG works best." />
               </div>
             )}
             {!mob && (

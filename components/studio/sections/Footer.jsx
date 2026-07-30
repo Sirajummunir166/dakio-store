@@ -30,7 +30,7 @@ export default function Footer({ sec, ctx }) {
             <Editable secId="__brand" k="brand" value={theme.brandName ?? 'Shahrqee'} style={footBrand} preview={preview} />
           ) : (
             <div style={{ height: 40, width: 170, maxWidth: '100%', position: 'relative' }}>
-              <ImageSlot slotId="st-brand-logo" assets={assets} fit="contain" placeholder="Logo" preview={preview} />
+              <ImageSlot slotId="st-brand-logo" assets={assets} fit="contain" placeholder="Logo" preview={preview} hint="Wide wordmark or icon, ~4:1 to 5:1, transparent PNG works best." />
             </div>
           )}
           <Editable secId={sec.id} k="tag" value={p.tag} style={footTag} multiline preview={preview} />

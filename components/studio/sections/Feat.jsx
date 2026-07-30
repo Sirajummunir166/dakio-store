@@ -59,7 +59,7 @@ export default function Feat({ sec, ctx }) {
               <div style={sx(imgWrap)}>
                 {pr.img
                   ? <img src={ctx.optImg ? ctx.optImg(pr.img) : pr.img} alt={pr.n} loading={ctx.lazyImgs ? 'lazy' : undefined} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <ImageSlot slotId={'st-prod-' + pr.id} assets={assets} fit="cover" placeholder="Product photo" preview={preview} />}
+                  : <ImageSlot slotId={'st-prod-' + pr.id} assets={assets} fit="cover" placeholder="Product photo" preview={preview} aspect="3/4" hint="Portrait, ~900×1200px (3:4). Also shown at 4:5 on the product page, so keep the product centered with margin." />}
                 {!!tag && <div style={sx(tagStyle)}>{tag}</div>}
               </div>
               <div style={sx(nameStyle)}>{pr.n}</div>

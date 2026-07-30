@@ -74,7 +74,7 @@ function ProductCard({ pr, ctx, c, showPrice = true }) {
   return (
     <div onClick={go} style={{ minWidth: 0, cursor: 'pointer' }}>
       <div style={sx('aspect-ratio:3/4; border-radius:' + C.rs + 'px; overflow:hidden; position:relative; background:' + c.card + ';' + (ctx.shCard || '') + (pr.stock === 0 ? ' opacity:0.75;' : ''))}>
-        <ImageSlot slotId={'st-prod-' + pr.id} assets={{ ...(ctx.assets || {}), ['st-prod-' + pr.id]: (ctx.assets || {})['st-prod-' + pr.id] || pr.img }} fit="cover" placeholder="Product photo" preview={ctx.preview} />
+        <ImageSlot slotId={'st-prod-' + pr.id} assets={{ ...(ctx.assets || {}), ['st-prod-' + pr.id]: (ctx.assets || {})['st-prod-' + pr.id] || pr.img }} fit="cover" placeholder="Product photo" preview={ctx.preview} aspect="3/4" hint="Portrait, ~900×1200px (3:4). Also shown at 4:5 on the product page — keep the product centered with margin." />
         {t && (
           <div style={sx('position:absolute; top:10px; left:10px; z-index:2; padding:4px 9px; border-radius:' + Math.min(C.rs, 8) + 'px; background:' + (pr.stock === 0 ? '#4a4a44' : P.accent) + '; color:' + (pr.stock === 0 ? '#f4f4ef' : P.accentInk) + '; font-family:' + F.b + '; font-size:9.5px; font-weight:800; letter-spacing:0.6px; text-transform:uppercase; pointer-events:none;')}>{t}</div>
         )}
@@ -295,7 +295,7 @@ export function CollectionPage({ ctx, sys, col, edit }) {
         ) : (
           <div style={sx('position:relative; height:' + (mob ? 260 : 340) + 'px; overflow:hidden; background:' + c.card + ';')}>
             <div style={{ position: 'absolute', inset: 0 }}>
-              <ImageSlot slotId={'st-col-' + col.id} assets={ctx.assets || {}} fit="cover" placeholder="Collection banner — shared with your collection tiles" preview={ctx.preview} />
+              <ImageSlot slotId={'st-col-' + col.id} assets={ctx.assets || {}} fit="cover" placeholder="Collection banner — shared with your collection tiles" preview={ctx.preview} hint={'Wide landscape, at least 1800px wide, ~' + (mob ? '260' : '340') + 'px tall. Keep the subject centered — very wide or narrow screens crop the sides.'} />
             </div>
             <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(10,11,8,0.68), rgba(10,11,8,0.08) 60%)', pointerEvents: 'none' }} />
             <div style={sx('position:absolute; left:' + padX + 'px; right:' + padX + 'px; bottom:' + (mob ? 24 : 34) + 'px; z-index:2;')}>
@@ -367,7 +367,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
           onClick={ctx.preview ? (e) => { e.stopPropagation(); setActiveThumb(i); } : undefined}
           style={sx((thumbsLeft ? '' : 'flex:1; ') + 'aspect-ratio:1/1; border-radius:' + Math.min(C.rs, 10) + 'px; overflow:hidden; position:relative; background:' + cPd.card + ';' + (ctx.preview ? ' cursor:pointer;' : '') + (activeThumb === i ? ' outline:2px solid ' + cPd.fg + '; outline-offset:-2px;' : ''))}
         >
-          <ImageSlot slotId={'st-pdpt-' + i} assets={ctx.assets || {}} fit="cover" placeholder="Alt view" preview={ctx.preview} />
+          <ImageSlot slotId={'st-pdpt-' + i} assets={ctx.assets || {}} fit="cover" placeholder="Alt view" preview={ctx.preview} aspect="1/1" hint="Square, ~800×800px." />
         </div>
       ))}
     </div>
@@ -375,7 +375,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
 
   const mainEl = (
     <div style={sx('aspect-ratio:4/5; border-radius:' + C.r + 'px; overflow:hidden; position:relative; background:' + cPd.card + ';' + (ctx.shCard || '') + (thumbsLeft ? ' flex:1; min-width:0;' : ''))}>
-      <ImageSlot slotId={shownSlotId} assets={shownAssets} fit="cover" placeholder={activeThumb !== null ? 'Alt view' : 'Main product photo'} preview={ctx.preview} />
+      <ImageSlot slotId={shownSlotId} assets={shownAssets} fit="cover" placeholder={activeThumb !== null ? 'Alt view' : 'Main product photo'} preview={ctx.preview} aspect={activeThumb !== null ? '1/1' : '4/5'} hint={activeThumb !== null ? 'Square, ~800×800px alt view.' : 'Portrait, ~1200×1500px (4:5). Also shown at 3:4 in your Shop grid — keep the product centered with margin.'} />
     </div>
   );
 

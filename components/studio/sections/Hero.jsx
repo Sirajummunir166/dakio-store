@@ -54,7 +54,7 @@ export default function Hero({ sec, ctx }) {
               <TrustRow sec={sec} ctx={ctx} base={base} />
             </div>
             <div style={sx(heroImgWrap)}>
-              <ImageSlot slotId={imgId} assets={assets} fit="cover" placeholder="Hero image — your best product shot" preview={preview} />
+              <ImageSlot slotId={imgId} assets={assets} fit="cover" placeholder="Hero image — your best product shot" preview={preview} aspect={mob ? '4/3' : '4/5'} hint={'Portrait, ~1200×1500px (4:5 desktop, 4:3 mobile). Center the subject with margin on all sides.'} />
             </div>
           </div>
         </div>
@@ -62,7 +62,7 @@ export default function Hero({ sec, ctx }) {
       {bleed && (
         <div style={sx(bleedWrap)}>
           <div style={{ position: 'absolute', inset: 0 }}>
-            <ImageSlot slotId={imgId} assets={assets} fit="cover" placeholder="Full-bleed hero image" preview={preview} />
+            <ImageSlot slotId={imgId} assets={assets} fit="cover" placeholder="Full-bleed hero image" preview={preview} hint={'Wide landscape, at least 1800px wide, ~' + (mob ? '460' : '580') + 'px tall. Center the subject — very wide screens crop the sides.'} />
           </div>
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(12,13,9,0.72), rgba(12,13,9,0.08) 60%)', pointerEvents: 'none' }} />
           <div style={sx(bleedText)}>

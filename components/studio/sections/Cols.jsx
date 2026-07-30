@@ -38,7 +38,11 @@ export default function Cols({ sec, ctx }) {
               onClick={preview && ctx.onLink ? (ev) => { ev.stopPropagation(); ctx.onLink({ t: 'col', ref: cid }); } : undefined}
             >
               <div style={{ position: 'absolute', inset: 0 }}>
-                <ImageSlot slotId={'st-col-' + cid} assets={assets} fit="cover" placeholder="Collection image" preview={preview} />
+                <ImageSlot
+                  slotId={'st-col-' + cid} assets={assets} fit="cover" placeholder="Collection image" preview={preview}
+                  aspect={sec.v === '2big' ? '16/10' : '4/5'}
+                  hint={(sec.v === '2big' ? 'Wide, ~1600×1000px (16:10).' : 'Portrait, ~1000×1250px (4:5).') + ' Also used as this collection’s page banner — keep the subject centered with margin.'}
+                />
               </div>
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(10,11,8,0.62), transparent 55%)', pointerEvents: 'none' }} />
               <div style={{ position: 'absolute', left: 16, bottom: 14, pointerEvents: 'none' }}>

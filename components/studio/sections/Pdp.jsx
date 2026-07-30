@@ -77,14 +77,14 @@ export default function Pdp({ sec, ctx }) {
               <div style={sx(pdpMain + (thumbsLeft ? ' flex:1; min-width:0;' : ''))}>
                 {activeThumb === null && !assets[mainSlot] && bp.img
                   ? <img src={ctx.optImg ? ctx.optImg(bp.img) : bp.img} alt={bp.n} loading={ctx.lazyImgs ? 'lazy' : undefined} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <ImageSlot slotId={shownSlot} assets={assets} placeholder={activeThumb === null ? 'Main product photo' : 'Alt view'} fit="cover" preview={preview} />}
+                  : <ImageSlot slotId={shownSlot} assets={assets} placeholder={activeThumb === null ? 'Main product photo' : 'Alt view'} fit="cover" preview={preview} aspect={activeThumb === null ? '4/5' : '1/1'} hint={activeThumb === null ? 'Portrait, ~1200×1500px (4:5). Center the product with margin on all sides.' : 'Square, ~800×800px alt view.'} />}
               </div>
             );
             const thumbs = (
               <div style={{ display: 'flex', flexDirection: thumbsLeft ? 'column' : 'row', gap: 10, ...(thumbsLeft ? { width: 76, flexShrink: 0 } : { marginTop: 10 }) }}>
                 {[0, 1, 2].map((ti) => (
                   <div key={ti} onClick={preview ? (e) => { e.stopPropagation(); setActiveThumb(ti); } : undefined} style={sx((thumbsLeft ? '' : 'flex:1; ') + pdpThumb(activeThumb === ti))}>
-                    <ImageSlot slotId={'st-pdpt-' + ti} assets={assets} placeholder="Alt view" fit="cover" preview={preview} />
+                    <ImageSlot slotId={'st-pdpt-' + ti} assets={assets} placeholder="Alt view" fit="cover" preview={preview} aspect="1/1" hint="Square, ~800×800px." />
                   </div>
                 ))}
               </div>

@@ -19,11 +19,27 @@ export function cropStyle(crop, fit) {
   };
 }
 
+// 'w/h' → numeric ratio, e.g. '4/5' → 0.8. Powers the size-guide badge and the
+// upload-mismatch nudge below — null for anything unparseable (banner/logo
+// slots pass a hint string only, no aspect, since their real box isn't a fixed ratio).
+function ratioNum(aspect) {
+  const parts = String(aspect || '').split('/');
+  if (parts.length !== 2) return null;
+  const w = parseFloat(parts[0]);
+  const h = parseFloat(parts[1]);
+  return w && h ? w / h : null;
+}
+
 // Image slot — stable slotId keyed into doc.assets (shared ids stay in sync, e.g. st-brand-logo).
 // Click opens a file picker in edit mode; the image travels to the chrome as a data URL and
 // comes back through the doc. Double-click a filled slot to set its focus & crop:
 // drag to recompose, scroll to zoom, Esc (or Done) to finish. Absolute-fills its parent.
-export default function ImageSlot({ slotId, assets, placeholder = '', fit = 'cover', preview = false }) {
+//
+// aspect ('w/h', e.g. '4/5') + hint (short recommended-shape copy) are the size-guide: shown
+// on the empty placeholder so merchants know what to shoot BEFORE they upload, and used to
+// flag a photo whose native shape doesn't match this frame so they can recenter before
+// publishing rather than discover the crop on the live site.
+export default function ImageSlot({ slotId, assets, placeholder = '', fit = 'cover', preview = false, aspect = null, hint = '' }) {
   const inputRef = useRef(null);
   const boxRef = useRef(null);
   const img = useContext(ImgCtx);
@@ -31,7 +47,14 @@ export default function ImageSlot({ slotId, assets, placeholder = '', fit = 'cov
   const crop = (img.crops || {})[slotId];
   const cropping = !preview && img.cropTarget === slotId && !!src;
   const [draft, setDraft] = useState(null);
+  const [nat, setNat] = useState(null);
   const dragRef = useRef(null);
+
+  useEffect(() => { setNat(null); }, [src]);
+
+  const targetRatio = ratioNum(aspect);
+  const mismatch = !preview && fit === 'cover' && !!targetRatio && !!nat && !crop
+    && Math.abs((nat.w / nat.h) / targetRatio - 1) > 0.15;
 
   // Enter/leave crop mode: seed the draft from the saved crop
   useEffect(() => {
@@ -132,15 +155,26 @@ export default function ImageSlot({ slotId, assets, placeholder = '', fit = 'cov
       title={preview || cropping ? undefined : 'Click to swap image · double-click to set focus & crop'}
     >
       {src ? (
-        <img src={src} alt="" draggable={false} style={cropStyle(active, fit)} />
+        <img src={src} alt="" draggable={false} onLoad={(e) => setNat({ w: e.target.naturalWidth, h: e.target.naturalHeight })} style={cropStyle(active, fit)} />
       ) : (
         <div style={{
-          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
           padding: '0 18px', textAlign: 'center', fontFamily: "'Hanken Grotesk',sans-serif",
           fontSize: 11.5, fontWeight: 600, letterSpacing: '0.2px', color: 'currentColor', opacity: 0.45,
           backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(128,128,128,0.06) 10px, rgba(128,128,128,0.06) 20px)',
         }}>
-          {placeholder}
+          {!preview && aspect && <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.5px', padding: '2px 8px', borderRadius: 99, border: '1px solid currentColor' }}>{String(aspect).replace('/', ':')}</div>}
+          <div>{(!preview && hint) || placeholder}</div>
+        </div>
+      )}
+      {!preview && !cropping && mismatch && (
+        <div
+          onClick={(e) => { e.stopPropagation(); img.setCropTarget && img.setCropTarget(slotId); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          title="This photo's shape doesn't match this frame — click to recenter"
+          style={{ position: 'absolute', bottom: 8, left: 8, zIndex: 2, padding: '5px 10px', borderRadius: 99, background: '#B07A2A', color: '#fff', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 10, fontWeight: 800, letterSpacing: '0.3px', cursor: 'pointer', boxShadow: '0 6px 16px rgba(20,22,14,0.3)' }}
+        >
+          ⚠ Recenter photo
         </div>
       )}
       {cropping && (
@@ -148,7 +182,7 @@ export default function ImageSlot({ slotId, assets, placeholder = '', fit = 'cov
           <div style={{ position: 'absolute', inset: 0, outline: '3px solid #C6F035', outlineOffset: -3, pointerEvents: 'none', zIndex: 2 }} />
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2, backgroundImage: 'linear-gradient(rgba(255,255,255,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.25) 1px, transparent 1px)', backgroundSize: '33.34% 33.34%' }} />
           <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 3, padding: '5px 11px', borderRadius: 99, background: '#1A1D12', color: '#f4f6ec', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 10.5, fontWeight: 800, letterSpacing: '0.4px', pointerEvents: 'none' }}>
-            DRAG TO REFRAME · SCROLL TO ZOOM
+            DRAG TO REFRAME · SCROLL TO ZOOM{aspect ? ' · ' + String(aspect).replace('/', ':') : ''}
           </div>
           <div
             onClick={(e) => { e.stopPropagation(); finish(); }}
