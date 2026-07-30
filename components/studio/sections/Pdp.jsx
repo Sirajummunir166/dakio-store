@@ -80,9 +80,13 @@ export default function Pdp({ sec, ctx }) {
                   : <ImageSlot slotId={shownSlot} assets={assets} placeholder={activeThumb === null ? 'Main product photo' : 'Alt view'} fit="cover" preview={preview} aspect={activeThumb === null ? '4/5' : '1/1'} hint={activeThumb === null ? 'Portrait, ~1200×1500px (4:5). Center the product with margin on all sides.' : 'Square, ~800×800px alt view.'} />}
               </div>
             );
-            const thumbs = (
+            // In preview/public, an empty alt-view slot has nothing for a customer to
+            // click "upload" on — only show tiles that actually have a photo. In the
+            // builder's edit mode, keep all 3 visible so the merchant can add one.
+            const thumbTi = [0, 1, 2].filter((ti) => !preview || !!assets['st-pdpt-' + ti]);
+            const thumbs = thumbTi.length > 0 && (
               <div style={{ display: 'flex', flexDirection: thumbsLeft ? 'column' : 'row', gap: 10, ...(thumbsLeft ? { width: 76, flexShrink: 0 } : { marginTop: 10 }) }}>
-                {[0, 1, 2].map((ti) => (
+                {thumbTi.map((ti) => (
                   <div key={ti} onClick={preview ? (e) => { e.stopPropagation(); setActiveThumb(ti); } : undefined} style={sx((thumbsLeft ? '' : 'flex:1; ') + pdpThumb(activeThumb === ti))}>
                     <ImageSlot slotId={'st-pdpt-' + ti} assets={assets} placeholder="Alt view" fit="cover" preview={preview} aspect="1/1" hint="Square, ~800×800px." />
                   </div>

@@ -359,9 +359,12 @@ export function ProductPage({ ctx, sys, product, edit }) {
 
   const thumbsLeft = pd.thumbPos === 'left' && !mob;
 
-  const thumbsEl = pd.thumbs !== false && (
+  // Preview/public: only show alt-view tiles that actually have a photo — an
+  // empty "upload here" placeholder isn't something a customer can act on.
+  const thumbIs = [0, 1, 2].filter((i) => !ctx.preview || !!(ctx.assets || {})['st-pdpt-' + i]);
+  const thumbsEl = pd.thumbs !== false && thumbIs.length > 0 && (
     <div style={{ display: 'flex', flexDirection: thumbsLeft ? 'column' : 'row', gap: 8, ...(thumbsLeft ? { width: 76, flexShrink: 0 } : { marginTop: 10 }) }}>
-      {[0, 1, 2].map((i) => (
+      {thumbIs.map((i) => (
         <div
           key={i}
           onClick={ctx.preview ? (e) => { e.stopPropagation(); setActiveThumb(i); } : undefined}
