@@ -28,7 +28,7 @@ export default async function DomainCheckoutPage({ params }) {
     const [products, categories] = await Promise.all([getProducts(slug), getCategories(slug)])
     const catalog = toStudioCatalog(products, categories)
     return (
-      <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} system={{ kind: 'checkout' }} />
+      <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} system={{ kind: 'checkout' }} store={data.store} />
     )
   }
 

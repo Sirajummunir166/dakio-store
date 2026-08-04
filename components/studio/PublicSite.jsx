@@ -5,6 +5,7 @@ import { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
 import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
 import { CartPage, CheckoutPage, AccountPage } from './system/CommercePages';
+import CartPanel from './CartPanel';
 import { cartCount, onCartChange, addToCart } from './cartStore';
 import { optImg } from './publicCatalog';
 import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
@@ -30,7 +31,7 @@ const FONT_HREF = {
 
 // `system` (Phase 8): render a store system page instead of a doc page —
 // { kind: 'shop'|'col'|'prod', col?, product?, q? } with nav + footer intact.
-export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], system = null, storeSlug = null }) {
+export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], system = null, storeSlug = null, store = null }) {
   const [mob, setMob] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_QUERY);
@@ -124,6 +125,10 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     }
   }, []);
 
+  // Cart preview panel — one instance shared by the header cart icon and
+  // every add-to-cart action across system pages (Phase 8/10 follow-up).
+  const [cartOpen, setCartOpen] = useState(false);
+
   const seoF = doc.seo || {};
   const ctx = {
     P, F, C, tsM, denM, shCard, mob, padX,
@@ -140,27 +145,55 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     onCollection: (c2) => { if (c2 && c2.slug) window.location.href = `${basePath}/shop/${c2.slug}`; },
     onProduct: (pr) => { if (pr && pr.slug) window.location.href = `${basePath}/p/${pr.slug}`; },
     onClearQ: () => { window.location.href = (basePath || '') + '/shop'; },
-    // Phase 10 — the buying path
+    // Phase 10 — the buying path. Adding to the bag or opening the cart from
+    // the header/product page shows the preview panel in place rather than
+    // navigating away; /cart stays a real page (direct links, no-JS).
     storeSlug,
-    onCart: () => { window.location.href = (basePath || '') + '/cart'; },
+    store,
+    onCart: () => setCartOpen(true),
     onCheckout: () => { window.location.href = (basePath || '') + '/checkout'; },
     onAccount: () => { window.location.href = (basePath || '') + '/account'; },
-    addToBag: storeSlug ? (pr, qty = 1, size = null) => { addToCart(storeSlug, pr.id, qty, size); window.location.href = (basePath || '') + '/cart'; } : undefined,
-    placeCartOrder: storeSlug ? async ({ bag, name, phone, address, pay }) => {
+    addToBag: storeSlug ? (pr, qty = 1, size = null) => { addToCart(storeSlug, pr.id, qty, size); setCartOpen(true); } : undefined,
+    // Checkout (Phase 10 \u2192 Fashion-checkout parity follow-up). A 202 means the
+    // tenant's fake-order protection wants SMS verification first \u2014 the caller
+    // (CheckoutPage) switches to its OTP step; this never throws for that case,
+    // only for genuine request failures.
+    placeCartOrder: storeSlug ? async ({ bag, name, phone, email, address, note, district, city, pay, couponCode, shippingCharge }) => {
       const payLbl = pay === 'bkash' ? 'bKash' : pay === 'nagad' ? 'Nagad' : 'COD';
+      const sizeNote = bag.filter((l) => l.size).map((l) => l.p.n + ': ' + l.size).join(' \u00b7 ');
+      const fullNote = [note && note.trim(), sizeNote].filter(Boolean).join(' \u00b7 ') || undefined;
       const res = await fetch(API + '/store/' + storeSlug + '/orders', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: name.trim(), phone: phone.trim(),
-          address: (address || '').trim() || '\u2014', city: '\u2014', district: '\u2014',
+          name: name.trim(), phone: phone.trim(), email: (email || '').trim() || undefined,
+          address: (address || '').trim() || '\u2014', city, district,
           items: bag.map((l) => ({ productId: l.pid, qty: l.qty, name: l.p.n })),
-          paymentMethod: payLbl,
-          note: 'Store Studio checkout' + bag.filter((l) => l.size).map((l) => ' \u00b7 ' + l.p.n + ': ' + l.size).join(''),
+          paymentMethod: payLbl, note: fullNote, shippingCharge,
+          couponCode: couponCode || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 202 && data.status === 'OTP_REQUIRED') {
+        return { otpRequired: true, sessionToken: data.sessionToken, maskedPhone: data.maskedPhone, expiresAt: data.expiresAt };
+      }
       if (!res.ok) throw new Error(data.error || 'Couldn\u2019t place the order \u2014 try again.');
       return { num: data.orderNumber, msg: 'We call ' + phone.trim() + ' to confirm before shipping. Track it anytime in your account.' };
+    } : undefined,
+    verifyCheckoutOtp: storeSlug ? async (sessionToken, otp) => {
+      const res = await fetch(API + '/store/' + storeSlug + '/orders/verify-otp', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionToken, otp }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, status: res.status, error: data.error, attemptsLeft: data.attemptsLeft };
+      return { ok: true, num: data.orderNumber, msg: 'We call the number on file to confirm before shipping. Track it anytime in your account.' };
+    } : undefined,
+    validateCoupon: storeSlug ? async (code, subtotal) => {
+      const res = await fetch(API + '/coupons/validate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, slug: storeSlug, subtotal }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.valid) throw new Error(data.error || 'Invalid coupon');
+      return data;
     } : undefined,
     accountOtp: storeSlug ? async (phone) => {
       const res = await fetch(API + '/store/' + storeSlug + '/account/otp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone }) });
@@ -242,6 +275,8 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         @keyframes rvzoom { 0% { opacity:0; transform:scale(0.94); } 100% { opacity:1; transform:scale(1); } }
         @keyframes checkPop { 0% { transform:scale(0.4); opacity:0; } 60% { transform:scale(1.12); } 100% { transform:scale(1); opacity:1; } }
         @keyframes spin { to { transform:rotate(360deg); } }
+        @keyframes cpFade { 0% { opacity:0; } 100% { opacity:1; } }
+        @keyframes cpSlide { 0% { transform:translateX(100%); } 100% { transform:translateX(0); } }
         input::placeholder { color: currentColor; opacity: .38; }
         .studio-nav-link { color: inherit; text-decoration: none; }
       `}</style>
@@ -294,7 +329,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
             />
           )}
           <svg onClick={() => setSearchOpen((v) => !v)} width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{ cursor: 'pointer' }}><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          <a href={(basePath || '') + '/cart'} className="studio-nav-link" style={{ position: 'relative', display: 'flex' }} title="Cart">
+          <a href={(basePath || '') + '/cart'} className="studio-nav-link" style={{ position: 'relative', display: 'flex' }} title="Cart" onClick={(e) => { e.preventDefault(); setCartOpen(true); }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 7h12l1 14H5L6 7zM9 10V6a3 3 0 016 0v4" /></svg>
             {bagN > 0 && (
               <div style={{
@@ -322,6 +357,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         (page.sections || []).map(renderSection)
       )}
       {doc.footer && renderSection(doc.footer)}
+      <CartPanel ctx={ctx} open={cartOpen} onClose={() => setCartOpen(false)} />
     </div>
     </ImgCtx.Provider>
   );

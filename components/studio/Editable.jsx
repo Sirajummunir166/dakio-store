@@ -2,10 +2,15 @@
 import { useRef, useEffect } from 'react';
 import { send } from './bridge';
 import { sx } from './theme';
+import { sanitizeHtml } from '../../lib/theme/sanitizeHtml';
 
 // Inline contenteditable text — one undo step per focus session (editStart on focus,
 // prop commit on blur). Enter blurs unless multiline. In preview mode renders plain.
-export default function Editable({ secId, k, value, style, multiline = false, preview = false, tag = 'div', onClick }) {
+// `html`: for fields that may hold legacy rich-text markup (e.g. an imported
+// catalog description) — preview renders it as sanitized HTML instead of
+// literal text; edit mode is unaffected (still plain contentEditable, so a
+// merchant can see and fix the raw markup).
+export default function Editable({ secId, k, value, style, multiline = false, preview = false, tag = 'div', onClick, html = false }) {
   const ref = useRef(null);
   const focused = useRef(false);
 
@@ -18,6 +23,9 @@ export default function Editable({ secId, k, value, style, multiline = false, pr
 
   const Tag = tag;
   if (preview) {
+    if (html) {
+      return <Tag style={sx(style)} onClick={onClick} dangerouslySetInnerHTML={{ __html: sanitizeHtml(value) }} />;
+    }
     return <Tag style={sx(style)} onClick={onClick}>{value}</Tag>;
   }
 

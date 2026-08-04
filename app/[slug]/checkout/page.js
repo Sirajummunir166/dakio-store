@@ -23,10 +23,10 @@ export default async function CheckoutPage({ params }) {
   // theme's checkout stays the fallback.
   const siteData = await getPublishedSite(slug)
   if (siteData?.site) {
-    const [products, categories] = await Promise.all([getProducts(slug), getCategories(slug)])
+    const [products, categories, storeData] = await Promise.all([getProducts(slug), getCategories(slug), getStoreBySlug(slug)])
     const catalog = toStudioCatalog(products, categories)
     return (
-      <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath={'/' + slug} products={catalog.products} collections={catalog.collections} system={{ kind: 'checkout' }} />
+      <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath={'/' + slug} products={catalog.products} collections={catalog.collections} system={{ kind: 'checkout' }} store={storeData?.store || null} />
     )
   }
 

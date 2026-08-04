@@ -35,6 +35,23 @@ export function setQty(slug, pid, size, qty) {
   save(slug, items);
 }
 
+// Changing a line's size at checkout — moves qty from (pid, oldSize) onto
+// (pid, newSize), merging into an existing line for that size if one exists.
+export function updateSize(slug, pid, oldSize, newSize) {
+  if ((oldSize || null) === (newSize || null)) return;
+  const items = getCart(slug);
+  const hit = items.find((x) => x.pid === pid && (x.size || null) === (oldSize || null));
+  if (!hit) return;
+  const existing = items.find((x) => x.pid === pid && (x.size || null) === (newSize || null));
+  if (existing) {
+    existing.qty += hit.qty;
+    items.splice(items.indexOf(hit), 1);
+  } else {
+    hit.size = newSize || null;
+  }
+  save(slug, items);
+}
+
 export function clearCart(slug) { save(slug, []); }
 
 export function cartCount(slug) { return getCart(slug).reduce((n, x) => n + x.qty, 0); }

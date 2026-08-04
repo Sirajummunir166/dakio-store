@@ -3,18 +3,25 @@
 // template. Data-bound to the live catalog and template-driven: the merchant
 // edits the template once (doc.sys), every collection & product follows.
 // Rendered by the studio canvas (edit + preview) and the public storefront.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Editable from '../Editable';
 import ImageSlot from '../ImageSlot';
+import ProductCard from '../ProductCard';
 import { co, btnColors, sx, SPM } from '../theme';
-import { fmtPr, prodTag, colCount, liveProds } from '../catalog';
+import { fmtPr, colCount, liveProds } from '../catalog';
+import { getCart, onCartChange } from '../cartStore';
+import { FREE_DLV_OVER } from './CommercePages';
+import { sanitizeHtml } from '../../../lib/theme/sanitizeHtml';
 
 export const SYS_DEFAULTS = {
   shop: { head: 'Shop all', cols: 4, hd: { v: 'left', bg: 'base', count: true }, gr: { bg: 'base', sp: 'normal', fCol: true, fPr: true, fSz: true, fStock: true, sort: true } },
   col: { v: 'left', sub: 'Woven slow, delivered fast — every piece from the live catalog.', bg: 'base', sp: 'normal', cols: 3, gr: { bg: 'base', sp: 'normal', filters: false } },
   prod: {
-    btn: 'Add to bag', note: 'Free delivery in Dhaka · Cash on delivery', alsoOn: true, alsoHead: 'You may also like',
+    btn: 'Add to bag', note: 'Free delivery over ' + fmtPr(FREE_DLV_OVER) + ' · Cash on delivery', alsoOn: true, alsoHead: 'You may also like',
     pd: { v: 'left', bg: 'base', stock: true, sizes: true, note: true },
+    tabSpecs: 'Add specifications in the Catalog tab — material, origin, weight, or anything else worth listing.',
+    tabGuide: 'Add sizing notes here — how this fits, and tips for choosing between sizes.',
+    tabShip: '2–4 days inside Dhaka, 4–7 days nationwide. Cash on delivery everywhere. Easy 7-day exchange if it doesn’t fit — just reach out.',
     also: { src: 'rule', rule: 'best', count: 4, picks: [], prices: true, bg: 'base' },
   },
 };
@@ -27,6 +34,13 @@ function spY(spKey, ctx) {
 }
 
 export const sysProps = (sys, k) => ({ ...SYS_DEFAULTS[k], ...((sys || {})[k] || {}) });
+
+const PROD_TABS = [
+  { k: 'desc', n: 'Description' },
+  { k: 'specs', n: 'Specifications' },
+  { k: 'guide', n: 'Size Guide' },
+  { k: 'ship', n: 'Shipping & Returns' },
+];
 
 export const sizeList = (p) => String(p?.sizes || '').split(',').map((x) => x.trim()).filter(Boolean);
 
@@ -63,28 +77,6 @@ function Part({ id, label, edit, children, style }) {
         </div>
       )}
       {children}
-    </div>
-  );
-}
-
-function ProductCard({ pr, ctx, c, showPrice = true }) {
-  const { P, F, C, mob } = ctx;
-  const t = prodTag(pr);
-  const go = ctx.preview && ctx.onProduct ? (e) => { e.stopPropagation(); ctx.onProduct(pr); } : undefined;
-  return (
-    <div onClick={go} style={{ minWidth: 0, cursor: 'pointer' }}>
-      <div style={sx('aspect-ratio:3/4; border-radius:' + C.rs + 'px; overflow:hidden; position:relative; background:' + c.card + ';' + (ctx.shCard || '') + (pr.stock === 0 ? ' opacity:0.75;' : ''))}>
-        <ImageSlot slotId={'st-prod-' + pr.id} assets={{ ...(ctx.assets || {}), ['st-prod-' + pr.id]: (ctx.assets || {})['st-prod-' + pr.id] || pr.img }} fit="cover" placeholder="Product photo" preview={ctx.preview} aspect="3/4" hint="Portrait, ~900×1200px (3:4). Also shown at 4:5 on the product page — keep the product centered with margin." />
-        {t && (
-          <div style={sx('position:absolute; top:10px; left:10px; z-index:2; padding:4px 9px; border-radius:' + Math.min(C.rs, 8) + 'px; background:' + (pr.stock === 0 ? '#4a4a44' : P.accent) + '; color:' + (pr.stock === 0 ? '#f4f4ef' : P.accentInk) + '; font-family:' + F.b + '; font-size:9.5px; font-weight:800; letter-spacing:0.6px; text-transform:uppercase; pointer-events:none;')}>{t}</div>
-        )}
-      </div>
-      <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 13 : 14) + 'px; font-weight:600; margin-top:11px;')}>{pr.n}</div>
-      {showPrice && (
-        <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 12.5 : 13) + 'px; color:' + c.sub + '; margin-top:3px; font-variant-numeric:tabular-nums;')}>
-          {fmtPr(pr.pr)}{pr.was ? <span style={{ textDecoration: 'line-through', opacity: 0.6, marginLeft: 8 }}>{fmtPr(pr.was)}</span> : null}
-        </div>
-      )}
     </div>
   );
 }
@@ -226,7 +218,7 @@ function FilterGrid({ ctx, sys, products, lockedCol, q, edit, partPrefix, label 
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(' + gridCols + ',1fr)', gap: mob ? '18px 14px' : '30px 20px' }}>
-              {list.map((pr) => <ProductCard key={pr.id} pr={pr} ctx={ctx} c={c} />)}
+              {list.map((pr) => <ProductCard key={pr.id} pr={pr} ctx={ctx} c={c} onClick={ctx.onProduct} />)}
             </div>
           </div>
         </div>
@@ -337,18 +329,46 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const pp = sysProps(sys, 'prod');
   const bp = product || liveProds(cat)[0] || cat.products[0];
   const [activeThumb, setActiveThumb] = useState(null);
-  useEffect(() => { setActiveThumb(null); }, [bp && bp.id]);
+  const [qty, setQtyN] = useState(1);
+  const [selSize, setSelSize] = useState(null);
+  const [stickyOn, setStickyOn] = useState(false);
+  const [activeTab, setActiveTab] = useState('desc');
+  const [, setBagTick] = useState(0);
+  const purchaseRef = useRef(null);
+  const sizes = sizeList(bp);
+  useEffect(() => { setActiveThumb(null); setQtyN(1); setSelSize(sizeList(bp)[0] || null); setStickyOn(false); }, [bp && bp.id]);
+  // Sticky add-to-cart bar: shows once the size/qty/buy controls scroll out of view.
+  useEffect(() => {
+    const node = purchaseRef.current;
+    if (!node || typeof IntersectionObserver === 'undefined') return undefined;
+    const io = new IntersectionObserver(([entry]) => setStickyOn(!entry.isIntersecting), { threshold: 0, rootMargin: '0px 0px -8px 0px' });
+    io.observe(node);
+    return () => io.disconnect();
+  }, [bp && bp.id]);
+  // Re-render when the bag changes (e.g. this item added elsewhere) so the
+  // buy button / sticky bar can reflect "already in cart".
+  useEffect(() => {
+    if (!ctx.storeSlug) return undefined;
+    return onCartChange(() => setBagTick((t) => t + 1));
+  }, [ctx.storeSlug]);
   if (!bp) return null;
   const pd = { v: 'left', bg: 'base', stock: true, sizes: true, note: true, thumbs: true, thumbPos: 'bottom', ...(pp.pd || {}) };
   const cPd = co(pd.bg || 'base', P);
   const rightGallery = pd.v === 'right';
   const also = { src: 'rule', rule: 'best', count: 4, picks: [], prices: true, bg: 'base', ...(pp.also || {}) };
   const cAlso = co(also.bg || 'base', P);
-  const sizes = sizeList(bp);
+  const curSize = selSize || sizes[0] || null;
+  const cartLine = ctx.storeSlug ? getCart(ctx.storeSlug).find((x) => x.pid === bp.id && (x.size || null) === (curSize || null)) : null;
   const col2 = cat.collections.find((x) => x.id === bp.col);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
   const alsoList = pickAlso(also, bp, cat);
   const lbl = 'font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + cPd.sub + '; margin-top:24px;';
+  const buyable = bp.stock > 0 && !bp.arch;
+  const doBuy = () => {
+    if (cartLine) { ctx.onCart ? ctx.onCart() : null; return; }
+    if (ctx.addToBag) ctx.addToBag(bp, qty, curSize);
+    else if (ctx.onCart) ctx.onCart();
+  };
 
   const mainSlotId = 'st-prod-' + bp.id;
   const thumbSlotIds = [0, 1, 2].map((i) => 'st-pdpt-' + i);
@@ -401,6 +421,9 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const detailsBlock = (
     <div key="details" style={{ minWidth: 0 }}>
       <Editable secId={'__cat:' + bp.id} k="n" value={bp.n} style={headFont + 'font-size:' + (mob ? 30 : 40) + 'px; line-height:1.08; min-width:0; overflow-wrap:break-word;'} preview={ctx.preview} />
+      {bp.sku && (
+        <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + cPd.sub + '; margin-top:6px;')}>SKU {bp.sku}</div>
+      )}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginTop: 12 }}>
         <Editable secId={'__cat:' + bp.id} k="pr" value={fmtPr(bp.pr)} style={'font-family:' + F.b + '; font-size:' + (mob ? 20 : 23) + 'px; font-weight:800; font-variant-numeric:tabular-nums;'} preview={ctx.preview} tag="span" />
         {bp.was ? <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 14 : 15) + 'px; color:' + cPd.sub + '; text-decoration:line-through; font-variant-numeric:tabular-nums;')}>{fmtPr(bp.was)}</div> : null}
@@ -410,32 +433,46 @@ export function ProductPage({ ctx, sys, product, edit }) {
           {bp.arch ? 'Hidden from your store — unhide it in Catalog' : bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : 'Only ' + bp.stock + ' left in stock'}
         </div>
       )}
-      <Editable secId={'__cat:' + bp.id} k="desc" value={bp.desc || 'Add a description in the Catalog tab — fabric, fit, care.'} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 14.5) + 'px; line-height:1.7; color:' + cPd.sub + '; margin-top:16px; white-space:pre-wrap;'} multiline preview={ctx.preview} />
+      <Editable secId={'__cat:' + bp.id} k="desc" value={bp.desc || 'Add a description in the Catalog tab — fabric, fit, care.'} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 14.5) + 'px; line-height:1.7; color:' + cPd.sub + '; margin-top:16px; white-space:pre-wrap;'} multiline html preview={ctx.preview} />
       {pd.sizes !== false && sizes.length > 0 && (
         <>
           <div style={sx(lbl)}>SIZE</div>
           <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-            {sizes.map((z, zi) => (
-              <div key={z} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (zi === 0 ? cPd.fg : cPd.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (zi === 0 ? ' background:' + cPd.fg + '; color:' + cPd.bg + ';' : ''))}>{z}</div>
+            {sizes.map((z) => (
+              <div key={z} onClick={ctx.preview ? (e) => { e.stopPropagation(); setSelSize(z); } : undefined} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (z === curSize ? cPd.fg : cPd.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (z === curSize ? ' background:' + cPd.fg + '; color:' + cPd.bg + ';' : ''))}>{z}</div>
             ))}
           </div>
         </>
       )}
-      <div style={{ display: 'flex', gap: 10, marginTop: 24, alignItems: 'stretch' }}>
-        <div style={sx('display:flex; align-items:center; gap:14px; padding:0 16px; border-radius:' + C.btn + '; border:1.5px solid ' + cPd.line + '; font-family:' + F.b + '; font-size:14px; user-select:none; cursor:pointer;')}>
-          <span>−</span><span style={{ fontWeight: 800 }}>1</span><span>+</span>
+      <div ref={purchaseRef} style={{ display: 'flex', gap: 10, marginTop: 24, alignItems: 'stretch' }}>
+        <div style={sx('display:flex; align-items:center; gap:14px; padding:0 16px; border-radius:' + C.btn + '; border:1.5px solid ' + cPd.line + '; font-family:' + F.b + '; font-size:14px; user-select:none;')}>
+          <span onClick={ctx.preview ? (e) => { e.stopPropagation(); setQtyN((n) => Math.max(1, n - 1)); } : undefined} style={{ cursor: 'pointer' }}>−</span>
+          <span style={{ fontWeight: 800 }}>{qty}</span>
+          <span onClick={ctx.preview ? (e) => { e.stopPropagation(); setQtyN((n) => n + 1); } : undefined} style={{ cursor: 'pointer' }}>+</span>
         </div>
         <div
-          onClick={ctx.preview && ctx.addToBag && bp.stock > 0 && !bp.arch ? (ev) => { ev.stopPropagation(); ctx.addToBag(bp, 1, sizes[0] || null); } : ctx.preview && ctx.onCart && bp.stock > 0 ? (ev) => { ev.stopPropagation(); ctx.onCart(); } : undefined}
+          onClick={ctx.preview && buyable ? (ev) => { ev.stopPropagation(); doBuy(); } : ctx.preview && ctx.onCart && bp.stock > 0 ? (ev) => { ev.stopPropagation(); ctx.onCart(); } : undefined}
           style={sx('flex:1; display:flex; align-items:center; justify-content:center; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:14.5px; cursor:pointer; white-space:nowrap;' + ((bp.stock === 0 || bp.arch) ? ' opacity:0.45;' : ''))}
         >
-          <Editable secId="__sys:prod" k="btn" value={pp.btn} style={''} preview={ctx.preview} tag="span" />
+          {cartLine
+            ? <span>View cart{cartLine.qty > 1 ? ' (' + cartLine.qty + ')' : ''}</span>
+            : <Editable secId="__sys:prod" k="btn" value={pp.btn} style={''} preview={ctx.preview} tag="span" />}
         </div>
       </div>
       {pd.note !== false && (
-        <div style={sx('margin-top:14px; display:flex; align-items:center; gap:8px; font-family:' + F.b + '; font-size:12.5px; color:' + cPd.sub + ';')}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M1 5h13v11H1zM14 9h4l3 3v4h-7zM6 19a2 2 0 100-4 2 2 0 000 4zM17 19a2 2 0 100-4 2 2 0 000 4z" /></svg>
-          <Editable secId="__sys:prod" k="note" value={pp.note} style={''} preview={ctx.preview} tag="span" />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', marginTop: 14 }}>
+          <div style={sx('display:flex; align-items:center; gap:8px; font-family:' + F.b + '; font-size:12.5px; color:' + cPd.sub + ';')}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5" /></svg>
+            <Editable secId="__sys:prod" k="note" value={pp.note} style={''} preview={ctx.preview} tag="span" />
+          </div>
+          <div style={sx('display:flex; align-items:center; gap:8px; font-family:' + F.b + '; font-size:12.5px; color:' + cPd.sub + ';')}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5" /></svg>
+            7-day easy returns
+          </div>
+          <div style={sx('display:flex; align-items:center; gap:8px; font-family:' + F.b + '; font-size:12.5px; color:' + cPd.sub + ';')}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5" /></svg>
+            bKash · Nagad · COD
+          </div>
         </div>
       )}
     </div>
@@ -459,6 +496,27 @@ export function ProductPage({ ctx, sys, product, edit }) {
           <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr' : (rightGallery ? '0.98fr 1.02fr' : '1.02fr 0.98fr'), gap: mob ? 26 : 64, alignItems: 'start' }}>
             {!mob && rightGallery ? [detailsBlock, galleryBlock] : [galleryBlock, detailsBlock]}
           </div>
+          <div style={sx('margin-top:' + (mob ? 34 : 50) + 'px; border-top:1px solid ' + cPd.line + ';')}>
+            <div style={{ display: 'flex', gap: mob ? 14 : 28, flexWrap: 'wrap', marginTop: mob ? 18 : 24 }}>
+              {PROD_TABS.map((t) => (
+                <div
+                  key={t.k}
+                  onClick={(e) => { e.stopPropagation(); setActiveTab(t.k); }}
+                  style={sx('padding-bottom:10px; font-family:' + F.b + '; font-size:' + (mob ? 12.5 : 13.5) + 'px; font-weight:700; cursor:pointer; white-space:nowrap;' + (activeTab === t.k ? ' color:' + cPd.fg + '; border-bottom:2px solid ' + cPd.fg + ';' : ' color:' + cPd.sub + '; border-bottom:2px solid transparent;'))}
+                >
+                  {t.n}
+                </div>
+              ))}
+            </div>
+            <div style={sx('max-width:760px; margin-top:' + (mob ? 18 : 24) + 'px; padding-bottom:' + (mob ? 30 : 44) + 'px; font-family:' + F.b + '; font-size:' + (mob ? 13 : 13.5) + 'px; line-height:1.75; color:' + cPd.sub + '; white-space:pre-wrap;')}>
+              {activeTab === 'desc' && (
+                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(bp.desc || 'Add a description in the Catalog tab — fabric, fit, care.') }} />
+              )}
+              {activeTab === 'specs' && <Editable secId="__sys:prod" k="tabSpecs" value={pp.tabSpecs} style={''} multiline preview={ctx.preview} />}
+              {activeTab === 'guide' && <Editable secId="__sys:prod" k="tabGuide" value={pp.tabGuide} style={''} multiline preview={ctx.preview} />}
+              {activeTab === 'ship' && <Editable secId="__sys:prod" k="tabShip" value={pp.tabShip} style={''} multiline preview={ctx.preview} />}
+            </div>
+          </div>
         </div>
       </Part>
       {!pp.alsoOn && edit && (
@@ -474,10 +532,36 @@ export function ProductPage({ ctx, sys, product, edit }) {
           <div style={sx('padding:' + (mob ? 36 : 56) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)); background:' + cAlso.bg + '; color:' + cAlso.fg + '; border-top:1px solid ' + cAlso.line + ';')}>
             <Editable secId="__sys:prod" k="alsoHead" value={pp.alsoHead} style={headFont + 'font-size:' + (mob ? 22 : 28) + 'px; line-height:1.12;'} preview={ctx.preview} />
             <div style={{ marginTop: 26, display: 'grid', gridTemplateColumns: 'repeat(' + (mob ? 2 : 4) + ',1fr)', gap: mob ? '18px 14px' : '30px 20px' }}>
-              {alsoList.map((pr) => <ProductCard key={pr.id} pr={pr} ctx={ctx} c={cAlso} showPrice={also.prices !== false} />)}
+              {alsoList.map((pr) => <ProductCard key={pr.id} pr={pr} ctx={ctx} c={cAlso} showPrice={also.prices !== false} onClick={ctx.onProduct} />)}
             </div>
           </div>
         </Part>
+      )}
+      {ctx.preview && (
+        <div
+          style={sx('position:fixed; left:0; right:0; bottom:0; z-index:60; transform:translateY(' + (stickyOn ? '0' : '110%') + '); transition:transform .28s cubic-bezier(.16,1,.3,1); background:' + cPd.card + '; border-top:1px solid ' + cPd.line + '; box-shadow:0 -12px 30px rgba(15,16,10,0.14);')}
+          aria-hidden={!stickyOn}
+        >
+          <div style={sx('display:flex; align-items:center; gap:14px; padding:' + (mob ? '10px 16px' : '12px max(' + padX + 'px, calc((100% - 1120px)/2))') + ';')}>
+            {!mob && (
+              <div style={sx('width:44px; height:54px; flex-shrink:0; border-radius:' + Math.min(C.rs, 10) + 'px; overflow:hidden; position:relative; background:' + cPd.bg + ';')}>
+                <ImageSlot slotId={mainSlotId} assets={{ ...(ctx.assets || {}), [mainSlotId]: (ctx.assets || {})[mainSlotId] || bp.img }} fit="cover" placeholder="" preview />
+              </div>
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={sx('font-family:' + F.b + '; font-size:13.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;')}>{bp.n}</div>
+              <div style={sx('font-family:' + F.b + '; font-size:12px; color:' + cPd.sub + '; margin-top:2px;')}>
+                {fmtPr(bp.pr)}{curSize ? ' · ' + curSize : ''}{cartLine ? ' · In cart' : ''}
+              </div>
+            </div>
+            <div
+              onClick={buyable ? (ev) => { ev.stopPropagation(); doBuy(); } : undefined}
+              style={sx('flex-shrink:0; display:flex; align-items:center; gap:8px; padding:' + (mob ? '11px 18px' : '13px 24px') + '; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap;' + (!buyable ? ' opacity:0.45;' : ''))}
+            >
+              {cartLine ? 'View cart' + (cartLine.qty > 1 ? ' (' + cartLine.qty + ')' : '') : pp.btn}
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

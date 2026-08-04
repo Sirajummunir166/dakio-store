@@ -55,6 +55,7 @@ export function toStudioCatalog(products = [], categories = []) {
     products: products.map((p) => ({
       id: p.id,
       n: p.name,
+      sku: p.sku || '',
       pr: Number(p.sellingPrice),
       was: p.compareAtPrice != null ? Number(p.compareAtPrice) : null,
       col: p.category?.id || null,
@@ -65,9 +66,14 @@ export function toStudioCatalog(products = [], categories = []) {
       img: (Array.isArray(p.images) && p.images[0]) || p.imageUrl || null,
       slug: p.slug,
       desc: p.description || '',
-      // Variants-lite: size list from attributes [{k:'sizes', v:'S, M, L'}]
+      // Variants-lite: size list from attributes [{k:'sizes', v:'S, M, L'}].
+      // The API passes Product.attributes through as its raw DB value — a
+      // JSON *string*, not a parsed array — so it must be parsed here too
+      // (mirrors dakio-api/src/lib/studioCatalog.js's productSizes()).
       sizes: (() => {
-        const attrs = Array.isArray(p.attributes) ? p.attributes : [];
+        let attrs = p.attributes;
+        if (typeof attrs === 'string') { try { attrs = JSON.parse(attrs); } catch { attrs = []; } }
+        if (!Array.isArray(attrs)) attrs = [];
         const a = attrs.find((x) => x && x.k === 'sizes');
         return a && typeof a.v === 'string' ? a.v : '';
       })(),
