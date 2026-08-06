@@ -8,10 +8,9 @@ import Editable from '../Editable';
 import ImageSlot from '../ImageSlot';
 import ProductCard from '../ProductCard';
 import { co, btnColors, sx, SPM } from '../theme';
-import { fmtPr, colCount, liveProds } from '../catalog';
+import { fmtPr, colCount, liveProds, shortDesc } from '../catalog';
 import { getCart, onCartChange } from '../cartStore';
 import { FREE_DLV_OVER } from './CommercePages';
-import { sanitizeHtml } from '../../../lib/theme/sanitizeHtml';
 
 export const SYS_DEFAULTS = {
   shop: { head: 'Shop all', cols: 4, hd: { v: 'left', bg: 'base', count: true }, gr: { bg: 'base', sp: 'normal', fCol: true, fPr: true, fSz: true, fStock: true, sort: true } },
@@ -433,7 +432,9 @@ export function ProductPage({ ctx, sys, product, edit }) {
           {bp.arch ? 'Hidden from your store — unhide it in Catalog' : bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : 'Only ' + bp.stock + ' left in stock'}
         </div>
       )}
-      <Editable secId={'__cat:' + bp.id} k="desc" value={bp.desc || 'Add a description in the Catalog tab — fabric, fit, care.'} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 14.5) + 'px; line-height:1.7; color:' + cPd.sub + '; margin-top:16px; white-space:pre-wrap;'} multiline html preview={ctx.preview} />
+      <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 14.5) + 'px; line-height:1.7; color:' + cPd.sub + '; margin-top:16px;')}>
+        {shortDesc(bp.desc) || 'Add a description in the Catalog tab — fabric, fit, care.'}
+      </div>
       {pd.sizes !== false && sizes.length > 0 && (
         <>
           <div style={sx(lbl)}>SIZE</div>
@@ -510,7 +511,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
             </div>
             <div style={sx('max-width:760px; margin-top:' + (mob ? 18 : 24) + 'px; padding-bottom:' + (mob ? 30 : 44) + 'px; font-family:' + F.b + '; font-size:' + (mob ? 13 : 13.5) + 'px; line-height:1.75; color:' + cPd.sub + '; white-space:pre-wrap;')}>
               {activeTab === 'desc' && (
-                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(bp.desc || 'Add a description in the Catalog tab — fabric, fit, care.') }} />
+                <Editable secId={'__cat:' + bp.id} k="desc" value={bp.desc || 'Add a description in the Catalog tab — fabric, fit, care.'} style={''} multiline html preview={ctx.preview} />
               )}
               {activeTab === 'specs' && <Editable secId="__sys:prod" k="tabSpecs" value={pp.tabSpecs} style={''} multiline preview={ctx.preview} />}
               {activeTab === 'guide' && <Editable secId="__sys:prod" k="tabGuide" value={pp.tabGuide} style={''} multiline preview={ctx.preview} />}

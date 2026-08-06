@@ -30,6 +30,17 @@ export const DEMO_CATALOG = {
 
 export const fmtPr = (n) => '৳' + Number(n || 0).toLocaleString('en-IN');
 
+// Short teaser for the product page's details column — the Description tab
+// below carries the full (possibly HTML) text; this is always plain, tag-
+// stripped, word-boundary-truncated text, never a separate stored field.
+export function shortDesc(desc, maxLen = 150) {
+  const plain = String(desc || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+  if (plain.length <= maxLen) return plain;
+  const cut = plain.slice(0, maxLen);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > 40 ? cut.slice(0, lastSpace) : cut).trim() + '…';
+}
+
 // Honest badge for a product card, in priority order (design contract)
 export function prodTag(p) {
   if (p.stock === 0) return 'Sold out';
