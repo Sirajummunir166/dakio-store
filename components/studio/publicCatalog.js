@@ -66,6 +66,7 @@ export function toStudioCatalog(products = [], categories = []) {
       img: (Array.isArray(p.images) && p.images[0]) || p.imageUrl || null,
       slug: p.slug,
       desc: p.description || '',
+      shortDesc: p.shortDescription || '',
       // Size list — prefer real ProductVariant rows (bulk/dropship-imported
       // products: each variant's name IS the size, e.g. "L"/"M"/"S") over the
       // manual variants-lite attributes hack, since real merchant catalogs

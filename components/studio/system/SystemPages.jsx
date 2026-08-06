@@ -433,7 +433,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
         </div>
       )}
       <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 14.5) + 'px; line-height:1.7; color:' + cPd.sub + '; margin-top:16px;')}>
-        {shortDesc(bp.desc) || 'Add a description in the Catalog tab — fabric, fit, care.'}
+        {bp.shortDesc || shortDesc(bp.desc) || 'Add a description in the Catalog tab — fabric, fit, care.'}
       </div>
       {pd.sizes !== false && sizes.length > 0 && (
         <>
