@@ -66,16 +66,29 @@ export function toStudioCatalog(products = [], categories = []) {
       img: (Array.isArray(p.images) && p.images[0]) || p.imageUrl || null,
       slug: p.slug,
       desc: p.description || '',
-      // Variants-lite: size list from attributes [{k:'sizes', v:'S, M, L'}].
+      // Size list — prefer real ProductVariant rows (bulk/dropship-imported
+      // products: each variant's name IS the size, e.g. "L"/"M"/"S") over the
+      // manual variants-lite attributes hack, since real merchant catalogs
+      // are populated that way, not by typing a comma-string into Studio's
+      // Catalog tab. Falls back to attributes in either convention Dakio's
+      // product-attribute data actually uses:
+      //   Studio-authored:      [{k:'sizes', v:'S, M, L'}]
+      //   bulk/dropship import: [{name:'Size', values:['S','M','L']}]
       // The API passes Product.attributes through as its raw DB value — a
       // JSON *string*, not a parsed array — so it must be parsed here too
       // (mirrors dakio-api/src/lib/studioCatalog.js's productSizes()).
       sizes: (() => {
+        if (Array.isArray(p.variants) && p.variants.length > 0) {
+          return p.variants.map((v) => v.name).filter(Boolean).join(', ');
+        }
         let attrs = p.attributes;
         if (typeof attrs === 'string') { try { attrs = JSON.parse(attrs); } catch { attrs = []; } }
         if (!Array.isArray(attrs)) attrs = [];
-        const a = attrs.find((x) => x && x.k === 'sizes');
-        return a && typeof a.v === 'string' ? a.v : '';
+        const kv = attrs.find((x) => x && x.k === 'sizes');
+        if (kv && typeof kv.v === 'string') return kv.v;
+        const named = attrs.find((x) => x && typeof x.name === 'string' && x.name.toLowerCase() === 'size');
+        if (named && Array.isArray(named.values)) return named.values.join(', ');
+        return '';
       })(),
     })),
     collections: categories.map((c) => ({ id: c.id, n: c.name, slug: c.slug })),
