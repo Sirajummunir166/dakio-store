@@ -11,6 +11,7 @@ import { co, btnColors, sx, SPM } from '../theme';
 import { fmtPr, colCount, liveProds, shortDesc } from '../catalog';
 import { getCart, onCartChange } from '../cartStore';
 import { FREE_DLV_OVER } from './CommercePages';
+import { sizeInStock, firstInStockSize, priceFor, soldOutSize } from '../variants';
 
 export const SYS_DEFAULTS = {
   shop: { head: 'Shop all', cols: 4, hd: { v: 'left', bg: 'base', count: true }, gr: { bg: 'base', sp: 'normal', fCol: true, fPr: true, fSz: true, fStock: true, sort: true } },
@@ -335,7 +336,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const [, setBagTick] = useState(0);
   const purchaseRef = useRef(null);
   const sizes = sizeList(bp);
-  useEffect(() => { setActiveThumb(null); setQtyN(1); setSelSize(sizeList(bp)[0] || null); setStickyOn(false); }, [bp && bp.id]);
+  useEffect(() => { setActiveThumb(null); setQtyN(1); setSelSize(bp ? firstInStockSize(bp, sizeList(bp)) : null); setStickyOn(false); }, [bp && bp.id]);
   // Sticky add-to-cart bar: shows once the size/qty/buy controls scroll out of view.
   useEffect(() => {
     const node = purchaseRef.current;
@@ -356,13 +357,14 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const rightGallery = pd.v === 'right';
   const also = { src: 'rule', rule: 'best', count: 4, picks: [], prices: true, bg: 'base', ...(pp.also || {}) };
   const cAlso = co(also.bg || 'base', P);
-  const curSize = selSize || sizes[0] || null;
+  // Never preselect (or keep) a sold-out size — it would fail at checkout.
+  const curSize = (selSize && sizeInStock(bp, selSize) ? selSize : null) || firstInStockSize(bp, sizes);
   const cartLine = ctx.storeSlug ? getCart(ctx.storeSlug).find((x) => x.pid === bp.id && (x.size || null) === (curSize || null)) : null;
   const col2 = cat.collections.find((x) => x.id === bp.col);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
   const alsoList = pickAlso(also, bp, cat);
   const lbl = 'font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + cPd.sub + '; margin-top:24px;';
-  const buyable = bp.stock > 0 && !bp.arch;
+  const buyable = bp.stock > 0 && !bp.arch && (sizes.length === 0 || !!curSize);
   const doBuy = () => {
     if (cartLine) { ctx.onCart ? ctx.onCart() : null; return; }
     if (ctx.addToBag) ctx.addToBag(bp, qty, curSize);
@@ -424,7 +426,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
         <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + cPd.sub + '; margin-top:6px;')}>SKU {bp.sku}</div>
       )}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginTop: 12 }}>
-        <Editable secId={'__cat:' + bp.id} k="pr" value={fmtPr(bp.pr)} style={'font-family:' + F.b + '; font-size:' + (mob ? 20 : 23) + 'px; font-weight:800; font-variant-numeric:tabular-nums;'} preview={ctx.preview} tag="span" />
+        <Editable secId={'__cat:' + bp.id} k="pr" value={fmtPr(ctx.isPublic ? priceFor(bp, curSize) : bp.pr)} style={'font-family:' + F.b + '; font-size:' + (mob ? 20 : 23) + 'px; font-weight:800; font-variant-numeric:tabular-nums;'} preview={ctx.preview} tag="span" />
         {bp.was ? <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 14 : 15) + 'px; color:' + cPd.sub + '; text-decoration:line-through; font-variant-numeric:tabular-nums;')}>{fmtPr(bp.was)}</div> : null}
       </div>
       {pd.stock !== false && (bp.arch || bp.stock <= 3) && (
@@ -440,7 +442,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
           <div style={sx(lbl)}>SIZE</div>
           <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
             {sizes.map((z) => (
-              <div key={z} onClick={ctx.preview ? (e) => { e.stopPropagation(); setSelSize(z); } : undefined} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (z === curSize ? cPd.fg : cPd.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (z === curSize ? ' background:' + cPd.fg + '; color:' + cPd.bg + ';' : ''))}>{z}</div>
+              <div key={z} title={sizeInStock(bp, z) ? undefined : 'Sold out'} onClick={ctx.preview && sizeInStock(bp, z) ? (e) => { e.stopPropagation(); setSelSize(z); } : undefined} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (z === curSize ? cPd.fg : cPd.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (z === curSize ? ' background:' + cPd.fg + '; color:' + cPd.bg + ';' : '') + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>
             ))}
           </div>
         </>

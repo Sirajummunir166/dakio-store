@@ -9,6 +9,7 @@ import ImageSlot from '../ImageSlot';
 import { co, btnColors, sx } from '../theme';
 import { fmtPr, liveProds } from '../catalog';
 import { getCart, setQty, updateSize, clearCart } from '../cartStore';
+import { priceFor } from '../variants';
 import { DISTRICTS, DHAKA_DISTRICTS, getThanas, detectLocation } from '../../../lib/bd-locations';
 
 function isValidBDPhone(raw) {
@@ -49,7 +50,12 @@ export function useBag(ctx) {
   return useMemo(() => {
     const lines = ctx.storeSlug ? (mounted ? getCart(ctx.storeSlug) : []) : (ctx.demoBag || []);
     return lines
-      .map((l) => ({ ...l, p: ctx.cat.products.find((x) => x.id === l.pid) }))
+      .map((l) => {
+        const p = ctx.cat.products.find((x) => x.id === l.pid);
+        // A size's variant can carry its own price — the order charges it, so
+        // every bag total (drawer, /cart, /checkout) shows that price too.
+        return { ...l, p: p ? { ...p, pr: priceFor(p, l.size) } : p };
+      })
       .filter((l) => l.p && !l.p.arch);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx.storeSlug, ctx.cat, tick, mounted, ctx.demoBag]);

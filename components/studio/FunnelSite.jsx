@@ -9,6 +9,7 @@ import { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
 import { fmtPr } from './catalog';
 import { optImg } from './publicCatalog';
+import { orderVariantId } from './variants';
 
 const MOBILE_QUERY = '(max-width: 767px)';
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://dakio-api-production.up.railway.app/api';
@@ -56,7 +57,7 @@ export default function FunnelSite({ doc, fn, storeSlug, products = [], collecti
         address: (address || '').trim() || '—',
         city: '—',
         district: '—',
-        items: [{ productId: bp.id, qty, name: bp.n }],
+        items: [{ productId: bp.id, variantId: orderVariantId(bp, size), qty, name: bp.n + (size ? ' — ' + size : '') }],
         paymentMethod: payLbl,
         note: `Funnel: ${fn.name} (/f/${fn.slug})${size ? ' · Size: ' + size : ''}`,
       }),

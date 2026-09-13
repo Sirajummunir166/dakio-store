@@ -7,6 +7,7 @@ import Editable from '../Editable';
 import { baseStyles, sx, btnColors } from '../theme';
 import { fmtPr, liveProds } from '../catalog';
 import { sizeList } from './Offer';
+import { sizeInStock, firstInStockSize, priceFor, soldOutSize } from '../variants';
 
 const PAY_METHODS = [
   { k: 'cod', n: 'Cash on delivery', d: 'Pay when it arrives — nothing now' },
@@ -34,16 +35,20 @@ export default function Qform({ sec, ctx }) {
   const payK = pay || (pays[0] && pays[0].k);
 
   if (!bp) return null;
+  // The picked size, else the first one in stock — never a sold-out size.
+  const curSize = (size && sizeInStock(bp, size) ? size : null) || firstInStockSize(bp, sizes);
+  const unitPr = priceFor(bp, curSize);
 
   const submit = async (ev) => {
     ev.stopPropagation();
     if (busy || !preview) return;
     if (!form.name.trim() || !form.phone.trim()) { setErr('Your name and phone number are needed — we call to confirm.'); return; }
+    if (sizes.length > 0 && !curSize) { setErr('This product is sold out in every size.'); return; }
     setErr(null);
     if (ctx.placeOrder) {
       setBusy(true);
       try {
-        const res = await ctx.placeOrder({ product: bp, qty, size: size || sizes[0] || null, ...form, pay: payK });
+        const res = await ctx.placeOrder({ product: bp, qty, size: curSize, ...form, pay: payK });
         setDone({ num: res.num, tag: res.tag });
       } catch (e2) {
         setErr(String(e2?.message || 'Couldn’t place the order — check your connection and try again.'));
@@ -68,16 +73,16 @@ export default function Qform({ sec, ctx }) {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingBottom: 14, borderBottom: '1px solid ' + c.line }}>
               <div style={{ minWidth: 0 }}>
                 <div style={sx('font-family:' + F.b + '; font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;')}>{bp.n}</div>
-                <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + '; margin-top:2px;')}>{qty} × {fmtPr(bp.pr)}{size ? ' · ' + size : ''}</div>
+                <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + '; margin-top:2px;')}>{qty} × {fmtPr(unitPr)}{curSize ? ' · ' + curSize : ''}</div>
               </div>
-              <div style={sx('font-family:' + F.b + '; font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; flex-shrink:0;')}>{fmtPr(bp.pr * qty)}</div>
+              <div style={sx('font-family:' + F.b + '; font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; flex-shrink:0;')}>{fmtPr(unitPr * qty)}</div>
             </div>
             {sizes.length > 0 && (
               <>
                 <div style={sx(lbl)}>SIZE</div>
                 <div style={{ display: 'flex', gap: 7, marginTop: 8, flexWrap: 'wrap' }}>
                   {sizes.map((z) => (
-                    <div key={z} onClick={preview ? (ev) => { ev.stopPropagation(); setSize(z); } : undefined} style={sx('min-width:40px; padding:9px 0; text-align:center; border-radius:' + Math.min(C.rs, 10) + 'px; border:1.5px solid ' + ((size || sizes[0]) === z ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:12.5px; font-weight:700; cursor:pointer;' + ((size || sizes[0]) === z ? ' background:' + c.fg + '; color:' + c.bg + ';' : ''))}>{z}</div>
+                    <div key={z} title={sizeInStock(bp, z) ? undefined : 'Sold out'} onClick={preview && sizeInStock(bp, z) ? (ev) => { ev.stopPropagation(); setSize(z); } : undefined} style={sx('min-width:40px; padding:9px 0; text-align:center; border-radius:' + Math.min(C.rs, 10) + 'px; border:1.5px solid ' + (curSize === z ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:12.5px; font-weight:700; cursor:pointer;' + (curSize === z ? ' background:' + c.fg + '; color:' + c.bg + ';' : '') + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>
                   ))}
                 </div>
               </>

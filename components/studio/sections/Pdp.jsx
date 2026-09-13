@@ -5,6 +5,7 @@ import Editable from '../Editable';
 import ImageSlot from '../ImageSlot';
 import { fmtPr } from '../catalog';
 import { sizeList } from '../system/SystemPages';
+import { sizeInStock, firstInStockSize, priceFor, soldOutSize } from '../variants';
 
 // Product detail — bound to ONE real catalog product (props.pid). Name, price
 // and compare-at render from the catalog; editing them on the canvas edits the
@@ -40,7 +41,8 @@ export default function Pdp({ sec, ctx }) {
   const pdpDesc = 'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 14.5) + 'px; line-height:1.7; color:' + c.sub + '; margin-top:16px; white-space:pre-wrap;';
   const pdpLbl = 'font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + c.sub + '; margin-top:24px;';
   const sizes = sizeList(bp);
-  const curSize = sel || sizes[0] || null;
+  // Never preselect (or keep) a sold-out size — it would fail at checkout.
+  const curSize = (sel && sizeInStock(bp, sel) ? sel : null) || firstInStockSize(bp, sizes);
   const sizeStyle = (on) => 'min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (on ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (on ? ' background:' + c.fg + '; color:' + c.bg + ';' : '');
   const qtyBox = 'display:flex; align-items:center; gap:14px; padding:0 16px; border-radius:' + C.btn + '; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-size:14px; user-select:none; cursor:pointer;';
   const pdpBtn = 'flex:1; display:flex; align-items:center; justify-content:center; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:14.5px; cursor:pointer; white-space:nowrap;' + (soldOrHidden ? ' opacity:0.45;' : '');
@@ -62,7 +64,7 @@ export default function Pdp({ sec, ctx }) {
     </div>
   );
 
-  const buy = preview && ctx.addToBag && !soldOrHidden
+  const buy = preview && ctx.addToBag && !soldOrHidden && (sizes.length === 0 || curSize)
     ? (e) => { e.stopPropagation(); ctx.addToBag(bp, 1, curSize); }
     : preview && ctx.onCart && !soldOrHidden
       ? (e) => { e.stopPropagation(); ctx.onCart(); }
@@ -101,7 +103,7 @@ export default function Pdp({ sec, ctx }) {
         <div style={{ minWidth: 0 }}>
           <Editable secId={catId} k="n" value={bp.n} style={pdpName} preview={preview} />
           <div style={sx('display:flex; align-items:baseline; gap:12px; margin-top:12px;')}>
-            <Editable secId={catId} k="pr" value={fmtPr(bp.pr)} style={pdpPrice} preview={preview} />
+            <Editable secId={catId} k="pr" value={fmtPr(isPublic ? priceFor(bp, curSize) : bp.pr)} style={pdpPrice} preview={preview} />
             <Editable secId={catId} k="was" value={bp.was ? fmtPr(bp.was) : ''} style={pdpWas} preview={preview} />
           </div>
           {(stockOn || pubStockOn) && <div style={sx(pdpStock)}>{isPublic ? 'Only ' + bp.stock + ' left in stock' : stockTxt}</div>}
@@ -111,7 +113,7 @@ export default function Pdp({ sec, ctx }) {
               <div style={sx(pdpLbl)}>SIZE</div>
               <div style={sx('display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;')}>
                 {sizes.map((z) => (
-                  <div key={z} onClick={preview ? (e) => { e.stopPropagation(); setSel(z); } : undefined} style={sx(sizeStyle(z === curSize))}>{z}</div>
+                  <div key={z} title={sizeInStock(bp, z) ? undefined : 'Sold out'} onClick={preview && sizeInStock(bp, z) ? (e) => { e.stopPropagation(); setSel(z); } : undefined} style={sx(sizeStyle(z === curSize) + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>
                 ))}
               </div>
             </>

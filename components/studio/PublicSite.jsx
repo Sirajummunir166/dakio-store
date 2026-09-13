@@ -7,6 +7,7 @@ import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
 import { CartPage, CheckoutPage, AccountPage } from './system/CommercePages';
 import CartPanel from './CartPanel';
 import { cartCount, onCartChange, addToCart } from './cartStore';
+import { orderVariantId } from './variants';
 import { optImg } from './publicCatalog';
 import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
 
@@ -167,7 +168,9 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         body: JSON.stringify({
           name: name.trim(), phone: phone.trim(), email: (email || '').trim() || undefined,
           address: (address || '').trim() || '\u2014', city, district,
-          items: bag.map((l) => ({ productId: l.pid, qty: l.qty, name: l.p.n })),
+          // variantId ties the picked size to its real variant, so that size's
+          // stock is taken and the order line records it (null = no variant).
+          items: bag.map((l) => ({ productId: l.pid, variantId: orderVariantId(l.p, l.size), qty: l.qty, name: l.p.n + (l.size ? ' — ' + l.size : '') })),
           paymentMethod: payLbl, note: fullNote, shippingCharge,
           couponCode: couponCode || undefined,
         }),

@@ -7,6 +7,7 @@ import ImageSlot from '../ImageSlot';
 import { baseStyles, sx, btnColors } from '../theme';
 import { fmtPr, liveProds } from '../catalog';
 import { TrustRow } from '../blocks';
+import { sizeInStock, firstInStockSize, soldOutSize } from '../variants';
 
 export const sizeList = (p) => String(p?.sizes || '').split(',').map((x) => x.trim()).filter(Boolean);
 
@@ -55,9 +56,12 @@ export default function Offer({ sec, ctx }) {
             <>
               <div style={sx('font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + c.sub + '; margin-top:24px;')}>SIZE</div>
               <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                {sizes.map((z, zi) => (
-                  <div key={z} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (zi === 0 ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (zi === 0 ? ' background:' + c.fg + '; color:' + c.bg + ';' : ''))}>{z}</div>
-                ))}
+                {sizes.map((z) => {
+                  const on = z === firstInStockSize(bp, sizes);
+                  return (
+                    <div key={z} title={sizeInStock(bp, z) ? undefined : 'Sold out'} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (on ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (on ? ' background:' + c.fg + '; color:' + c.bg + ';' : '') + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>
+                  );
+                })}
               </div>
             </>
           )}

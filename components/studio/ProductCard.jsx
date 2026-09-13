@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import ImageSlot from './ImageSlot';
 import { sx } from './theme';
 import { fmtPr, prodTag } from './catalog';
+import { sizeInStock, firstInStockSize, soldOutSize } from './variants';
 
 // pr: a catalog product, OR a hand-picked slot that decayed — { gone: true }
 // (its target product was deleted/hidden) or { empty: true } (nothing picked
@@ -53,7 +54,7 @@ export default function ProductCard({ pr, ctx, c, showPrice = true, onClick, row
     ? (e) => {
         e.preventDefault(); e.stopPropagation();
         if (hasVariants) { setSizeOpen((v) => !v); return; }
-        ctx.addToBag(pr, 1, sizes[0] || null);
+        ctx.addToBag(pr, 1, firstInStockSize(pr, sizes));
       }
     : undefined;
 
@@ -115,8 +116,9 @@ export default function ProductCard({ pr, ctx, c, showPrice = true, onClick, row
               {sizes.map((z) => (
                 <div
                   key={z}
-                  onClick={(e) => { e.stopPropagation(); pickSize(z); }}
-                  style={sx('min-width:32px; padding:7px 6px; text-align:center; border-radius:' + Math.min(C.rs, 10) + 'px; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-size:12px; font-weight:700; cursor:pointer;')}
+                  title={sizeInStock(pr, z) ? undefined : 'Sold out'}
+                  onClick={(e) => { e.stopPropagation(); if (sizeInStock(pr, z)) pickSize(z); }}
+                  style={sx('min-width:32px; padding:7px 6px; text-align:center; border-radius:' + Math.min(C.rs, 10) + 'px; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-size:12px; font-weight:700; cursor:pointer;' + (sizeInStock(pr, z) ? '' : soldOutSize))}
                 >
                   {z}
                 </div>

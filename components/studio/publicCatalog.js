@@ -67,6 +67,16 @@ export function toStudioCatalog(products = [], categories = []) {
       slug: p.slug,
       desc: p.description || '',
       shortDesc: p.shortDescription || '',
+      // Real variant rows, so a picked size maps to its stock, price and id
+      // (components/studio/variants.js) instead of living only in a note.
+      vars: Array.isArray(p.variants)
+        ? p.variants.filter((v) => v && v.name).map((v) => ({
+            id: v.id,
+            n: v.name,
+            stock: Number(v.stock) || 0,
+            pr: v.price != null ? Number(v.price) : null,
+          }))
+        : [],
       // Size list — prefer real ProductVariant rows (bulk/dropship-imported
       // products: each variant's name IS the size, e.g. "L"/"M"/"S") over the
       // manual variants-lite attributes hack, since real merchant catalogs
