@@ -67,6 +67,9 @@ export function toStudioCatalog(products = [], categories = []) {
       slug: p.slug,
       desc: p.description || '',
       shortDesc: p.shortDescription || '',
+      // Product-page tabs (specs / size guide / shipping / custom), rich HTML
+      // from the merchant's product editor — see productTabs.js.
+      tabs: Array.isArray(p.contentTabs) ? p.contentTabs : [],
       // Real variant rows, so a picked size maps to its stock, price and id
       // (components/studio/variants.js) instead of living only in a note.
       vars: Array.isArray(p.variants)

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { checkoutPath } from '../lib/routes'
 import { resolveMedia } from '../lib/mediaUtils'
+import { sanitizeRichHtml } from '../lib/theme/sanitizeHtml'
 
 export default function GenericProductDetail({ store, product: p, slug, isCustomDomain }) {
   const router = useRouter()
@@ -147,7 +148,7 @@ export default function GenericProductDetail({ store, product: p, slug, isCustom
             {p.description && (
               <div
                 style={{ fontSize: '14px', color: '#4b5563', lineHeight: 1.7, marginBottom: '24px' }}
-                dangerouslySetInnerHTML={{ __html: p.description }}
+                dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(p.description) }}
               />
             )}
 

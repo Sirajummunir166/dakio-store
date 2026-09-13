@@ -3,6 +3,7 @@ import StoreUnavailable from '../../../../components/StoreUnavailable'
 import PublicSite from '../../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
+import { htmlToText } from '../../../../lib/theme/sanitizeHtml'
 
 // /p/<product-slug> — one product template behind every product (Phase 8).
 // Gallery, price, sizes and stock come from the live catalog; the template
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }) {
   return {
     ...studioMetadata(siteData.site, null),
     title: p ? `${p.name} — ${brand}` : 'Not Found',
-    ...(p ? { description: (p.description || '').slice(0, 160) || undefined, openGraph: { title: `${p.name} — ${brand}`, ...(img ? { images: [img] } : {}) } } : {}),
+    ...(p ? { description: htmlToText(p.shortDescription || p.description).slice(0, 160) || undefined, openGraph: { title: `${p.name} — ${brand}`, ...(img ? { images: [img] } : {}) } } : {}),
   }
 }
 

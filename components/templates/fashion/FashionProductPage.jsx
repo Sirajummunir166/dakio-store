@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { X, ChevronDown, Ruler, MessageCircle, Shield, Truck } from 'lucide-react'
 import { fmt } from '../../../lib/storefront'
 import { resolveMedia } from '../../../lib/mediaUtils'
+import { sanitizeRichHtml } from '../../../lib/theme/sanitizeHtml'
 import { resolveFashionConfig } from '../../../lib/theme/fashionDefaults'
 import { fashionCss } from './tokens'
 import { checkoutPath, storeHome, productPath } from '../../../lib/routes'
@@ -160,7 +161,7 @@ export default function FashionProductPage({
       </div>
 
       {[
-        { id: 'details', label: 'Product details', content: p.description ? <div className="ft-pdp-html" dangerouslySetInnerHTML={{ __html: p.description }} /> : <p className="ft-pdp-muted">Premium quality fashion piece.</p> },
+        { id: 'details', label: 'Product details', content: p.description ? <div className="ft-pdp-html" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(p.description) }} /> : <p className="ft-pdp-muted">Premium quality fashion piece.</p> },
         { id: 'delivery', label: 'Delivery & returns', content: <p className="ft-pdp-muted">{deliveryText} {returnText}</p> },
       ].map(a => (
         <div key={a.id} className="ft-pdp-acc">

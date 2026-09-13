@@ -12,6 +12,8 @@ import { fmtPr, colCount, liveProds, shortDesc } from '../catalog';
 import { getCart, onCartChange } from '../cartStore';
 import { FREE_DLV_OVER } from './CommercePages';
 import { sizeInStock, firstInStockSize, priceFor, soldOutSize } from '../variants';
+import RichContent, { RichContentStyles } from '../RichContent';
+import { resolveProductTabs } from '../productTabs';
 
 export const SYS_DEFAULTS = {
   shop: { head: 'Shop all', cols: 4, hd: { v: 'left', bg: 'base', count: true }, gr: { bg: 'base', sp: 'normal', fCol: true, fPr: true, fSz: true, fStock: true, sort: true } },
@@ -35,12 +37,7 @@ function spY(spKey, ctx) {
 
 export const sysProps = (sys, k) => ({ ...SYS_DEFAULTS[k], ...((sys || {})[k] || {}) });
 
-const PROD_TABS = [
-  { k: 'desc', n: 'Description' },
-  { k: 'specs', n: 'Specifications' },
-  { k: 'guide', n: 'Size Guide' },
-  { k: 'ship', n: 'Shipping & Returns' },
-];
+// The tab list is resolved per product — see ../productTabs.js.
 
 export const sizeList = (p) => String(p?.sizes || '').split(',').map((x) => x.trim()).filter(Boolean);
 
@@ -363,6 +360,11 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const col2 = cat.collections.find((x) => x.id === bp.col);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
   const alsoList = pickAlso(also, bp, cat);
+  // Tabs under the description — product content, store defaults, custom tabs.
+  // Public page: only tabs with something to show. Builder: all, with hints.
+  const tabs = resolveProductTabs(bp, pp, { builder: !ctx.preview });
+  const shownTab = tabs.some((t) => t.key === activeTab) ? activeTab : (tabs[0] && tabs[0].key);
+  const shown = tabs.find((t) => t.key === shownTab);
   const lbl = 'font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + cPd.sub + '; margin-top:24px;';
   const buyable = bp.stock > 0 && !bp.arch && (sizes.length === 0 || !!curSize);
   const doBuy = () => {
@@ -421,6 +423,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
 
   const detailsBlock = (
     <div key="details" style={{ minWidth: 0 }}>
+      <RichContentStyles />
       <Editable secId={'__cat:' + bp.id} k="n" value={bp.n} style={headFont + 'font-size:' + (mob ? 30 : 40) + 'px; line-height:1.08; min-width:0; overflow-wrap:break-word;'} preview={ctx.preview} />
       {bp.sku && (
         <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + cPd.sub + '; margin-top:6px;')}>SKU {bp.sku}</div>
@@ -434,9 +437,13 @@ export function ProductPage({ ctx, sys, product, edit }) {
           {bp.arch ? 'Hidden from your store — unhide it in Catalog' : bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : 'Only ' + bp.stock + ' left in stock'}
         </div>
       )}
-      <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 14.5) + 'px; line-height:1.7; color:' + cPd.sub + '; margin-top:16px;')}>
-        {bp.shortDesc || shortDesc(bp.desc) || 'Add a description in the Catalog tab — fabric, fit, care.'}
-      </div>
+      {/* Teaser beside the price: the rich short description, else the first
+          words of the description. The hint shows only in the builder. */}
+      {bp.shortDesc || shortDesc(bp.desc)
+        ? <div style={sx('font-size:' + (mob ? 13.5 : 14.5) + 'px; margin-top:16px;')}>
+            <RichContent html={bp.shortDesc || shortDesc(bp.desc)} ctx={ctx} c={cPd} compact />
+          </div>
+        : !ctx.preview && <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 14.5) + 'px; line-height:1.7; color:' + cPd.sub + '; margin-top:16px; opacity:0.6;')}>Add a description in the product editor — fabric, fit, care.</div>}
       {pd.sizes !== false && sizes.length > 0 && (
         <>
           <div style={sx(lbl)}>SIZE</div>
@@ -499,27 +506,32 @@ export function ProductPage({ ctx, sys, product, edit }) {
           <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr' : (rightGallery ? '0.98fr 1.02fr' : '1.02fr 0.98fr'), gap: mob ? 26 : 64, alignItems: 'start' }}>
             {!mob && rightGallery ? [detailsBlock, galleryBlock] : [galleryBlock, detailsBlock]}
           </div>
+          {tabs.length > 0 && (
           <div style={sx('margin-top:' + (mob ? 34 : 50) + 'px; border-top:1px solid ' + cPd.line + ';')}>
             <div style={{ display: 'flex', gap: mob ? 14 : 28, flexWrap: 'wrap', marginTop: mob ? 18 : 24 }}>
-              {PROD_TABS.map((t) => (
+              {tabs.map((t) => (
                 <div
-                  key={t.k}
-                  onClick={(e) => { e.stopPropagation(); setActiveTab(t.k); }}
-                  style={sx('padding-bottom:10px; font-family:' + F.b + '; font-size:' + (mob ? 12.5 : 13.5) + 'px; font-weight:700; cursor:pointer; white-space:nowrap;' + (activeTab === t.k ? ' color:' + cPd.fg + '; border-bottom:2px solid ' + cPd.fg + ';' : ' color:' + cPd.sub + '; border-bottom:2px solid transparent;'))}
+                  key={t.key}
+                  onClick={(e) => { e.stopPropagation(); setActiveTab(t.key); }}
+                  style={sx('padding-bottom:10px; font-family:' + F.b + '; font-size:' + (mob ? 12.5 : 13.5) + 'px; font-weight:700; cursor:pointer; white-space:nowrap;' + (shownTab === t.key ? ' color:' + cPd.fg + '; border-bottom:2px solid ' + cPd.fg + ';' : ' color:' + cPd.sub + '; border-bottom:2px solid transparent;') + (t.source === 'none' ? ' opacity:0.5;' : ''))}
                 >
-                  {t.n}
+                  {t.title}
                 </div>
               ))}
             </div>
-            <div style={sx('max-width:760px; margin-top:' + (mob ? 18 : 24) + 'px; padding-bottom:' + (mob ? 30 : 44) + 'px; font-family:' + F.b + '; font-size:' + (mob ? 13 : 13.5) + 'px; line-height:1.75; color:' + cPd.sub + '; white-space:pre-wrap;')}>
-              {activeTab === 'desc' && (
-                <Editable secId={'__cat:' + bp.id} k="desc" value={bp.desc || 'Add a description in the Catalog tab — fabric, fit, care.'} style={''} multiline html preview={ctx.preview} />
-              )}
-              {activeTab === 'specs' && <Editable secId="__sys:prod" k="tabSpecs" value={pp.tabSpecs} style={''} multiline preview={ctx.preview} />}
-              {activeTab === 'guide' && <Editable secId="__sys:prod" k="tabGuide" value={pp.tabGuide} style={''} multiline preview={ctx.preview} />}
-              {activeTab === 'ship' && <Editable secId="__sys:prod" k="tabShip" value={pp.tabShip} style={''} multiline preview={ctx.preview} />}
+            <div style={sx('max-width:760px; margin-top:' + (mob ? 18 : 24) + 'px; padding-bottom:' + (mob ? 30 : 44) + 'px; font-size:' + (mob ? 13 : 13.5) + 'px;')}>
+              {shown && shown.source !== 'none'
+                ? <RichContent html={shown.html} ctx={ctx} c={cPd} />
+                : shown && (
+                  <div style={sx('font-family:' + F.b + '; line-height:1.75; color:' + cPd.sub + '; opacity:0.6;')}>
+                    {shown.key === 'desc'
+                      ? 'Empty on this product — write the description in the product editor.'
+                      : 'Empty on this product — add it in the product editor, or set a store default in this template (Product detail → Product tabs).'}
+                  </div>
+                )}
             </div>
           </div>
+          )}
         </div>
       </Part>
       {!pp.alsoOn && edit && (

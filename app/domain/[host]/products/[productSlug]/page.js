@@ -1,6 +1,7 @@
 import { getStoreByDomain, getProductBySlug, getProducts } from '../../../../../lib/api'
 import ProductDetailClient from '../../../../../components/ProductDetailClient'
 import { notFound } from 'next/navigation'
+import { htmlToText } from '../../../../../lib/theme/sanitizeHtml'
 
 export async function generateMetadata({ params }) {
   const { host, productSlug } = await params
@@ -10,7 +11,7 @@ export async function generateMetadata({ params }) {
   if (!product) return { title: 'Product Not Found' }
   return {
     title: product.name,
-    description: product.description || product.name,
+    description: htmlToText(product.description).slice(0, 160) || product.name,
     openGraph: { title: product.name, images: product.imageUrl ? [product.imageUrl] : [] },
   }
 }
