@@ -20,7 +20,7 @@ export default function FashionProductPage({ product }) {
   const { contract } = useFashionTheme()
   const { goHome } = useProductStore()
   const { addItem, items, openCart } = useCart()
-  const [size, setSize] = useState('M')
+  const [size, setSize] = useState(() => getProductAvailableSizes(product)[0] ?? null)
   const [qty, setQty] = useState(1)
   const [activeTab, setActiveTab] = useState('description')
   const [stickyVisible, setStickyVisible] = useState(false)
@@ -34,7 +34,7 @@ export default function FashionProductPage({ product }) {
   const onSale = isOnSale(product)
 
   useEffect(() => {
-    setSize(getProductAvailableSizes(product)[0] ?? 'M')
+    setSize(getProductAvailableSizes(product)[0] ?? null)
     setQty(1)
     setActiveTab('description')
     setStickyVisible(false)
@@ -102,21 +102,23 @@ export default function FashionProductPage({ product }) {
             </p>
 
             <div ref={purchaseRef} className="product-page__purchase-zone">
-              <div className="product-page__option">
-                <span className="product-page__label">Size</span>
-                <div className="product-page__size-row">
-                  {availableSizes.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      className={size === item ? 'product-page__size active' : 'product-page__size'}
-                      onClick={() => setSize(item)}
-                    >
-                      {item}
-                    </button>
-                  ))}
+              {availableSizes.length > 0 && (
+                <div className="product-page__option">
+                  <span className="product-page__label">Size</span>
+                  <div className="product-page__size-row">
+                    {availableSizes.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        className={size === item ? 'product-page__size active' : 'product-page__size'}
+                        onClick={() => setSize(item)}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="product-page__option">
                 <span className="product-page__label">Quantity</span>

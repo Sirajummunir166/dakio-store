@@ -3,15 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import SalePrice from './SalePrice.jsx'
 import { AddedLabel, IconBagAddPlus, IconHeart } from './Icons.jsx'
 import { useFashionTheme } from '../FashionThemeContext.jsx'
-
-const PRODUCT_SIZES = ['S', 'M', 'L', 'XL', 'XXL']
-
-function getAvailableSizes(product) {
-  if (product.variants && product.variants.length > 0) {
-    return product.variants.filter((v) => v.stock > 0).map((v) => v.name)
-  }
-  return PRODUCT_SIZES
-}
+import { getProductAvailableSizes as getAvailableSizes } from '../compat/lib-products.js'
 
 export default function ProductCard({
   product,
@@ -40,7 +32,7 @@ export default function ProductCard({
   const handleAddToCart = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    const defaultSize = getAvailableSizes(product)[0] ?? 'M'
+    const defaultSize = getAvailableSizes(product)[0] ?? null
     contract.cart.addItem(product, 1, defaultSize)
     setAdded(true)
     window.setTimeout(() => setAdded(false), 2000)

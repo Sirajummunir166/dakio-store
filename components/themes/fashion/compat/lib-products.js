@@ -22,18 +22,19 @@ export function getDiscount(product) {
 }
 
 /**
- * getProductAvailableSizes — returns size array from product.variants or
- * product.availableSizes, falling back to PRODUCT_SIZES.
+ * getProductAvailableSizes — in-stock variant names, or product.availableSizes.
+ * A product without variants has NO sizes: offering made-up ones put a fake
+ * variant in the cart and failed checkout.
  */
 export function getProductAvailableSizes(product) {
-  if (!product) return [...PRODUCT_SIZES]
+  if (!product) return []
   if (Array.isArray(product.availableSizes) && product.availableSizes.length) {
     return product.availableSizes
   }
   if (Array.isArray(product.variants) && product.variants.length) {
     return product.variants.filter((v) => v.stock > 0).map((v) => v.name)
   }
-  return [...PRODUCT_SIZES]
+  return []
 }
 
 /**

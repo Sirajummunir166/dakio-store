@@ -3,26 +3,18 @@ import { useEffect, useState } from 'react'
 import { IconArrowRight, IconClose, IconMinus, IconPlus } from './Icons.jsx'
 import SalePrice from './SalePrice.jsx'
 import { useFashionTheme } from '../FashionThemeContext.jsx'
-
-const PRODUCT_SIZES = ['S', 'M', 'L', 'XL', 'XXL']
-
-function getAvailableSizes(product) {
-  if (product.variants && product.variants.length > 0) {
-    return product.variants.filter((v) => v.stock > 0).map((v) => v.name)
-  }
-  return PRODUCT_SIZES
-}
+import { getProductAvailableSizes as getAvailableSizes } from '../compat/lib-products.js'
 
 export default function ProductQuickView() {
   const { contract, navigate, quickView } = useFashionTheme()
   const product = quickView.product
-  const [size, setSize] = useState('M')
+  const [size, setSize] = useState(null)
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
 
   useEffect(() => {
     if (!product) return
-    setSize(getAvailableSizes(product)[0] ?? 'M')
+    setSize(getAvailableSizes(product)[0] ?? null)
     setQty(1)
     setAdded(false)
   }, [product?.id])
@@ -75,21 +67,23 @@ export default function ProductQuickView() {
 
             {product.description && <p className="qv__desc">{product.description}</p>}
 
-            <div className="qv__sizes">
-              <span className="qv__label">Size</span>
-              <div className="qv__size-row">
-                {availableSizes.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    className={size === s ? 'qv__size active' : 'qv__size'}
-                    onClick={() => setSize(s)}
-                  >
-                    {s}
-                  </button>
-                ))}
+            {availableSizes.length > 0 && (
+              <div className="qv__sizes">
+                <span className="qv__label">Size</span>
+                <div className="qv__size-row">
+                  {availableSizes.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      className={size === s ? 'qv__size active' : 'qv__size'}
+                      onClick={() => setSize(s)}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="qv__option">
               <span className="qv__label">Quantity</span>
