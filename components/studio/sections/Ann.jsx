@@ -6,7 +6,11 @@ import { baseStyles, sx } from '../theme';
 export default function Ann({ sec, ctx }) {
   const { F, padX, preview, isSel } = ctx;
   // p.to = link destination (set in the inspector); p.link stays the visible label
-  const p = sec.props;
+  // Cut 8 (DAKIO_NAVIGATION_PLAN.md §7): while a campaign with banner text is
+  // Live, the store read carries it as `campaignBanner` and it takes this bar
+  // on the public site — the founder's static message returns when it ends.
+  const campaign = ctx.isPublic && ctx.store && ctx.store.campaignBanner && ctx.store.campaignBanner.text ? ctx.store.campaignBanner.text : null;
+  const p = campaign ? { ...sec.props, msg: campaign, link: '' } : sec.props;
   const { c } = baseStyles(sec, ctx);
 
   const annWrap = 'padding:10px ' + padX + 'px; background:' + c.bg + '; color:' + c.fg + '; font-family:' + F.b + '; font-size:12.5px; font-weight:600;';
