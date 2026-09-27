@@ -1,3 +1,5 @@
+import { withSentryConfig } from '@sentry/nextjs'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Dev server only trusts localhost/127.0.0.1 by default (CSRF hardening,
@@ -9,4 +11,13 @@ const nextConfig = {
   allowedDevOrigins: ['dakio.local'],
 };
 
-export default nextConfig;
+// Source maps upload to Sentry at build time when SENTRY_AUTH_TOKEN is set
+// (Vercel env), and are not served to browsers.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+});
