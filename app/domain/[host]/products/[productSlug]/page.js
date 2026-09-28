@@ -2,6 +2,7 @@ import { getStoreByDomain, getProductBySlug, getProducts } from '../../../../../
 import ProductDetailClient from '../../../../../components/ProductDetailClient'
 import { notFound } from 'next/navigation'
 import { htmlToText } from '../../../../../lib/theme/sanitizeHtml'
+import ProductJsonLd from '../../../../../components/ProductJsonLd'
 
 export async function generateMetadata({ params }) {
   const { host, productSlug } = await params
@@ -35,6 +36,12 @@ export default async function DomainProductPage({ params }) {
 
   return (
     <>
+      <ProductJsonLd
+        product={product}
+        url={`https://${host}/products/${encodeURIComponent(productSlug)}`}
+        currency={storeData.store.currency}
+        storeName={storeData.store.name}
+      />
       {isFashionV1 && <link rel="stylesheet" href="/fashion-theme.css" />}
       {isFashionV1 && <link rel="stylesheet" href="/fashion-additions.css" />}
       <ProductDetailClient

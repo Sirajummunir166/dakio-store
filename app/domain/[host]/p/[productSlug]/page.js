@@ -3,6 +3,7 @@ import StoreUnavailable from '../../../../../components/StoreUnavailable'
 import PublicSite from '../../../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
+import ProductJsonLd from '../../../../../components/ProductJsonLd'
 
 // /p/<product-slug> on a custom domain — mirrors app/[slug]/p/[productSlug].
 
@@ -33,8 +34,17 @@ export default async function DomainProductRoute({ params }) {
   const catalog = toStudioCatalog(products, categories)
   const product = catalog.products.find((p) => p.slug === productSlug)
   if (!product) notFound()
+  const raw = products.find((p) => p.slug === productSlug)
 
   return (
-    <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} system={{ kind: 'prod', product }} />
+    <>
+      <ProductJsonLd
+        product={raw}
+        url={`https://${host}/p/${encodeURIComponent(productSlug)}`}
+        currency={storeData.store.currency}
+        storeName={siteData.site.theme?.brandName || storeData.store.name}
+      />
+      <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} system={{ kind: 'prod', product }} />
+    </>
   )
 }

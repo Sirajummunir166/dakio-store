@@ -49,6 +49,8 @@ A contract-based layer that decouples raw API data from theme UI code. **Only im
 
 Top-level client components: `StorefrontClient`, `CheckoutClient`, `ProductDetailClient`, `TrackOrderClient`, `PreviewGate`/`PreviewBanner`, `StoreUnavailable`, `VisitorTracker`, `TrackingScripts`.
 
+SEO / AI-discovery layer: `lib/seo.js` (schema.org Product JSON-LD via `components/ProductJsonLd.js` on all four product routes, host-aware `app/sitemap.xml` + `app/robots.txt` route handlers — the middleware skips dotted paths, so they resolve the store from the Host header) and `lib/hosts.js` (the store-vs-Dakio host test the middleware shares).
+
 Other `lib/` files: `storefront.js` (`useStorefront` hook — cart, coupons, lead capture, order placement, FB Pixel/GTM tracking), `routes.js`, `mediaUtils.js`, `bd-locations.js` (Bangladesh location data).
 
 Path alias: `@/*` → repo root (`jsconfig.json`).

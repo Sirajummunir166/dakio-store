@@ -4,6 +4,8 @@ import PublicSite from '../../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
 import { htmlToText } from '../../../../lib/theme/sanitizeHtml'
+import ProductJsonLd from '../../../../components/ProductJsonLd'
+import { storeOrigin } from '../../../../lib/hosts'
 
 // /p/<product-slug> — one product template behind every product (Phase 8).
 // Gallery, price, sizes and stock come from the live catalog; the template
@@ -38,16 +40,24 @@ export default async function ProductRoute({ params }) {
   const catalog = toStudioCatalog(products, categories)
   const product = catalog.products.find((p) => p.slug === productSlug)
   if (!product) notFound()
+  const raw = products.find((p) => p.slug === productSlug)
 
   return (
-    <PublicSite
-      storeSlug={slug}
-      doc={siteData.site}
-      pageId="home"
-      basePath={`/${slug}`}
-      products={catalog.products}
-      collections={catalog.collections}
-      system={{ kind: 'prod', product }}
-    />
+    <>
+      <ProductJsonLd
+        product={raw}
+        url={`${storeOrigin(slug)}/p/${encodeURIComponent(productSlug)}`}
+        storeName={siteData.site.theme?.brandName}
+      />
+      <PublicSite
+        storeSlug={slug}
+        doc={siteData.site}
+        pageId="home"
+        basePath={`/${slug}`}
+        products={catalog.products}
+        collections={catalog.collections}
+        system={{ kind: 'prod', product }}
+      />
+    </>
   )
 }

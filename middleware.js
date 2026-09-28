@@ -1,10 +1,5 @@
 import { NextResponse } from 'next/server'
-
-const SKIP_DOMAINS = ['vercel.app', 'dakio.io', 'localhost']
-
-function isCustomDomain(hostname) {
-  return !SKIP_DOMAINS.some(d => hostname === d || hostname.endsWith(`.${d}`))
-}
+import { isCustomDomain } from './lib/hosts'
 
 export async function middleware(req) {
   const hostname = req.headers.get('host')?.split(':')[0] || ''
