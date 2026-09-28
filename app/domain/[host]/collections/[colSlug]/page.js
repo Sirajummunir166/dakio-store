@@ -3,6 +3,7 @@ import StoreUnavailable from '../../../../../components/StoreUnavailable'
 import PublicSite from '../../../../../components/studio/PublicSite'
 import { toStudioCatalog, collectionPage } from '../../../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
+import { canonicalHostOf, canonicalMeta } from '../../../../../lib/seo'
 
 // Custom-domain twin of app/[slug]/collections/[colSlug] — resolves the tenant
 // slug from the hostname, then renders the same live collection grid.
@@ -19,6 +20,8 @@ export async function generateMetadata({ params }) {
   return {
     title: `${col.name} — ${siteData.site.theme?.brandName || 'Store'}`,
     description: `Shop ${col.name} online.`,
+    // The /shop/<collection> template is the collection's one address.
+    ...canonicalMeta(canonicalHostOf(data, slug), `/shop/${encodeURIComponent(colSlug)}`),
   }
 }
 

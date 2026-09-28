@@ -3,6 +3,7 @@ import StoreUnavailable from '../../../../components/StoreUnavailable'
 import PublicSite from '../../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
+import { canonicalHostOf, canonicalMeta } from '../../../../lib/seo'
 
 // /shop on a custom domain — mirrors app/[slug]/shop.
 
@@ -13,7 +14,7 @@ export async function generateMetadata({ params }) {
   const siteData = await getPublishedSite(data.store.slug)
   if (!siteData?.site) return { title: 'Not Found' }
   const brand = siteData.site.theme?.brandName || 'Store'
-  return { ...studioMetadata(siteData.site, null), title: `Shop — ${brand}` }
+  return { ...studioMetadata(siteData.site, null), title: `Shop — ${brand}`, ...canonicalMeta(canonicalHostOf(data, data.store.slug), '/shop') }
 }
 
 export default async function DomainShopRoute({ params, searchParams }) {

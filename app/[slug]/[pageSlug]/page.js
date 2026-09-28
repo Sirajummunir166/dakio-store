@@ -3,6 +3,7 @@ import StoreUnavailable from '../../../components/StoreUnavailable'
 import PublicSite from '../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
+import { canonicalHostOf, canonicalMeta } from '../../../lib/seo'
 
 // Store Studio subpages (e.g. /my-store/about). Static siblings (checkout, track,
 // products, preview) take routing precedence over this dynamic segment.
@@ -18,7 +19,7 @@ export async function generateMetadata({ params }) {
   if (!siteData?.site) return { title: 'Not Found' }
   const page = findPage(siteData.site, pageSlug)
   if (!page) return { title: 'Not Found' }
-  return studioMetadata(siteData.site, page)
+  return { ...studioMetadata(siteData.site, page), ...canonicalMeta(canonicalHostOf(siteData, slug), page.slug) }
 }
 
 export default async function StudioSubPage({ params }) {

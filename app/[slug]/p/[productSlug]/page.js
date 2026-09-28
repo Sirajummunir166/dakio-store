@@ -5,7 +5,7 @@ import { toStudioCatalog, studioMetadata } from '../../../../components/studio/p
 import { notFound } from 'next/navigation'
 import { htmlToText } from '../../../../lib/theme/sanitizeHtml'
 import ProductJsonLd from '../../../../components/ProductJsonLd'
-import { storeOrigin } from '../../../../lib/hosts'
+import { canonicalHostOf, canonicalMeta, productPath } from '../../../../lib/seo'
 
 // /p/<product-slug> — one product template behind every product (Phase 8).
 // Gallery, price, sizes and stock come from the live catalog; the template
@@ -23,6 +23,7 @@ export async function generateMetadata({ params }) {
     ...studioMetadata(siteData.site, null),
     title: p ? `${p.name} — ${brand}` : 'Not Found',
     ...(p ? { description: htmlToText(p.shortDescription || p.description).slice(0, 160) || undefined, openGraph: { title: `${p.name} — ${brand}`, ...(img ? { images: [img] } : {}) } } : {}),
+    ...(p ? canonicalMeta(canonicalHostOf(siteData, slug), productPath(productSlug, true)) : {}),
   }
 }
 
@@ -46,7 +47,7 @@ export default async function ProductRoute({ params }) {
     <>
       <ProductJsonLd
         product={raw}
-        url={`${storeOrigin(slug)}/p/${encodeURIComponent(productSlug)}`}
+        url={`https://${canonicalHostOf(siteData, slug)}${productPath(productSlug, true)}`}
         storeName={siteData.site.theme?.brandName}
       />
       <PublicSite

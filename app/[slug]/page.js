@@ -4,6 +4,7 @@ import StoreUnavailable from '../../components/StoreUnavailable'
 import PublicSite from '../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
+import { canonicalHostOf, canonicalMeta } from '../../lib/seo'
 
 export async function generateMetadata({ params }) {
   const { slug } = await params
@@ -12,7 +13,7 @@ export async function generateMetadata({ params }) {
     const home = siteData.site.pages.find((p) => p.id === 'home') || siteData.site.pages[0]
     // Hierarchy: the page's own SEO wins, store defaults (doc.seo) fill in;
     // favicon + social image are store-wide with optional per-page og override
-    return studioMetadata(siteData.site, home)
+    return { ...studioMetadata(siteData.site, home), ...canonicalMeta(canonicalHostOf(siteData, slug), '/') }
   }
   const data = await getStoreBySlug(slug)
   if (!data?.store) return { title: 'Store Not Found' }
@@ -22,6 +23,7 @@ export async function generateMetadata({ params }) {
     description: s.description || `Shop at ${s.name}`,
     icons: s.faviconUrl ? { icon: s.faviconUrl, shortcut: s.faviconUrl } : undefined,
     openGraph: { title: s.name, description: s.description, images: s.logoUrl ? [s.logoUrl] : [] },
+    ...canonicalMeta(canonicalHostOf(data, slug), '/'),
   }
 }
 

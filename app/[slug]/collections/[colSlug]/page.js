@@ -3,6 +3,7 @@ import StoreUnavailable from '../../../../components/StoreUnavailable'
 import PublicSite from '../../../../components/studio/PublicSite'
 import { toStudioCatalog, collectionPage } from '../../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
+import { canonicalHostOf, canonicalMeta } from '../../../../lib/seo'
 
 // Store Studio collection pages (/my-store/collections/sarees): a live grid of
 // one collection's products, styled by the tenant's published site. Only exists
@@ -18,6 +19,8 @@ export async function generateMetadata({ params }) {
   return {
     title: `${col.name} — ${siteData.site.theme?.brandName || 'Store'}`,
     description: `Shop ${col.name} online.`,
+    // The /shop/<collection> template is the collection's one address.
+    ...canonicalMeta(canonicalHostOf(siteData, slug), `/shop/${encodeURIComponent(colSlug)}`),
   }
 }
 

@@ -3,6 +3,7 @@ import StoreUnavailable from '../../../../components/StoreUnavailable'
 import PublicSite from '../../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
+import { canonicalHostOf, canonicalMeta } from '../../../../lib/seo'
 
 // /shop/<collection> — one collection template behind every collection
 // (Phase 8). Edit the template once in Store Studio, every collection follows.
@@ -14,7 +15,7 @@ export async function generateMetadata({ params }) {
   const categories = await getCategories(slug)
   const col = (categories || []).find((c) => c.slug === colSlug)
   const brand = siteData.site.theme?.brandName || 'Store'
-  return { ...studioMetadata(siteData.site, null), title: col ? `${col.name} — ${brand}` : 'Not Found' }
+  return { ...studioMetadata(siteData.site, null), title: col ? `${col.name} — ${brand}` : 'Not Found', ...(col ? canonicalMeta(canonicalHostOf(siteData, slug), `/shop/${encodeURIComponent(colSlug)}`) : {}) }
 }
 
 export default async function CollectionRoute({ params }) {

@@ -4,6 +4,8 @@ import PublicSite from '../../../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
 import ProductJsonLd from '../../../../../components/ProductJsonLd'
+import { htmlToText } from '../../../../../lib/theme/sanitizeHtml'
+import { canonicalHostOf, canonicalMeta, productPath } from '../../../../../lib/seo'
 
 // /p/<product-slug> on a custom domain — mirrors app/[slug]/p/[productSlug].
 
@@ -16,7 +18,13 @@ export async function generateMetadata({ params }) {
   const products = await getProducts(data.store.slug)
   const p = (products || []).find((x) => x.slug === productSlug)
   const brand = siteData.site.theme?.brandName || 'Store'
-  return { ...studioMetadata(siteData.site, null), title: p ? `${p.name} — ${brand}` : 'Not Found' }
+  const img = p && ((Array.isArray(p.images) && p.images[0]) || p.imageUrl)
+  return {
+    ...studioMetadata(siteData.site, null),
+    title: p ? `${p.name} — ${brand}` : 'Not Found',
+    ...(p ? { description: htmlToText(p.shortDescription || p.description).slice(0, 160) || undefined, openGraph: { title: `${p.name} — ${brand}`, ...(img ? { images: [img] } : {}) } } : {}),
+    ...(p ? canonicalMeta(canonicalHostOf(data, data.store.slug), productPath(productSlug, true)) : {}),
+  }
 }
 
 export default async function DomainProductRoute({ params }) {
@@ -40,7 +48,7 @@ export default async function DomainProductRoute({ params }) {
     <>
       <ProductJsonLd
         product={raw}
-        url={`https://${host}/p/${encodeURIComponent(productSlug)}`}
+        url={`https://${canonicalHostOf(storeData, slug)}${productPath(productSlug, true)}`}
         currency={storeData.store.currency}
         storeName={siteData.site.theme?.brandName || storeData.store.name}
       />

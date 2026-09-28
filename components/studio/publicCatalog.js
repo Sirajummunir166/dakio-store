@@ -19,6 +19,10 @@ export function studioMetadata(site, page) {
     description,
     ...(favicon ? { icons: { icon: favicon, shortcut: favicon } } : {}),
     openGraph: { title, description, ...(og ? { images: [og] } : {}) },
+    // Search & Google (Store Studio): the merchant's "hide from search engines"
+    // switch, and their Search Console HTML-tag token.
+    ...(seo.noindex ? { robots: { index: false, follow: true } } : {}),
+    ...(typeof seo.gsc === 'string' && seo.gsc ? { verification: { google: seo.gsc } } : {}),
   };
 }
 

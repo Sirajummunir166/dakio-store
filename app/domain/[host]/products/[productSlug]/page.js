@@ -1,8 +1,9 @@
-import { getStoreByDomain, getProductBySlug, getProducts } from '../../../../../lib/api'
+import { getStoreByDomain, getProductBySlug, getProducts, getPublishedSite } from '../../../../../lib/api'
 import ProductDetailClient from '../../../../../components/ProductDetailClient'
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { htmlToText } from '../../../../../lib/theme/sanitizeHtml'
 import ProductJsonLd from '../../../../../components/ProductJsonLd'
+import { canonicalHostOf, canonicalMeta, productPath } from '../../../../../lib/seo'
 
 export async function generateMetadata({ params }) {
   const { host, productSlug } = await params
@@ -14,6 +15,7 @@ export async function generateMetadata({ params }) {
     title: product.name,
     description: htmlToText(product.description).slice(0, 160) || product.name,
     openGraph: { title: product.name, images: product.imageUrl ? [product.imageUrl] : [] },
+    ...canonicalMeta(canonicalHostOf(storeData, storeData.store.slug), productPath(productSlug, false)),
   }
 }
 
@@ -22,6 +24,10 @@ export default async function DomainProductPage({ params }) {
   const storeData = await getStoreByDomain(host)
   if (!storeData?.store) notFound()
   const slug = storeData.store.slug
+  // A store on Store Studio shows products at /p/<slug>. The legacy URL keeps
+  // working for old links (Facebook posts, bookmarks) and hands its ranking on.
+  const siteData = await getPublishedSite(slug)
+  if (siteData?.site) permanentRedirect(productPath(productSlug, true))
   const [product, allProducts] = await Promise.all([
     getProductBySlug(slug, productSlug),
     getProducts(slug, { limit: 48 }),
@@ -38,7 +44,7 @@ export default async function DomainProductPage({ params }) {
     <>
       <ProductJsonLd
         product={product}
-        url={`https://${host}/products/${encodeURIComponent(productSlug)}`}
+        url={`https://${canonicalHostOf(storeData, slug)}${productPath(productSlug, false)}`}
         currency={storeData.store.currency}
         storeName={storeData.store.name}
       />

@@ -4,7 +4,7 @@ import StoreUnavailable from '../../../components/StoreUnavailable'
 import StoreNotFound from '../../../components/StoreNotFound'
 import PublicSite from '../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../components/studio/publicCatalog'
-import { getCanonicalUrl } from '../../../lib/routes'
+import { canonicalHostOf, canonicalMeta } from '../../../lib/seo'
 
 export async function generateMetadata({ params }) {
   const { host } = await params
@@ -12,14 +12,12 @@ export async function generateMetadata({ params }) {
   if (!data?.store) return { title: 'Store Not Found' }
   const s = data.store
 
-  // The same tenant is now reachable via up to three origins (path URL, a
-  // *.dakio.shop preview subdomain, a verified custom domain) — converge
-  // search engines on one canonical URL, and keep the preview tier out of
-  // the index entirely rather than let it compete with the real one.
-  const seo = {
-    alternates: { canonical: getCanonicalUrl({ host, slug: s.slug }) },
-    robots: host.endsWith('.dakio.shop') ? { index: false, follow: true } : undefined,
-  }
+  // A store answers on up to three addresses (the path URL, <slug>.dakio.shop,
+  // a verified custom domain). Every one of them names the same canonical: the
+  // API's canonicalHost. <slug>.dakio.shop is a store's LIVE address unless it
+  // has a verified domain, so it is indexable — until 2026-09-29 it was treated
+  // as a preview tier and marked noindex, which hid most stores from Google.
+  const seo = canonicalMeta(canonicalHostOf(data, s.slug), '/')
 
   const siteData = await getPublishedSite(s.slug)
   if (siteData?.site) {
