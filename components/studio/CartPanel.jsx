@@ -4,11 +4,13 @@
 // system pages. Themed by the storefront's own tokens (co/btnColors/sx from
 // theme.js), not a fixed theme package's CSS, and reuses the exact bag/total
 // math CartPage and CheckoutPage already use so the numbers never drift.
+// Delivery is charged by district at checkout, so the drawer shows the store's
+// two rates and never a free-delivery promise the server won't honour.
 import { useEffect } from 'react';
 import { co, btnColors, sx } from './theme';
 import { fmtPr } from './catalog';
 import { setQty } from './cartStore';
-import { useBag, bagTotals, FREE_DLV_OVER } from './system/CommercePages';
+import { useBag, bagTotals, deliveryNote } from './system/CommercePages';
 import ImageSlot from './ImageSlot';
 
 export default function CartPanel({ ctx, open, onClose }) {
@@ -16,10 +18,8 @@ export default function CartPanel({ ctx, open, onClose }) {
   const c = co('card', P);
   const B = btnColors('base', P);
   const bag = useBag(ctx);
-  const { sub, dlv, total } = bagTotals(bag);
+  const { sub } = bagTotals(bag);
   const count = bag.reduce((n, l) => n + l.qty, 0);
-  const remaining = Math.max(0, FREE_DLV_OVER - sub);
-  const progress = Math.min(100, (sub / FREE_DLV_OVER) * 100);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -51,27 +51,11 @@ export default function CartPanel({ ctx, open, onClose }) {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 30px', textAlign: 'center' }}>
             <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.35, marginBottom: 16 }}><path d="M6 7h12l1 14H5L6 7zM9 10V6a3 3 0 016 0v4" /></svg>
             <div style={sx('font-family:' + F.h + '; font-weight:' + F.hw + '; font-size:17px;')}>Your cart is empty</div>
-            <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:8px; line-height:1.6;')}>Add something you love — free delivery over {fmtPr(FREE_DLV_OVER)}.</div>
+            <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:8px; line-height:1.6;')}>Add something you love.</div>
             <div onClick={onClose} style={sx('margin-top:20px; padding:12px 24px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:13.5px; cursor:pointer;')}>Continue shopping</div>
           </div>
         ) : (
           <>
-            <div style={sx('padding:' + (mob ? '14px 20px' : '16px 26px') + ';')}>
-              {dlv === 0 ? (
-                <div style={sx('display:flex; align-items:center; gap:8px; font-family:' + F.b + '; font-size:12.5px; font-weight:700; color:' + P.accent + ';')}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-                  You qualify for free delivery
-                </div>
-              ) : (
-                <>
-                  <div style={sx('height:5px; border-radius:99px; background:' + c.line + '; overflow:hidden;')}>
-                    <div style={sx('height:100%; border-radius:99px; background:' + P.accent + '; width:' + progress + '%; transition:width .3s ease;')} />
-                  </div>
-                  <div style={sx('font-family:' + F.b + '; font-size:12px; color:' + c.sub + '; margin-top:9px;')}>Add {fmtPr(remaining)} more for <b style={{ color: c.fg }}>free delivery</b></div>
-                </>
-              )}
-            </div>
-
             <div style={{ flex: 1, overflowY: 'auto', padding: mob ? '0 20px' : '0 26px' }}>
               {bag.map((l, i) => (
                 <div key={l.pid + ':' + (l.size || '')} style={sx('display:flex; gap:12px; padding:16px 0;' + (i ? ' border-top:1px solid ' + c.line + ';' : ''))}>
@@ -98,14 +82,11 @@ export default function CartPanel({ ctx, open, onClose }) {
             </div>
 
             <div style={sx('padding:' + (mob ? '18px 20px' : '20px 26px') + '; border-top:1px solid ' + c.line + ';')}>
-              <div style={sx('display:flex; justify-content:space-between; font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-bottom:6px;')}>
+              <div style={sx('display:flex; justify-content:space-between; font-family:' + F.b + '; font-size:16px; font-weight:800; margin-bottom:6px;')}>
                 <span>Subtotal</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(sub)}</span>
               </div>
-              <div style={sx('display:flex; justify-content:space-between; font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-bottom:12px;')}>
-                <span>Shipping</span><span>{dlv === 0 ? 'Free' : fmtPr(dlv)}</span>
-              </div>
-              <div style={sx('display:flex; justify-content:space-between; font-family:' + F.b + '; font-size:16px; font-weight:800; padding-top:12px; border-top:1px solid ' + c.line + '; margin-bottom:16px;')}>
-                <span>Total</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(total)}</span>
+              <div style={sx('display:flex; justify-content:space-between; gap:12px; font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + '; margin-bottom:16px;')}>
+                <span>Delivery</span><span style={{ textAlign: 'right' }}>{deliveryNote(ctx)}</span>
               </div>
               <div onClick={goCheckout} style={sx('display:flex; align-items:center; justify-content:center; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:14.5px; cursor:pointer;')}>Checkout</div>
               <div style={sx('text-align:center; margin-top:12px; font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + ';')}>bKash · Nagad · Cash on Delivery</div>

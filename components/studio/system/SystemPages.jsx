@@ -10,7 +10,6 @@ import ProductCard from '../ProductCard';
 import { co, btnColors, sx, SPM } from '../theme';
 import { fmtPr, colCount, liveProds, shortDesc } from '../catalog';
 import { getCart, onCartChange } from '../cartStore';
-import { FREE_DLV_OVER } from './CommercePages';
 import { sizeInStock, firstInStockSize, priceFor, soldOutSize } from '../variants';
 import RichContent, { RichContentStyles } from '../RichContent';
 import { resolveProductTabs } from '../productTabs';
@@ -19,7 +18,7 @@ export const SYS_DEFAULTS = {
   shop: { head: 'Shop all', cols: 4, hd: { v: 'left', bg: 'base', count: true }, gr: { bg: 'base', sp: 'normal', fCol: true, fPr: true, fSz: true, fStock: true, sort: true } },
   col: { v: 'left', sub: 'Woven slow, delivered fast — every piece from the live catalog.', bg: 'base', sp: 'normal', cols: 3, gr: { bg: 'base', sp: 'normal', filters: false } },
   prod: {
-    btn: 'Add to bag', note: 'Free delivery over ' + fmtPr(FREE_DLV_OVER) + ' · Cash on delivery', alsoOn: true, alsoHead: 'You may also like',
+    btn: 'Add to bag', note: 'Cash on delivery everywhere · Delivery charge set by district at checkout', alsoOn: true, alsoHead: 'You may also like',
     pd: { v: 'left', bg: 'base', stock: true, sizes: true, note: true },
     tabSpecs: 'Add specifications in the Catalog tab — material, origin, weight, or anything else worth listing.',
     tabGuide: 'Add sizing notes here — how this fits, and tips for choosing between sizes.',

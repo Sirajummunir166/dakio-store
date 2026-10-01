@@ -18,7 +18,7 @@ function isValidBDPhone(raw) {
 }
 
 export const SYS10_DEFAULTS = {
-  cart: { head: 'Your bag', note: 'Free delivery in Dhaka over ৳2,000 · Cash on delivery everywhere' },
+  cart: { head: 'Your bag', note: 'Cash on delivery everywhere · We call to confirm before shipping' },
   checkout: { pays: { cod: true, bkash: true, nagad: true }, payOrder: ['cod', 'bkash', 'nagad'], trust: true, note: 'We call to confirm before shipping — pay nothing until it arrives.' },
   account: { head: 'Your orders', sub: 'Enter the phone number you order with — we’ll text a code, no password needed.' },
 };
@@ -30,8 +30,20 @@ const PAY_LBL = {
   nagad: { n: 'Nagad', d: 'Pay from your Nagad app after the confirmation call' },
 };
 
-export const FREE_DLV_OVER = 2000;
-export const DLV_CHARGE = 80;
+// Delivery is charged by district at checkout — Dhaka district at the store's
+// inside rate, every other district at its outside rate (dakio-api
+// lib/deliveryZone.js, the one rule). The bag pages never invent a charge or a
+// free-delivery threshold the server won't honour; they say what the rates are.
+export function deliveryRates(ctx) {
+  const s = ctx && ctx.store;
+  if (!s || s.deliveryInsideDhaka == null || s.deliveryOutsideDhaka == null) return null;
+  return { inside: Number(s.deliveryInsideDhaka), outside: Number(s.deliveryOutsideDhaka) };
+}
+export function deliveryNote(ctx) {
+  const r = deliveryRates(ctx);
+  if (!r) return 'Set at checkout';
+  return (r.inside === 0 ? 'Free' : fmtPr(r.inside)) + ' in Dhaka · ' + (r.outside === 0 ? 'free' : fmtPr(r.outside)) + ' elsewhere';
+}
 
 // Resolve stored cart lines against the live catalog (canvas gets a demo bag).
 // localStorage is read only after mount so SSR and first client render match.
@@ -63,8 +75,7 @@ export function useBag(ctx) {
 
 export const bagTotals = (bag) => {
   const sub = bag.reduce((n, l) => n + l.p.pr * l.qty, 0);
-  const dlv = sub >= FREE_DLV_OVER ? 0 : DLV_CHARGE;
-  return { sub, dlv, total: sub + dlv };
+  return { sub };
 };
 
 // ── /cart ────────────────────────────────────────────────────────────────────
@@ -73,7 +84,7 @@ export function CartPage({ ctx, sys, edit }) {
   const c = co('base', P);
   const cp = sys10(sys, 'cart');
   const bag = useBag(ctx);
-  const { sub, dlv } = bagTotals(bag);
+  const { sub } = bagTotals(bag);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
   const B = btnColors('base', P);
   const change = (l, d) => { if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, l.qty + d); };
@@ -116,7 +127,7 @@ export function CartPage({ ctx, sys, edit }) {
             <span>Subtotal</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(sub)}</span>
           </div>
           <div style={sx('margin-top:8px; display:flex; justify-content:space-between; font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + ';')}>
-            <span>Delivery</span><span>{dlv === 0 ? 'Free — over ' + fmtPr(FREE_DLV_OVER) : fmtPr(dlv) + ' · free over ' + fmtPr(FREE_DLV_OVER)}</span>
+            <span>Delivery</span><span>{deliveryNote(ctx)}</span>
           </div>
           <div onClick={ctx.preview && ctx.onCheckout ? (ev) => { ev.stopPropagation(); ctx.onCheckout(); } : undefined} style={sx('margin-top:22px; display:flex; align-items:center; justify-content:center; gap:9px; padding:16px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:14.5px; cursor:pointer;')}>
             Continue to checkout
