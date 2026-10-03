@@ -27,10 +27,13 @@ export function livePairs(product) {
 export function addOnUnit(bag, line, cat) {
   const unit = line.p.pr;
   if (!line.addOnOf) return unit;
-  const mainQty = bag.reduce((n, l) => (l !== line && !l.addOnOf && l.pid === line.addOnOf ? n + l.qty : n), 0);
+  // Mains are lines bought for themselves; the add-on counts across all its
+  // lines for the same main (two sizes cannot beat "no more than the main").
+  const mainQty = bag.reduce((n, l) => (!l.addOnOf && l.pid === line.addOnOf ? n + l.qty : n), 0);
+  const addOnQty = bag.reduce((n, l) => (l.addOnOf === line.addOnOf && l.pid === line.pid ? n + l.qty : n), 0);
   const main = catProduct(cat, line.addOnOf);
   const pair = ((main && main.pairs) || []).find((a) => a.id === line.pid);
-  if (!pair || pair.together == null || mainQty <= 0 || line.qty > mainQty) return unit;
+  if (!pair || pair.together == null || mainQty <= 0 || addOnQty > mainQty) return unit;
   return pair.together < unit ? pair.together : unit;
 }
 

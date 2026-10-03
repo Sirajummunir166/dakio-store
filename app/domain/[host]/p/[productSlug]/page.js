@@ -1,4 +1,4 @@
-import { getStoreByDomain, getProducts, getCategories, getPublishedSite } from '../../../../../lib/api'
+import { getStoreByDomain, getProducts, getCategories, getPublishedSite, getProductBySlug } from '../../../../../lib/api'
 import StoreUnavailable from '../../../../../components/StoreUnavailable'
 import PublicSite from '../../../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../../../components/studio/publicCatalog'
@@ -40,9 +40,18 @@ export default async function DomainProductRoute({ params }) {
 
   const [products, categories] = await Promise.all([getProducts(slug), getCategories(slug)])
   const catalog = toStudioCatalog(products, categories)
-  const product = catalog.products.find((p) => p.slug === productSlug)
+  let product = catalog.products.find((p) => p.slug === productSlug)
+  let raw = products.find((p) => p.slug === productSlug)
+  if (!product) {
+    // Not among the newest 48 (e.g. an add-on from a Goes well with block):
+    // the product's own read, mapped the same way.
+    const one = await getProductBySlug(slug, productSlug)
+    if (one && one.slug === productSlug) {
+      product = toStudioCatalog([one], categories).products[0]
+      raw = one
+    }
+  }
   if (!product) notFound()
-  const raw = products.find((p) => p.slug === productSlug)
 
   return (
     <>

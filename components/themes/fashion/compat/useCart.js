@@ -39,8 +39,10 @@ export function useCart() {
       const items = c.items ?? []
       const item = items.find(
         (i) =>
-          i.key === `${productId}${size}` ||
-          (String(i.productId) === String(productId) && i.size === size),
+          // Never an add-on line (Goes well with) — those are their own lines.
+          !i.addOnOf && (
+            i.key === `${productId}${size}` ||
+            (String(i.productId) === String(productId) && i.size === size)),
       )
       if (item) c.removeItem(item.key ?? item.id)
     },
@@ -50,8 +52,10 @@ export function useCart() {
       const items = c.items ?? []
       const item = items.find(
         (i) =>
-          i.key === `${productId}${size}` ||
-          (String(i.productId) === String(productId) && i.size === size),
+          // Never an add-on line (Goes well with) — those are their own lines.
+          !i.addOnOf && (
+            i.key === `${productId}${size}` ||
+            (String(i.productId) === String(productId) && i.size === size)),
       )
       if (item) c.changeQty(item.key ?? item.id, qty)
     },

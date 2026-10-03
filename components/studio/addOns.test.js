@@ -53,3 +53,23 @@ test('basic store cart: unitPrice follows the rule on every change', () => {
   const plain = [main]
   assert.equal(repriceCart(plain), plain, 'a cart without add-ons is untouched')
 })
+
+test('review: chained add-ons and split lines get the normal price in both carts (the server rule)', () => {
+  const cat = toStudioCatalog([
+    ...api,
+    { id: 'pin', name: 'Pin', sellingPrice: 80, totalStock: 9, variants: [], pairings: [] },
+  ], [])
+  cat.products.find((p) => p.id === 'scarf').pairs = toStudioPairs([{ id: 'pin', name: 'Pin', price: 80, togetherPrice: 50, variants: [] }])
+  const line = (pid, qty, addOnOf, size = null) => ({ pid, qty, size, addOnOf, p: { ...catProduct(cat, pid) } })
+  // Kaftan → scarf (an add-on line) → pin: the scarf is not a "main".
+  const chained = priceAddOns([line('dress', 1), line('scarf', 1, 'dress'), line('pin', 1, 'scarf')], cat)
+  assert.equal(chained[2].p.pr, 80)
+  // One kaftan, the belt in two lines: more add-ons than mains.
+  const split = priceAddOns([line('dress', 1), line('belt', 1, 'dress', 'a'), line('belt', 1, 'dress', 'b')], cat)
+  assert.deepEqual(split.slice(1).map((l) => l.p.pr), [450, 450])
+  const main = { key: 'dress', productId: 'dress', qty: 1, unitPrice: 1480 }
+  const b = (k) => ({ key: k, productId: 'belt', qty: 1, unitPrice: 450, addOnOf: 'dress', basePrice: 450, togetherPrice: 350 })
+  assert.deepEqual(repriceCart([main, b('x'), b('y')]).slice(1).map((l) => l.unitPrice), [450, 450])
+  const chainedBasic = repriceCart([main, { key: 's', productId: 'scarf', qty: 1, addOnOf: 'dress', basePrice: 600, togetherPrice: null, unitPrice: 600 }, { key: 'p', productId: 'pin', qty: 1, addOnOf: 'scarf', basePrice: 80, togetherPrice: 50, unitPrice: 80 }])
+  assert.equal(chainedBasic[2].unitPrice, 80)
+})
