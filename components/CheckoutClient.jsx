@@ -6,6 +6,7 @@ import TrackingScripts from './TrackingScripts'
 import { storeHome } from '../lib/routes'
 import { resolveFashionConfig } from '../lib/theme/fashionDefaults'
 import FashionCheckoutRoute from './templates/fashion/FashionCheckoutRoute'
+import { repriceCart } from '@/lib/addOnCart'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://dakio-api-production.up.railway.app/api'
 
@@ -58,7 +59,8 @@ export default function CheckoutClient({ store, slug }) {
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(`dk_cart_${slug}`) || '[]')
-      setCart(saved)
+      // Add-on lines priced by the server's rule (lib/addOnCart.js).
+      setCart(repriceCart(saved))
     } catch {}
     setCartReady(true)
   }, [slug])

@@ -6,12 +6,16 @@
 // math CartPage and CheckoutPage already use so the numbers never drift.
 // Delivery is charged by district at checkout, so the drawer shows the store's
 // two rates and never a free-delivery promise the server won't honour.
+// Goes well with: one quiet suggestion above the subtotal — an add-on the
+// merchant paired with something in the bag, added as its own add-on line.
 import { useEffect } from 'react';
 import { co, btnColors, sx } from './theme';
 import { fmtPr } from './catalog';
 import { setQty } from './cartStore';
 import { useBag, bagTotals, deliveryNote } from './system/CommercePages';
 import ImageSlot from './ImageSlot';
+import { bagSuggestion } from './addOns';
+import { priceFor, firstInStockSize } from './variants';
 
 export default function CartPanel({ ctx, open, onClose }) {
   const { P, F, C, mob } = ctx;
@@ -31,10 +35,20 @@ export default function CartPanel({ ctx, open, onClose }) {
 
   if (!open) return null;
 
-  const change = (l, d) => { if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, l.qty + d); };
-  const remove = (l) => { if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, 0); };
+  const change = (l, d) => { if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, l.qty + d, l.addOnOf); };
+  const remove = (l) => { if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, 0, l.addOnOf); };
   const goProduct = (l) => { onClose(); ctx.onProduct && ctx.onProduct(l.p); };
   const goCheckout = () => { onClose(); ctx.onCheckout && ctx.onCheckout(); };
+  // One suggestion; a sized add-on goes to the main product's page, where its
+  // Goes well with block lets the customer pick the size.
+  const tip = bagSuggestion(bag, ctx.cat);
+  const tipSized = tip && String(tip.pair.p.sizes || '').trim() !== '';
+  const tipPrice = tip ? (tip.pair.together != null && tip.pair.together < priceFor(tip.pair.p, null) ? tip.pair.together : priceFor(tip.pair.p, null)) : 0;
+  const takeTip = () => {
+    if (!tip) return;
+    if (tipSized) { goProduct({ p: tip.main }); return; }
+    if (ctx.addToBag) ctx.addToBag(tip.pair.p, 1, firstInStockSize(tip.pair.p, []), tip.main.id);
+  };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} role="dialog" aria-modal="true" aria-label="Shopping cart">
@@ -58,7 +72,7 @@ export default function CartPanel({ ctx, open, onClose }) {
           <>
             <div style={{ flex: 1, overflowY: 'auto', padding: mob ? '0 20px' : '0 26px' }}>
               {bag.map((l, i) => (
-                <div key={l.pid + ':' + (l.size || '')} style={sx('display:flex; gap:12px; padding:16px 0;' + (i ? ' border-top:1px solid ' + c.line + ';' : ''))}>
+                <div key={l.pid + ':' + (l.size || '') + ':' + (l.addOnOf || '')} style={sx('display:flex; gap:12px; padding:16px 0;' + (i ? ' border-top:1px solid ' + c.line + ';' : ''))}>
                   <div onClick={() => goProduct(l)} style={sx('width:64px; height:80px; flex-shrink:0; border-radius:' + Math.min(C.rs, 12) + 'px; overflow:hidden; position:relative; background:' + c.card + '; cursor:pointer;')}>
                     <ImageSlot slotId={'st-prod-' + l.p.id} assets={{ ...(ctx.assets || {}), ['st-prod-' + l.p.id]: (ctx.assets || {})['st-prod-' + l.p.id] || l.p.img }} fit="cover" placeholder="" preview />
                   </div>
@@ -82,6 +96,15 @@ export default function CartPanel({ ctx, open, onClose }) {
             </div>
 
             <div style={sx('padding:' + (mob ? '18px 20px' : '20px 26px') + '; border-top:1px solid ' + c.line + ';')}>
+              {tip && (
+                <div style={sx('display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:14px; border-radius:' + Math.min(C.rs, 12) + 'px; border:1px dashed ' + c.line + '; font-family:' + F.b + ';')}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={sx('font-size:11px; color:' + c.sub + '; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;')}>Goes well with your {tip.main.n}</div>
+                    <div style={sx('font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;')}>{tip.pair.p.n} · {fmtPr(tipPrice)}</div>
+                  </div>
+                  <div onClick={takeTip} style={sx('flex-shrink:0; padding:8px 14px; border-radius:' + C.btn + '; border:1.5px solid ' + c.fg + '; font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap;')}>{tipSized ? 'Choose size' : 'Add'}</div>
+                </div>
+              )}
               <div style={sx('display:flex; justify-content:space-between; font-family:' + F.b + '; font-size:16px; font-weight:800; margin-bottom:6px;')}>
                 <span>Subtotal</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(sub)}</span>
               </div>

@@ -34,6 +34,6 @@ export default async function DomainShopRoute({ params, searchParams }) {
   const catalog = toStudioCatalog(products, categories)
 
   return (
-    <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} system={{ kind: 'shop', q }} />
+    <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} extra={catalog.extra} system={{ kind: 'shop', q }} />
   )
 }

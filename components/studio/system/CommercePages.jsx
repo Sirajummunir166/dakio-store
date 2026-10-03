@@ -10,6 +10,7 @@ import { co, btnColors, sx } from '../theme';
 import { fmtPr, liveProds } from '../catalog';
 import { getCart, setQty, updateSize, clearCart } from '../cartStore';
 import { priceFor } from '../variants';
+import { catProduct, priceAddOns } from '../addOns';
 import { DISTRICTS, DHAKA_DISTRICTS, getThanas, detectLocation } from '../../../lib/bd-locations';
 
 function isValidBDPhone(raw) {
@@ -69,14 +70,17 @@ export function useBag(ctx) {
   }, [ctx.storeSlug]);
   return useMemo(() => {
     const lines = ctx.storeSlug ? (mounted ? getCart(ctx.storeSlug) : []) : (ctx.demoBag || []);
-    return lines
+    const bag = lines
       .map((l) => {
-        const p = ctx.cat.products.find((x) => x.id === l.pid);
+        // The catalog, else an add-on the pairings carried (Goes well with).
+        const p = catProduct(ctx.cat, l.pid);
         // A size's variant can carry its own price — the order charges it, so
         // every bag total (drawer, /cart, /checkout) shows that price too.
         return { ...l, p: p ? { ...p, pr: priceFor(p, l.size) } : p };
       })
       .filter((l) => l.p && !l.p.arch);
+    // An add-on beside its main product: the together price, by the server's rule.
+    return priceAddOns(bag, ctx.cat);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx.storeSlug, ctx.cat, tick, mounted, ctx.demoBag]);
 }
@@ -95,8 +99,8 @@ export function CartPage({ ctx, sys, edit }) {
   const { sub } = bagTotals(bag);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
   const B = btnColors('base', P);
-  const change = (l, d) => { if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, l.qty + d); };
-  const remove = (l) => { if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, 0); };
+  const change = (l, d) => { if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, l.qty + d, l.addOnOf); };
+  const remove = (l) => { if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, 0, l.addOnOf); };
 
   return (
     <div style={sx('padding:' + (mob ? 36 : 60) + 'px ' + (mob ? 20 : 48) + 'px 80px; max-width:660px; margin:0 auto; box-sizing:border-box; color:' + c.fg + ';')}>
@@ -113,13 +117,13 @@ export function CartPage({ ctx, sys, edit }) {
         <>
           <div style={{ marginTop: 22 }}>
             {bag.map((l, i) => (
-              <div key={l.pid + ':' + (l.size || '')} style={sx('display:grid; grid-template-columns:64px 1fr auto; gap:14px; align-items:center; padding:14px 0;' + (i ? ' border-top:1px solid ' + c.line + ';' : ''))}>
+              <div key={l.pid + ':' + (l.size || '') + ':' + (l.addOnOf || '')} style={sx('display:grid; grid-template-columns:64px 1fr auto; gap:14px; align-items:center; padding:14px 0;' + (i ? ' border-top:1px solid ' + c.line + ';' : ''))}>
                 <div onClick={ctx.preview && ctx.onProduct ? () => ctx.onProduct(l.p) : undefined} style={sx('width:64px; height:80px; border-radius:' + Math.min(C.rs, 12) + 'px; overflow:hidden; position:relative; background:' + c.card + '; cursor:pointer;')}>
                   <ImageSlot slotId={'st-prod-' + l.p.id} assets={{ ...(ctx.assets || {}), ['st-prod-' + l.p.id]: (ctx.assets || {})['st-prod-' + l.p.id] || l.p.img }} fit="cover" placeholder="" preview />
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div onClick={ctx.preview && ctx.onProduct ? () => ctx.onProduct(l.p) : undefined} style={sx('font-family:' + F.b + '; font-size:14px; font-weight:700; cursor:pointer;')}>{l.p.n}</div>
-                  <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + '; margin-top:2px;')}>{fmtPr(l.p.pr)}{l.size ? ' · ' + l.size : ''}</div>
+                  <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + '; margin-top:2px;')}>{fmtPr(l.p.pr)}{l.p.together ? ' (was ' + fmtPr(l.p.was) + ', together price)' : ''}{l.size ? ' · ' + l.size : ''}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
                     <div onClick={() => change(l, -1)} style={sx('width:26px; height:26px; border-radius:8px; border:1.5px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:800; font-size:13px;')}>−</div>
                     <div style={{ minWidth: 20, textAlign: 'center', fontWeight: 800, fontSize: 13 }}>{l.qty}</div>
@@ -292,7 +296,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
           const lineSizes = String(l.p.sizes || '').split(',').map((s) => s.trim()).filter(Boolean);
           const sizeOptions = l.size && !lineSizes.includes(l.size) ? [l.size, ...lineSizes] : lineSizes;
           return (
-            <div key={l.pid + ':' + (l.size || '')} style={sx('display:flex; gap:12px; align-items:center; padding:10px 0;' + (i ? ' border-top:1px solid ' + c.line + ';' : ''))}>
+            <div key={l.pid + ':' + (l.size || '') + ':' + (l.addOnOf || '')} style={sx('display:flex; gap:12px; align-items:center; padding:10px 0;' + (i ? ' border-top:1px solid ' + c.line + ';' : ''))}>
               <div style={sx('width:52px; height:66px; flex-shrink:0; border-radius:' + Math.min(C.rs, 10) + 'px; overflow:hidden; position:relative; background:' + c.bg + ';')}>
                 <ImageSlot slotId={'st-prod-' + l.p.id} assets={{ ...(ctx.assets || {}), ['st-prod-' + l.p.id]: (ctx.assets || {})['st-prod-' + l.p.id] || l.p.img }} fit="cover" placeholder="" preview />
               </div>
@@ -300,14 +304,14 @@ export function CheckoutPage({ ctx, sys, edit }) {
                 <div style={sx('font-family:' + F.b + '; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;')}>{l.p.n}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div onClick={(e) => { e.stopPropagation(); if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, l.qty - 1); }} style={sx('width:20px; height:20px; border-radius:6px; border:1.5px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:800; font-size:11px;')}>−</div>
+                    <div onClick={(e) => { e.stopPropagation(); if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, l.qty - 1, l.addOnOf); }} style={sx('width:20px; height:20px; border-radius:6px; border:1.5px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:800; font-size:11px;')}>−</div>
                     <span style={sx('font-family:' + F.b + '; font-size:11.5px; font-weight:700; min-width:12px; text-align:center;')}>{l.qty}</span>
-                    <div onClick={(e) => { e.stopPropagation(); if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, l.qty + 1); }} style={sx('width:20px; height:20px; border-radius:6px; border:1.5px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:800; font-size:11px;')}>+</div>
+                    <div onClick={(e) => { e.stopPropagation(); if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, l.qty + 1, l.addOnOf); }} style={sx('width:20px; height:20px; border-radius:6px; border:1.5px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:800; font-size:11px;')}>+</div>
                   </div>
                   {sizeOptions.length > 0 && (
                     <select
                       value={l.size || ''} onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => { if (ctx.storeSlug) updateSize(ctx.storeSlug, l.pid, l.size, e.target.value); }}
+                      onChange={(e) => { if (ctx.storeSlug) updateSize(ctx.storeSlug, l.pid, l.size, e.target.value, l.addOnOf); }}
                       style={sx('font-family:' + F.b + '; font-size:11px; font-weight:700; color:' + c.fg + '; background:' + c.bg + '; border:1px solid ' + c.line + '; border-radius:' + Math.min(C.rs, 8) + 'px; padding:2px 5px; outline:none; cursor:pointer;')}
                     >
                       {sizeOptions.map((z) => <option key={z} value={z}>Size {z}</option>)}
@@ -316,7 +320,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
-                <div onClick={(e) => { e.stopPropagation(); if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, 0); }} style={sx('cursor:pointer; color:' + c.sub + ';')} title="Remove">
+                <div onClick={(e) => { e.stopPropagation(); if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, 0, l.addOnOf); }} style={sx('cursor:pointer; color:' + c.sub + ';')} title="Remove">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
                 </div>
                 <div style={sx('font-family:' + F.b + '; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums;')}>{fmtPr(l.p.pr * l.qty)}</div>

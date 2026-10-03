@@ -13,8 +13,10 @@ export function getCartLine(items = [], productId, size) {
   return (
     items.find(
       (item) =>
-        item.key === `${productId}${size}` ||
-        (String(item.productId) === String(productId) && item.size === size),
+        // An add-on line (Goes well with) is not "this product in the cart".
+        !item.addOnOf && (
+          item.key === `${productId}${size}` ||
+          (String(item.productId) === String(productId) && item.size === size)),
     ) ?? null
   )
 }

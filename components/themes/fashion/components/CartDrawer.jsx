@@ -3,7 +3,6 @@ import { useEffect } from 'react'
 import { IconBag, IconCheck, IconClose, IconMinus, IconPlus } from './Icons.jsx'
 import { useFashionTheme } from '../FashionThemeContext.jsx'
 
-const FREE_SHIPPING_THRESHOLD = 2500
 const STANDARD_SHIPPING_FEE = 120
 
 function formatPrice(amount) {
@@ -31,10 +30,15 @@ export default function CartDrawer() {
   const subtotal = cart.total
   const couponDiscount = cart.couponDiscount ?? 0
   const appliedCoupon = cart.coupon ?? null
-  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE
+  // Free delivery is the store's own setting (Tenant.freeDeliveryOver), the
+  // one the server charges by — never a number the theme made up (it used to
+  // promise ৳2,500 to every store).
+  const FREE_SHIPPING_THRESHOLD = contract.store?.freeDeliveryOver ?? null
+  const hasFree = FREE_SHIPPING_THRESHOLD != null
+  const shipping = hasFree && subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE
   const total = subtotal - couponDiscount + shipping
-  const freeShippingProgress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100)
-  const amountToFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal)
+  const freeShippingProgress = hasFree ? Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100) : 0
+  const amountToFreeShipping = hasFree ? Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal) : 0
 
   const goCheckout = () => {
     cart.close()
@@ -63,14 +67,14 @@ export default function CartDrawer() {
               <IconBag size={48} />
             </div>
             <h3>Your cart is empty</h3>
-            <p>Add something you love — free delivery over {formatPrice(FREE_SHIPPING_THRESHOLD)}.</p>
+            <p>Add something you love{hasFree ? <> — free delivery over {formatPrice(FREE_SHIPPING_THRESHOLD)}</> : null}.</p>
             <button type="button" className="btn btn--dark" onClick={cart.close}>
               Continue Shopping
             </button>
           </div>
         ) : (
           <>
-            {subtotal < FREE_SHIPPING_THRESHOLD && (
+            {hasFree && subtotal < FREE_SHIPPING_THRESHOLD && (
               <div className="cart-drawer__shipping">
                 <div className="cart-drawer__shipping-bar" aria-hidden="true">
                   <span style={{ width: `${freeShippingProgress}%` }} />
@@ -80,7 +84,7 @@ export default function CartDrawer() {
                 </p>
               </div>
             )}
-            {subtotal >= FREE_SHIPPING_THRESHOLD && (
+            {hasFree && subtotal >= FREE_SHIPPING_THRESHOLD && (
               <p className="cart-drawer__shipping cart-drawer__shipping--free">
                 <IconCheck size={14} />
                 You qualify for free delivery

@@ -39,7 +39,7 @@ export default async function ShopRoute({ params, searchParams }) {
       pageId="home"
       basePath={`/${slug}`}
       products={catalog.products}
-      collections={catalog.collections}
+      collections={catalog.collections} extra={catalog.extra}
       system={{ kind: 'shop', q }}
     />
   )

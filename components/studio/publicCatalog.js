@@ -3,6 +3,8 @@
 // dakio-api/src/lib/studioCatalog.js so the published page shows exactly what
 // the canvas showed. Public products are always PUBLISHED, so arch is false.
 
+import { toStudioPairs } from './addOns.js';
+
 // SEO hierarchy for published studio pages: a page's own title/desc wins,
 // otherwise the store default (doc.seo) fills in. Favicon + social image are
 // store-wide uploads; a page can override just its own social image.
@@ -55,8 +57,7 @@ export function collectionPage(col, catalog) {
 export function toStudioCatalog(products = [], categories = []) {
   const ranked = products.filter((p) => p.rank != null).length;
   let unrankedNext = ranked;
-  return {
-    products: products.map((p) => ({
+  const mapped = products.map((p) => ({
       id: p.id,
       n: p.name,
       sku: p.sku || '',
@@ -108,7 +109,22 @@ export function toStudioCatalog(products = [], categories = []) {
         if (named && Array.isArray(named.values)) return named.values.join(', ');
         return '';
       })(),
-    })),
+      // Goes well with: the merchant's add-ons, each carrying its own product
+      // so it renders and prices even outside this page of the catalog.
+      pairs: toStudioPairs(p.pairings),
+    }));
+  // Add-ons not among the listed products, so the bag can still resolve them
+  // (useBag looks here after `products`) without showing them in any grid.
+  const listed = new Set(mapped.map((p) => p.id));
+  const extra = [];
+  for (const p of mapped) {
+    for (const a of p.pairs) {
+      if (!listed.has(a.id)) { listed.add(a.id); extra.push(a.p); }
+    }
+  }
+  return {
+    products: mapped,
+    extra,
     collections: categories.map((c) => ({ id: c.id, n: c.name, slug: c.slug })),
   };
 }

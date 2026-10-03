@@ -55,7 +55,7 @@ export default async function StorePage({ params }) {
         pageId="home"
         basePath={`/${slug}`}
         products={catalog.products}
-        collections={catalog.collections}
+        collections={catalog.collections} extra={catalog.extra}
       />
     )
   }

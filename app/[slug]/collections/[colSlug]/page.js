@@ -48,7 +48,7 @@ export default async function StudioCollectionPage({ params }) {
       pageId={page.id}
       basePath={`/${slug}`}
       products={catalog.products}
-      collections={catalog.collections}
+      collections={catalog.collections} extra={catalog.extra}
     />
   )
 }

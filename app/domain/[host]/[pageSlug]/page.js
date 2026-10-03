@@ -51,7 +51,7 @@ export default async function DomainStudioSubPage({ params }) {
       pageId={page.id}
       basePath=""
       products={catalog.products}
-      collections={catalog.collections}
+      collections={catalog.collections} extra={catalog.extra}
     />
   )
 }

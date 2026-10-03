@@ -32,7 +32,9 @@ const FONT_HREF = {
 
 // `system` (Phase 8): render a store system page instead of a doc page —
 // { kind: 'shop'|'col'|'prod', col?, product?, q? } with nav + footer intact.
-export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], system = null, storeSlug = null, store = null }) {
+// `extra`: add-ons the products' pairings carried that are not among `products`
+// (Goes well with) — the bag resolves them; no grid lists them.
+export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], extra = [], system = null, storeSlug = null, store = null }) {
   const [mob, setMob] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_QUERY);
@@ -135,7 +137,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     P, F, C, tsM, denM, shCard, mob, padX,
     preview: true, isPublic: true, theme,
     menus: doc.menus, assets,
-    cat: { products, collections },
+    cat: { products, collections, extra },
     isSel: false,
     lazyImgs: seoF.lazy !== false,
     optImg: (u) => optImg(u, seoF),
@@ -154,7 +156,8 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     onCart: () => setCartOpen(true),
     onCheckout: () => { window.location.href = (basePath || '') + '/checkout'; },
     onAccount: () => { window.location.href = (basePath || '') + '/account'; },
-    addToBag: storeSlug ? (pr, qty = 1, size = null) => { addToCart(storeSlug, pr.id, qty, size); setCartOpen(true); } : undefined,
+    // `addOnOf`: added from a product's Goes well with block (its own line).
+    addToBag: storeSlug ? (pr, qty = 1, size = null, addOnOf = null) => { addToCart(storeSlug, pr.id, qty, size, addOnOf); setCartOpen(true); } : undefined,
     // Checkout (Phase 10 \u2192 Fashion-checkout parity follow-up). A 202 means the
     // tenant's fake-order protection wants SMS verification first \u2014 the caller
     // (CheckoutPage) switches to its OTP step; this never throws for that case,
@@ -170,7 +173,9 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
           address: (address || '').trim() || '\u2014', city, district,
           // variantId ties the picked size to its real variant, so that size's
           // stock is taken and the order line records it (null = no variant).
-          items: bag.map((l) => ({ productId: l.pid, variantId: orderVariantId(l.p, l.size), qty: l.qty, name: l.p.n + (l.size ? ' — ' + l.size : '') })),
+          // `addOnOf` names the main product, never a price: the server prices
+          // the add-on at its together price by the same rule the bag showed.
+          items: bag.map((l) => ({ productId: l.pid, variantId: orderVariantId(l.p, l.size), qty: l.qty, name: l.p.n + (l.size ? ' — ' + l.size : ''), ...(l.addOnOf ? { addOnOf: l.addOnOf } : {}) })),
           paymentMethod: payLbl, note: fullNote, shippingCharge,
           couponCode: couponCode || undefined,
         }),

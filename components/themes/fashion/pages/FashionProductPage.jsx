@@ -10,6 +10,7 @@ import { useProductStore } from '../compat/useProductStore.js'
 import { getCartLine } from '../compat/lib-cart.js'
 import { getProductAvailableSizes, isOnSale } from '../compat/lib-products.js'
 import { useFashionTheme } from '../FashionThemeContext.jsx'
+import GoesWellWith from '../components/GoesWellWith.jsx'
 
 function formatPrice(amount) {
   const value = Number(amount) || 0
@@ -137,7 +138,7 @@ export default function FashionProductPage({ product }) {
             </div>
 
             <ul className="product-page__trust">
-              <li><IconCheck size={14} /> Free delivery over ৳2,500</li>
+              {contract.store?.freeDeliveryOver ? <li><IconCheck size={14} /> Free delivery over {formatPrice(contract.store.freeDeliveryOver)}</li> : null}
               <li><IconCheck size={14} /> 7-day easy returns</li>
               <li><IconCheck size={14} /> bKash · Nagad · COD</li>
             </ul>
@@ -232,6 +233,8 @@ export default function FashionProductPage({ product }) {
             )}
           </div>
         </div>
+
+        <GoesWellWith product={product} />
 
         {related.length > 0 && (
           <section className="product-page__related">

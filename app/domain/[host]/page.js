@@ -63,7 +63,7 @@ export default async function DomainStorePage({ params }) {
         pageId="home"
         basePath=""
         products={catalog.products}
-        collections={catalog.collections}
+        collections={catalog.collections} extra={catalog.extra}
       />
     )
   }

@@ -88,7 +88,7 @@ export default function FooterSection({ settings }) {
       <div className="footer__bottom">
         <div className="container footer__bottom-inner">
           <span>{copyright}</span>
-          <span className="footer__trust">Free delivery ৳2,500+ · bKash · Nagad · COD · 7-day returns</span>
+          <span className="footer__trust">{store?.freeDeliveryOver ? `Free delivery ৳${Number(store.freeDeliveryOver).toLocaleString('en-IN')}+ · ` : ''}bKash · Nagad · COD · 7-day returns</span>
         </div>
       </div>
     </footer>

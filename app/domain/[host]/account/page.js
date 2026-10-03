@@ -30,6 +30,6 @@ export default async function DomainAccountRoute({ params }) {
   const catalog = toStudioCatalog(products, categories)
 
   return (
-    <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} system={{ kind: 'account' }} />
+    <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} extra={catalog.extra} system={{ kind: 'account' }} />
   )
 }

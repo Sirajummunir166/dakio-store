@@ -1,7 +1,9 @@
 'use client';
 // Studio cart (Phase 10) — one bag per store in localStorage. Guest-first:
-// no accounts, just { pid, qty, size } lines resolved against the live catalog
-// at render time (prices are never trusted from storage).
+// no accounts, just { pid, qty, size, addOnOf? } lines resolved against the
+// live catalog at render time (prices are never trusted from storage).
+// `addOnOf` marks a line added from a product's "Goes well with" block — it is
+// its own line, never merged with the same product bought on its own.
 
 const key = (slug) => 'studio-cart:' + slug;
 const EVT = 'studio-cart-change';
@@ -19,30 +21,32 @@ function save(slug, items) {
   try { window.dispatchEvent(new CustomEvent(EVT, { detail: { slug } })); } catch { /* SSR */ }
 }
 
-export function addToCart(slug, pid, qty = 1, size = null) {
+const same = (x, pid, size, addOnOf) => x.pid === pid && (x.size || null) === (size || null) && (x.addOnOf || null) === (addOnOf || null);
+
+export function addToCart(slug, pid, qty = 1, size = null, addOnOf = null) {
   const items = getCart(slug);
-  const hit = items.find((x) => x.pid === pid && (x.size || null) === (size || null));
+  const hit = items.find((x) => same(x, pid, size, addOnOf));
   if (hit) hit.qty += qty;
-  else items.push({ pid, qty, size: size || null });
+  else items.push({ pid, qty, size: size || null, ...(addOnOf ? { addOnOf } : {}) });
   save(slug, items);
 }
 
-export function setQty(slug, pid, size, qty) {
+export function setQty(slug, pid, size, qty, addOnOf = null) {
   let items = getCart(slug);
   items = qty <= 0
-    ? items.filter((x) => !(x.pid === pid && (x.size || null) === (size || null)))
-    : items.map((x) => (x.pid === pid && (x.size || null) === (size || null) ? { ...x, qty } : x));
+    ? items.filter((x) => !same(x, pid, size, addOnOf))
+    : items.map((x) => (same(x, pid, size, addOnOf) ? { ...x, qty } : x));
   save(slug, items);
 }
 
 // Changing a line's size at checkout — moves qty from (pid, oldSize) onto
 // (pid, newSize), merging into an existing line for that size if one exists.
-export function updateSize(slug, pid, oldSize, newSize) {
+export function updateSize(slug, pid, oldSize, newSize, addOnOf = null) {
   if ((oldSize || null) === (newSize || null)) return;
   const items = getCart(slug);
-  const hit = items.find((x) => x.pid === pid && (x.size || null) === (oldSize || null));
+  const hit = items.find((x) => same(x, pid, oldSize, addOnOf));
   if (!hit) return;
-  const existing = items.find((x) => x.pid === pid && (x.size || null) === (newSize || null));
+  const existing = items.find((x) => same(x, pid, newSize, addOnOf));
   if (existing) {
     existing.qty += hit.qty;
     items.splice(items.indexOf(hit), 1);

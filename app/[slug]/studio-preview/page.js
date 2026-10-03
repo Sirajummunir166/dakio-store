@@ -42,7 +42,7 @@ export default async function StudioPreviewPage({ params, searchParams }) {
         pageId="home"
         basePath={`/${slug}`}
         products={catalog.products}
-        collections={catalog.collections}
+        collections={catalog.collections} extra={catalog.extra}
       />
       {commentsOpen && <PreviewComments slug={slug} token={token} apiBase={BASE} />}
     </div>

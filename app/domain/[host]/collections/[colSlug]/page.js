@@ -53,7 +53,7 @@ export default async function DomainCollectionPage({ params }) {
       pageId={page.id}
       basePath=""
       products={catalog.products}
-      collections={catalog.collections}
+      collections={catalog.collections} extra={catalog.extra}
     />
   )
 }

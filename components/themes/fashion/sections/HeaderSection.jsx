@@ -84,7 +84,7 @@ export default function HeaderSection({ settings }) {
               ))}
             </nav>
             <div className="mobile-nav__foot">
-              <p>Free delivery on orders over ৳2,500</p>
+              {store?.freeDeliveryOver ? <p>Free delivery on orders over ৳{Number(store.freeDeliveryOver).toLocaleString('en-IN')}</p> : null}
               <p>bKash · Nagad · Cash on Delivery</p>
             </div>
           </aside>

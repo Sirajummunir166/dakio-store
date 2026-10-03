@@ -56,7 +56,7 @@ export default async function ProductRoute({ params }) {
         pageId="home"
         basePath={`/${slug}`}
         products={catalog.products}
-        collections={catalog.collections}
+        collections={catalog.collections} extra={catalog.extra}
         system={{ kind: 'prod', product }}
       />
     </>

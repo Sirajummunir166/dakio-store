@@ -13,12 +13,17 @@ import { getCart, onCartChange } from '../cartStore';
 import { sizeInStock, firstInStockSize, priceFor, soldOutSize } from '../variants';
 import RichContent, { RichContentStyles } from '../RichContent';
 import { resolveProductTabs } from '../productTabs';
+import { livePairs } from '../addOns';
 
 export const SYS_DEFAULTS = {
   shop: { head: 'Shop all', cols: 4, hd: { v: 'left', bg: 'base', count: true }, gr: { bg: 'base', sp: 'normal', fCol: true, fPr: true, fSz: true, fStock: true, sort: true } },
   col: { v: 'left', sub: 'Woven slow, delivered fast — every piece from the live catalog.', bg: 'base', sp: 'normal', cols: 3, gr: { bg: 'base', sp: 'normal', filters: false } },
   prod: {
     btn: 'Add to bag', note: 'Cash on delivery everywhere · Delivery charge set by district at checkout', alsoOn: true, alsoHead: 'You may also like',
+    // Goes well with (DAKIO_PAIRINGS_PLAN.md): the merchant's add-ons for the
+    // product, from the product page in the dashboard. Code defaults, so every
+    // Studio store shows it without publishing; turning it off is per store.
+    pairOn: true, pairHead: 'Goes well with', pairBtn: 'Add',
     pd: { v: 'left', bg: 'base', stock: true, sizes: true, note: true },
     tabSpecs: 'Add specifications in the Catalog tab — material, origin, weight, or anything else worth listing.',
     tabGuide: 'Add sizing notes here — how this fits, and tips for choosing between sizes.',
@@ -317,6 +322,73 @@ function pickAlso(also, bp, cat) {
   return list.slice(0, Math.max(2, Math.min(8, also.count || 4)));
 }
 
+// ── Goes well with — the merchant's add-ons for this product ────────────────
+// Each card adds its add-on as its own bag line (`addOnOf` = this product), so
+// the together price applies while this product is in the bag too — the bag
+// and the server price it by the same rule (../addOns.js).
+function PairCard({ ctx, pp, bp, a, c, B }) {
+  const { F, C } = ctx;
+  const sizes = sizeList(a.p);
+  const [size, setSize] = useState(() => firstInStockSize(a.p, sizes));
+  const [added, setAdded] = useState(false);
+  const cur = (size && sizeInStock(a.p, size) ? size : null) || firstInStockSize(a.p, sizes);
+  const normal = priceFor(a.p, cur);
+  const deal = a.together != null && a.together < normal;
+  const canAdd = !!ctx.addToBag && (sizes.length === 0 || !!cur);
+  const add = (e) => {
+    e.stopPropagation();
+    if (!canAdd) return;
+    ctx.addToBag(a.p, 1, cur, bp.id);
+    setAdded(true);
+  };
+  return (
+    <div style={sx('display:flex; gap:12px; align-items:center; padding:12px; border-radius:' + Math.min(C.r, 16) + 'px; border:1px solid ' + c.line + '; background:' + c.card + '; min-width:0;')}>
+      <div style={sx('width:64px; height:80px; flex-shrink:0; border-radius:' + Math.min(C.rs, 10) + 'px; overflow:hidden; background:' + c.bg + ';')}>
+        {a.p.img ? <img src={a.p.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : null}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div onClick={ctx.preview && ctx.onProduct ? (e) => { e.stopPropagation(); ctx.onProduct(a.p); } : undefined} style={sx('font-family:' + F.b + '; font-size:13.5px; font-weight:700; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;')}>{a.p.n}</div>
+        {a.reason ? <div style={sx('font-family:' + F.b + '; font-size:12px; color:' + c.sub + '; margin-top:2px; line-height:1.4;')}>{a.reason}</div> : null}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+          <span style={sx('font-family:' + F.b + '; font-size:13.5px; font-weight:800; font-variant-numeric:tabular-nums;')}>{fmtPr(deal ? a.together : normal)}</span>
+          {deal ? <span style={sx('font-family:' + F.b + '; font-size:12px; color:' + c.sub + '; text-decoration:line-through; font-variant-numeric:tabular-nums;')}>{fmtPr(normal)}</span> : null}
+          {deal ? <span style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + ';')}>with this {bp.n.length > 22 ? 'item' : bp.n}</span> : null}
+        </div>
+        {sizes.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+            {sizes.map((z) => (
+              <div key={z} onClick={ctx.preview && sizeInStock(a.p, z) ? (e) => { e.stopPropagation(); setSize(z); setAdded(false); } : undefined} style={sx('min-width:34px; padding:5px 8px; text-align:center; border-radius:' + Math.min(C.rs, 8) + 'px; border:1.5px solid ' + (z === cur ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:11.5px; font-weight:700; cursor:pointer;' + (z === cur ? ' background:' + c.fg + '; color:' + c.bg + ';' : '') + (sizeInStock(a.p, z) ? '' : soldOutSize))}>{z}</div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div onClick={ctx.preview ? add : undefined} style={sx('flex-shrink:0; padding:10px 16px; border-radius:' + C.btn + '; background:' + (added ? 'transparent' : B.bg) + '; color:' + (added ? c.fg : B.fg) + '; border:1.5px solid ' + (added ? c.line : 'transparent') + '; font-family:' + F.b + '; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap;' + (canAdd || !ctx.preview ? '' : ' opacity:0.45;'))}>
+        {added ? 'Added ✓' : pp.pairBtn}
+      </div>
+    </div>
+  );
+}
+
+function PairBlock({ ctx, pp, bp, pairs, headFont, edit }) {
+  const { P, F, mob, padX } = ctx;
+  const c = co('base', P);
+  const B = btnColors('base', P);
+  return (
+    <div style={sx('padding:' + (mob ? 30 : 44) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)); background:' + c.bg + '; color:' + c.fg + '; border-top:1px solid ' + c.line + ';')}>
+      <Editable secId="__sys:prod" k="pairHead" value={pp.pairHead} style={headFont + 'font-size:' + (mob ? 20 : 24) + 'px; line-height:1.15;'} preview={ctx.preview} />
+      {pairs.length > 0 ? (
+        <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: mob ? '1fr' : 'repeat(' + Math.min(3, pairs.length) + ', minmax(0,1fr))', gap: 12 }}>
+          {pairs.map((a) => <PairCard key={a.id} ctx={ctx} pp={pp} bp={bp} a={a} c={c} B={B} />)}
+        </div>
+      ) : edit ? (
+        <div style={sx('margin-top:12px; font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; opacity:0.7;')}>
+          Shows the products you pair with this one — open the product in your dashboard and use Goes well with. Nothing paired yet, so customers don’t see this.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 // ── Product template (/p/<slug>) ────────────────────────────────────────────
 export function ProductPage({ ctx, sys, product, edit }) {
   const { P, F, C, mob, padX, cat } = ctx;
@@ -355,7 +427,8 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const cAlso = co(also.bg || 'base', P);
   // Never preselect (or keep) a sold-out size — it would fail at checkout.
   const curSize = (selSize && sizeInStock(bp, selSize) ? selSize : null) || firstInStockSize(bp, sizes);
-  const cartLine = ctx.storeSlug ? getCart(ctx.storeSlug).find((x) => x.pid === bp.id && (x.size || null) === (curSize || null)) : null;
+  const cartLine = ctx.storeSlug ? getCart(ctx.storeSlug).find((x) => x.pid === bp.id && !x.addOnOf && (x.size || null) === (curSize || null)) : null;
+  const pairs = livePairs(bp);
   const col2 = cat.collections.find((x) => x.id === bp.col);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
   const alsoList = pickAlso(also, bp, cat);
@@ -533,6 +606,19 @@ export function ProductPage({ ctx, sys, product, edit }) {
           )}
         </div>
       </Part>
+      {pp.pairOn && (pairs.length > 0 || edit) && (
+        <Part id="prod-pair" label="GOES WELL WITH — TEMPLATE" edit={edit}>
+          <PairBlock ctx={ctx} pp={pp} bp={bp} pairs={pairs} headFont={headFont} edit={edit} />
+        </Part>
+      )}
+      {!pp.pairOn && edit && (
+        <div
+          onClick={(e) => { e.stopPropagation(); edit.onSysProp && edit.onSysProp('prod', 'pairOn', true); }}
+          style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, borderTop: '1.5px dashed rgba(128,128,128,0.3)', borderBottom: '1.5px dashed rgba(128,128,128,0.3)', opacity: 0.55, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif" }}
+        >
+          Goes well with is hidden — click to show
+        </div>
+      )}
       {!pp.alsoOn && edit && (
         <div
           onClick={(e) => { e.stopPropagation(); edit.onSysProp && edit.onSysProp('prod', 'alsoOn', true); }}

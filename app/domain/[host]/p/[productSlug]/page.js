@@ -52,7 +52,7 @@ export default async function DomainProductRoute({ params }) {
         currency={storeData.store.currency}
         storeName={siteData.site.theme?.brandName || storeData.store.name}
       />
-      <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} system={{ kind: 'prod', product }} />
+      <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} extra={catalog.extra} system={{ kind: 'prod', product }} />
     </>
   )
 }
