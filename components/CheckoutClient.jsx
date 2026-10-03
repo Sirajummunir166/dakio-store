@@ -93,7 +93,9 @@ export default function CheckoutClient({ store, slug }) {
   const cartTotal    = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0)
   const cartCount    = cart.reduce((s, i) => s + i.qty, 0)
   const isInsideDhaka = DHAKA_DISTRICTS.includes(district)
-  const shippingCharge = district ? (isInsideDhaka ? insideDhakaCharge : outsideDhakaCharge) : 0
+  // Free over the store's threshold — the server bills it the same way.
+  const freeOver = Number(store?.freeDeliveryOver) > 0 ? Number(store.freeDeliveryOver) : null
+  const shippingCharge = district && !(freeOver != null && cartTotal >= freeOver) ? (isInsideDhaka ? insideDhakaCharge : outsideDhakaCharge) : 0
   const orderTotal   = cartTotal + shippingCharge - (couponDiscount || 0)
 
   function handleAddressBlur(val) {

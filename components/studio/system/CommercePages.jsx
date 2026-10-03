@@ -32,17 +32,25 @@ const PAY_LBL = {
 
 // Delivery is charged by district at checkout — Dhaka district at the store's
 // inside rate, every other district at its outside rate (dakio-api
-// lib/deliveryZone.js, the one rule). The bag pages never invent a charge or a
-// free-delivery threshold the server won't honour; they say what the rates are.
+// lib/deliveryZone.js, the one rule) — and free once the goods reach the
+// store's `freeDeliveryOver`, which the server applies to every order too.
+// The bag pages never invent a charge or a threshold the server won't honour;
+// they say what the rates are.
+export function freeDeliveryOver(ctx) {
+  const n = Number(ctx && ctx.store && ctx.store.freeDeliveryOver);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
 export function deliveryRates(ctx) {
   const s = ctx && ctx.store;
   if (!s || s.deliveryInsideDhaka == null || s.deliveryOutsideDhaka == null) return null;
-  return { inside: Number(s.deliveryInsideDhaka), outside: Number(s.deliveryOutsideDhaka) };
+  return { inside: Number(s.deliveryInsideDhaka), outside: Number(s.deliveryOutsideDhaka), freeOver: freeDeliveryOver(ctx) };
 }
-export function deliveryNote(ctx) {
+export function deliveryNote(ctx, goods = null) {
   const r = deliveryRates(ctx);
   if (!r) return 'Set at checkout';
-  return (r.inside === 0 ? 'Free' : fmtPr(r.inside)) + ' in Dhaka · ' + (r.outside === 0 ? 'free' : fmtPr(r.outside)) + ' elsewhere';
+  if (r.freeOver != null && goods != null && goods >= r.freeOver) return 'Free';
+  return (r.inside === 0 ? 'Free' : fmtPr(r.inside)) + ' in Dhaka · ' + (r.outside === 0 ? 'free' : fmtPr(r.outside)) + ' elsewhere'
+    + (r.freeOver != null ? ' · free over ' + fmtPr(r.freeOver) : '');
 }
 
 // Resolve stored cart lines against the live catalog (canvas gets a demo bag).
@@ -127,7 +135,7 @@ export function CartPage({ ctx, sys, edit }) {
             <span>Subtotal</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(sub)}</span>
           </div>
           <div style={sx('margin-top:8px; display:flex; justify-content:space-between; font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + ';')}>
-            <span>Delivery</span><span>{deliveryNote(ctx)}</span>
+            <span>Delivery</span><span>{deliveryNote(ctx, sub)}</span>
           </div>
           <div onClick={ctx.preview && ctx.onCheckout ? (ev) => { ev.stopPropagation(); ctx.onCheckout(); } : undefined} style={sx('margin-top:22px; display:flex; align-items:center; justify-content:center; gap:9px; padding:16px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:14.5px; cursor:pointer;')}>
             Continue to checkout
@@ -200,7 +208,9 @@ export function CheckoutPage({ ctx, sys, edit }) {
   const insideDhaka = DHAKA_DISTRICTS.includes(district);
   const insideCharge = ctx.store && ctx.store.deliveryInsideDhaka != null ? Number(ctx.store.deliveryInsideDhaka) : 60;
   const outsideCharge = ctx.store && ctx.store.deliveryOutsideDhaka != null ? Number(ctx.store.deliveryOutsideDhaka) : 120;
-  const dlv = district ? (insideDhaka ? insideCharge : outsideCharge) : 0;
+  const freeOver = freeDeliveryOver(ctx);
+  const freeByAmount = freeOver != null && sub >= freeOver;
+  const dlv = district && !freeByAmount ? (insideDhaka ? insideCharge : outsideCharge) : 0;
   const total = sub + dlv - (couponDiscount || 0);
 
   const lbl = 'font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + c.sub + '; margin-top:18px;';
@@ -497,7 +507,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
             {district && (
               <div style={sx('margin-top:14px; padding:12px 14px; border-radius:' + Math.min(C.rs, 12) + 'px; border:1px solid ' + c.line + '; background:' + c.card + '; display:flex; align-items:center; justify-content:space-between; font-family:' + F.b + '; font-size:13px;')}>
                 <span>{insideDhaka ? 'Inside Dhaka delivery' : 'Outside Dhaka delivery'}</span>
-                <b style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(dlv)}</b>
+                <b style={{ fontVariantNumeric: 'tabular-nums' }}>{freeByAmount ? 'Free' : fmtPr(dlv)}</b>
               </div>
             )}
             <div style={sx(lbl)}>ORDER NOTE <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></div>

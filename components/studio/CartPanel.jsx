@@ -86,7 +86,7 @@ export default function CartPanel({ ctx, open, onClose }) {
                 <span>Subtotal</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(sub)}</span>
               </div>
               <div style={sx('display:flex; justify-content:space-between; gap:12px; font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + '; margin-bottom:16px;')}>
-                <span>Delivery</span><span style={{ textAlign: 'right' }}>{deliveryNote(ctx)}</span>
+                <span>Delivery</span><span style={{ textAlign: 'right' }}>{deliveryNote(ctx, sub)}</span>
               </div>
               <div onClick={goCheckout} style={sx('display:flex; align-items:center; justify-content:center; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:14.5px; cursor:pointer;')}>Checkout</div>
               <div style={sx('text-align:center; margin-top:12px; font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + ';')}>bKash · Nagad · Cash on Delivery</div>
