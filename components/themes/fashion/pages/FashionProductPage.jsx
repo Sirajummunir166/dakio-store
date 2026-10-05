@@ -32,7 +32,11 @@ export default function FashionProductPage({ product }) {
   const availableSizes = getProductAvailableSizes(product)
   const cartLine = getCartLine(items, product.id, size)
   const inCart = Boolean(cartLine)
-  const onSale = isOnSale(product)
+  // A size can carry its own price (a dearer XL, a Dakio variant priced by the
+  // merchant): show what the cart will charge for the size chosen.
+  const sizeVariant = (product.variants || []).find((v) => v.name === size)
+  const shown = sizeVariant?.price != null ? { ...product, price: sizeVariant.price } : product
+  const onSale = isOnSale(shown)
 
   useEffect(() => {
     setSize(getProductAvailableSizes(product)[0] ?? null)
@@ -86,10 +90,10 @@ export default function FashionProductPage({ product }) {
 
             {onSale ? (
               <div className="product-page__price-panel">
-                <SalePrice product={product} variant="page" />
+                <SalePrice product={shown} variant="page" />
               </div>
             ) : (
-              <SalePrice product={product} variant="page" className="product-page__price" />
+              <SalePrice product={shown} variant="page" className="product-page__price" />
             )}
 
             <p className="product-page__stock">
@@ -273,7 +277,7 @@ export default function FashionProductPage({ product }) {
           </div>
           <div className="product-page__sticky-actions">
             <div className="product-page__sticky-price">
-              <strong>{formatPrice(product.price)}</strong>
+              <strong>{formatPrice(shown.price)}</strong>
             </div>
             <button
               type="button"
