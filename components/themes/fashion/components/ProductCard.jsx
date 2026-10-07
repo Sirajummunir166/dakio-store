@@ -4,6 +4,8 @@ import SalePrice from './SalePrice.jsx'
 import { AddedLabel, IconBagAddPlus, IconHeart } from './Icons.jsx'
 import { useFashionTheme } from '../FashionThemeContext.jsx'
 import { getProductAvailableSizes as getAvailableSizes } from '../compat/lib-products.js'
+import { useTracking } from '../../../tracking/TrackingRoot'
+import { itemFromBasic, listPayload } from '../../../../lib/tracking/items'
 
 export default function ProductCard({
   product,
@@ -13,8 +15,11 @@ export default function ProductCard({
   curated = false,
   addToCartLabel = 'Add to cart',
   quickViewLabel = 'Quick view',
+  list = null,
+  index,
 }) {
   const { contract, navigate, quickView } = useFashionTheme()
+  const tk = useTracking()
   const [added, setAdded] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
   const imgRef = useRef(null)
@@ -44,7 +49,10 @@ export default function ProductCard({
     quickView.open(product)
   }
 
-  const goToProduct = () => navigate.toProduct(product.slug)
+  const goToProduct = () => {
+    if (list) tk.track('select_item', listPayload(list, [itemFromBasic(product, { index, list })]))
+    navigate.toProduct(product.slug)
+  }
   const displayName = curated && product.name.length > 30 ? product.name.slice(0, 28) + '…' : product.name
   const showBadges = !curated
   const showWishlist = !curated

@@ -1,12 +1,13 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { DISTRICTS, DHAKA_DISTRICTS, getThanas, detectLocation } from '../lib/bd-locations'
-import TrackingScripts from './TrackingScripts'
 import { storeHome } from '../lib/routes'
 import { resolveFashionConfig } from '../lib/theme/fashionDefaults'
 import FashionCheckoutRoute from './templates/fashion/FashionCheckoutRoute'
 import { repriceCart } from '@/lib/addOnCart'
+import { useCheckoutTracking } from './tracking/useCheckoutTracking'
+import { itemFromCartLine } from '@/lib/tracking/items'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://dakio-api-production.up.railway.app/api'
 
@@ -52,7 +53,6 @@ export default function CheckoutClient({ store, slug }) {
   const [otpSessionToken, setOtpSessionToken] = useState('')
   const [otpMaskedPhone, setOtpMaskedPhone]   = useState('')
   const [otpExpiresAt, setOtpExpiresAt]       = useState(null)
-  const metaEventIdRef = useRef(null)
 
   const [summaryOpen, setSummaryOpen] = useState(false)
 
@@ -64,33 +64,6 @@ export default function CheckoutClient({ store, slug }) {
     } catch {}
     setCartReady(true)
   }, [slug])
-
-  // Fire InitiateCheckout once the cart is loaded and non-empty.
-  // Generate checkoutEventId for browser/server Meta deduplication — stored in sessionStorage
-  // so tryLeadCapture can pass it to the server-side CAPI InitiateCheckout call later.
-  useEffect(() => {
-    if (!cartReady || !cart.length) return
-    try {
-      const checkoutEventId = (typeof crypto !== 'undefined' && crypto.randomUUID)
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`
-      try { sessionStorage.setItem(`dk_checkout_eid_${slug}`, checkoutEventId) } catch {}
-
-      const total    = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0)
-      const currency = store?.currency || 'BDT'
-      window.fbq?.('track', 'InitiateCheckout', {
-        value:      total,
-        currency,
-        num_items:  cart.reduce((s, i) => s + i.qty, 0),
-      }, { eventID: checkoutEventId })
-      window.dataLayer?.push({
-        event:    'begin_checkout',
-        value:    total,
-        currency,
-        items:    cart.map(i => ({ item_id: i.productId, item_name: i.name, price: i.unitPrice, quantity: i.qty })),
-      })
-    } catch {}
-  }, [cartReady]) // eslint-disable-line
 
   const cartTotal    = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0)
   const cartCount    = cart.reduce((s, i) => s + i.qty, 0)
@@ -138,34 +111,11 @@ export default function CheckoutClient({ store, slug }) {
     setAppliedCoupon(null); setCouponDiscount(0); setCouponCode(''); setCouponErr('')
   }
 
-  const leadSaved = useRef(false)
-
-  function tryLeadCapture() {
-    if (leadSaved.current || !cart.length || !form.name.trim() || form.phone.length < 8) return
-    leadSaved.current = true
-
-    // Generate leadEventId for Meta browser/server Lead deduplication.
-    // Only fire browser Lead if storefront.js didn't already fire it this session
-    // (prevents double Lead when user filled product-page form then navigated here).
-    const leadEventId = (typeof crypto !== 'undefined' && crypto.randomUUID)
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
-    const alreadyFiredLead = (() => { try { return !!sessionStorage.getItem(`dk_lead_fired_${slug}`) } catch { return false } })()
-    if (!alreadyFiredLead) {
-      try {
-        const val = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0)
-        window.fbq?.('track', 'Lead', {
-          value:    val,
-          currency: store?.currency || 'BDT',
-        }, { eventID: leadEventId })
-        try { sessionStorage.setItem(`dk_lead_fired_${slug}`, '1') } catch {}
-      } catch {}
-    }
-
-    // Read checkoutEventId set by the InitiateCheckout effect above —
-    // server uses it to coordinate server-side CAPI InitiateCheckout with the browser event.
-    const checkoutEventId = (() => { try { return sessionStorage.getItem(`dk_checkout_eid_${slug}`) || undefined } catch { return undefined } })()
-
+  // Saves the Incomplete Order (Storefront lead). `tracking` carries the
+  // add_shipping_info id (+ the begin_checkout id) so the server's Meta
+  // AddShippingInfo / InitiateCheckout de-duplicate with the browser's — this
+  // phone capture is not a Lead (DAKIO_TRACKING_PLAN.md).
+  function postLead(tracking) {
     fetch(`${API}/store/${slug}/leads`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -177,44 +127,42 @@ export default function CheckoutClient({ store, slug }) {
         cart:      cart.map(i => ({ productId: i.productId, name: i.name, qty: i.qty, unitPrice: i.unitPrice })),
         cartValue: cart.reduce((s, i) => s + i.qty * i.unitPrice, 0),
         sourceUrl: typeof window !== 'undefined' ? window.location.href : undefined,
-        leadEventId:     alreadyFiredLead ? undefined : leadEventId,
-        checkoutEventId: checkoutEventId || undefined,
+        tracking,
       }),
       keepalive: true,
     }).catch(() => {})
   }
 
-  useEffect(() => {
-    window.addEventListener('beforeunload', tryLeadCapture)
-    return () => window.removeEventListener('beforeunload', tryLeadCapture)
-  }, [cart, form, district, thana]) // eslint-disable-line
+  // begin_checkout → add_shipping_info → add_payment_info → purchase.
+  // add_shipping_info fires once the delivery details are complete; the old
+  // 20 s idle / tab-close capture stays as the fallback for a shopper who
+  // gave a name and number but never picked a district.
+  const ck = useCheckoutTracking({
+    items: cart.map((l, i) => itemFromCartLine(l, { index: i })),
+    value: cartTotal,
+    ready: cartReady,
+    contactReady: cart.length > 0 && !!form.name.trim() && isValidBDPhone(form.phone) && !!district && !!thana,
+    contactKey: [form.name, form.phone, form.address, district, thana].join('|'),
+    onShipping: postLead,
+  })
+  const looseContact = cart.length > 0 && !!form.name.trim() && form.phone.length >= 8
 
   useEffect(() => {
-    if (!cart.length || !form.name.trim() || form.phone.length < 8 || leadSaved.current) return
-    const t = setTimeout(tryLeadCapture, 20000)
+    if (!looseContact) return
+    const capture = () => ck.shipping()
+    window.addEventListener('beforeunload', capture)
+    return () => window.removeEventListener('beforeunload', capture)
+  }, [looseContact, ck.shipping]) // eslint-disable-line
+
+  useEffect(() => {
+    if (!looseContact) return
+    const t = setTimeout(() => ck.shipping(), 20000)
     return () => clearTimeout(t)
   }, [cart, form]) // eslint-disable-line
 
-  // Fires browser Purchase + GTM + clears cart. Called after any successful 201 order creation.
-  function fireOrderSuccess(data, eventId) {
-    try {
-      const currency = store?.currency || 'BDT'
-      window.fbq?.('track', 'Purchase', {
-        value:        orderTotal,
-        currency,
-        order_id:     data.orderNumber,
-        content_ids:  cart.map(i => i.productId),
-        content_type: 'product',
-        num_items:    cart.reduce((s, i) => s + i.qty, 0),
-      }, { eventID: eventId })
-      window.dataLayer?.push({
-        event:          'purchase',
-        value:          orderTotal,
-        currency,
-        transaction_id: data.orderNumber,
-        items: cart.map(i => ({ item_id: i.productId, item_name: i.name, price: i.unitPrice, quantity: i.qty })),
-      })
-    } catch {}
+  // Purchase from the order API's 201 body (its numbers, not the cart's), then clear the cart.
+  function fireOrderSuccess(data) {
+    ck.purchase(data, { value: cartTotal - (couponDiscount || 0), paymentType: 'COD' })
     localStorage.removeItem(`dk_cart_${slug}`)
     setCart([])
     setOrderNum(data.orderNumber)
@@ -227,11 +175,10 @@ export default function CheckoutClient({ store, slug }) {
     if (!district)                   { setFormErr('Please select your district'); return }
     if (!thana)                      { setFormErr('Please select your thana / upazila'); return }
     setFormErr(''); setPlacing(true)
-    // Generate event_id for Meta browser+server deduplication. Persisted in ref for OTP flow.
-    const metaEventId = (typeof crypto !== 'undefined' && crypto.randomUUID)
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
-    metaEventIdRef.current = metaEventId
+    // The purchase's event id, shared with the server's Meta Purchase. Kept
+    // across the SMS-code step and a retry (the server replays, never doubles).
+    const metaEventId = ck.purchaseId()
+    ck.paymentInfo('COD')
     try {
       const r = await fetch(`${API}/store/${slug}/orders`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -248,6 +195,7 @@ export default function CheckoutClient({ store, slug }) {
           discount:    couponDiscount,
           couponCode:  appliedCoupon?.code || null,
           metaEventId,
+          tracking: ck.trackingFor(metaEventId),
         }),
       })
       const data = await r.json()
@@ -262,7 +210,7 @@ export default function CheckoutClient({ store, slug }) {
       }
       if (!r.ok) throw new Error(data?.error || 'Order failed')
       // 201 — fire browser Purchase and show confirmation
-      fireOrderSuccess(data, metaEventId)
+      fireOrderSuccess(data)
     } catch (e) {
       setFormErr(e.message || 'Order failed. Try again.')
     }
@@ -275,7 +223,7 @@ export default function CheckoutClient({ store, slug }) {
     try {
       const r = await fetch(`${API}/store/${slug}/orders/verify-otp`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionToken: otpSessionToken, otp: otpInput }),
+        body: JSON.stringify({ sessionToken: otpSessionToken, otp: otpInput, tracking: ck.trackingFor(ck.purchaseId()) }),
       })
       const data = await r.json()
       if (!r.ok) {
@@ -293,7 +241,7 @@ export default function CheckoutClient({ store, slug }) {
         return
       }
       // 201 — OTP verified, order created, fire Purchase now
-      fireOrderSuccess(data, metaEventIdRef.current)
+      fireOrderSuccess(data)
     } catch (e) {
       setOtpErr(e.message || 'Verification failed. Try again.')
     }
@@ -440,8 +388,6 @@ export default function CheckoutClient({ store, slug }) {
   /* ── Main checkout ──────────────────────────────────────── */
   return (
     <div style={{ minHeight: '100dvh', background: '#fff', fontFamily: FONT }}>
-      <TrackingScripts store={store} />
-
       {/* Header */}
       <div style={{ borderBottom: '1px solid #e8e8e8', padding: '0 20px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '1100px', margin: '0 auto' }}>
         <button onClick={() => router.push(storeHome(slug))}

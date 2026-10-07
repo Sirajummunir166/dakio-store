@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react'
 import { IconCart, IconClose, IconMenu, IconSearch } from '../components/Icons.jsx'
 import { useFashionTheme } from '../FashionThemeContext.jsx'
+import { useTracking } from '../../../tracking/TrackingRoot'
+import { itemFromCartLine } from '../../../../lib/tracking/items'
 
 export default function HeaderSection({ settings }) {
   const { contract, navigate } = useFashionTheme()
@@ -20,6 +22,14 @@ export default function HeaderSection({ settings }) {
   }, [menuOpen, searchOpen])
 
   const closeAll = () => { setMenuOpen(false); setSearchOpen(false) }
+
+  // The shopper opened the cart themselves → view_cart.
+  const tk = useTracking()
+  const openCart = () => {
+    cart.open()
+    const items = (cart.items || []).map((l, i) => itemFromCartLine(l, { index: i })).filter(Boolean)
+    if (items.length) tk.track('view_cart', { ecommerce: { currency: tk.currency, value: cart.total || 0, items } })
+  }
 
   return (
     <>
@@ -57,7 +67,7 @@ export default function HeaderSection({ settings }) {
                 <IconSearch />
               </button>
             )}
-            <button type="button" className="icon-btn" aria-label="Cart" onClick={cart.open}>
+            <button type="button" className="icon-btn" aria-label="Cart" onClick={openCart}>
               <IconCart />
               {cart.count > 0 && <span className="badge badge--pulse">{cart.count}</span>}
             </button>

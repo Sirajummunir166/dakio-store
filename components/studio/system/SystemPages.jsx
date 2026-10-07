@@ -125,6 +125,19 @@ function FilterGrid({ ctx, sys, products, lockedCol, q, edit, partPrefix, label 
   else list = [...list].sort((a, b) => (a.rank || 999) - (b.rank || 999));
 
   const anyFilter = fCol || fPr || fSz || fStock;
+
+  // Tracking (public store only — ctx.trackList is absent in the canvas)
+  const trackListInfo = lockedCol
+    ? { id: 'collection_' + lockedCol, name: (cat.collections.find((x) => x.id === lockedCol) || {}).n || 'Collection' }
+    : (q ? { id: 'search_results', name: 'Search results' } : { id: 'shop', name: 'Shop all' });
+  const hasList = list.length > 0;
+  useEffect(() => {
+    if (ctx.trackList && hasList) ctx.trackList(trackListInfo, list);
+  }, [hasList]); // eslint-disable-line react-hooks/exhaustive-deps
+  const onCard = (pr) => {
+    if (ctx.trackSelect) ctx.trackSelect(trackListInfo, pr, list.indexOf(pr));
+    if (ctx.onProduct) ctx.onProduct(pr);
+  };
   const clearAll = () => { setFCol(null); setFPr(null); setFSz(null); setFStock(false); };
 
   const fCap = 'font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.2px; color:' + c.sub + ';';
@@ -219,7 +232,7 @@ function FilterGrid({ ctx, sys, products, lockedCol, q, edit, partPrefix, label 
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(' + gridCols + ',1fr)', gap: mob ? '18px 14px' : '30px 20px' }}>
-              {list.map((pr) => <ProductCard key={pr.id} pr={pr} ctx={ctx} c={c} onClick={ctx.onProduct} />)}
+              {list.map((pr) => <ProductCard key={pr.id} pr={pr} ctx={ctx} c={c} onClick={ctx.onProduct ? onCard : undefined} />)}
             </div>
           </div>
         </div>
@@ -238,6 +251,7 @@ export function ShopPage({ ctx, sys, q, edit }) {
   const live = liveProds(cat);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
   const centered = hd.v === 'center';
+  useEffect(() => { if (q && ctx.trackSearch) ctx.trackSearch(q); }, [q]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -304,6 +318,8 @@ export function CollectionPage({ ctx, sys, col, edit }) {
     </>
   );
 }
+
+const ALSO_LIST = { id: 'related', name: 'You may also like' };
 
 // Resolve the "You may also like" list from the also-config — rule-based
 // (relative to the product being viewed) or hand-picked.
@@ -405,6 +421,13 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const purchaseRef = useRef(null);
   const sizes = sizeList(bp);
   useEffect(() => { setActiveThumb(null); setQtyN(1); setSelSize(bp ? firstInStockSize(bp, sizeList(bp)) : null); setStickyOn(false); }, [bp && bp.id]);
+  // view_item at the preselected size's price, then the "You may also like" list.
+  useEffect(() => {
+    if (!bp || !ctx.trackItem) return;
+    ctx.trackItem(bp, firstInStockSize(bp, sizeList(bp)));
+    const also0 = { src: 'rule', rule: 'best', count: 4, picks: [], prices: true, bg: 'base', ...(pp.also || {}) };
+    if (pp.alsoOn && ctx.trackList) ctx.trackList(ALSO_LIST, pickAlso(also0, bp, cat).filter((x) => x && !x.gone));
+  }, [bp && bp.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Sticky add-to-cart bar: shows once the size/qty/buy controls scroll out of view.
   useEffect(() => {
     const node = purchaseRef.current;
@@ -632,7 +655,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
           <div style={sx('padding:' + (mob ? 36 : 56) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)); background:' + cAlso.bg + '; color:' + cAlso.fg + '; border-top:1px solid ' + cAlso.line + ';')}>
             <Editable secId="__sys:prod" k="alsoHead" value={pp.alsoHead} style={headFont + 'font-size:' + (mob ? 22 : 28) + 'px; line-height:1.12;'} preview={ctx.preview} />
             <div style={{ marginTop: 26, display: 'grid', gridTemplateColumns: 'repeat(' + (mob ? 2 : 4) + ',1fr)', gap: mob ? '18px 14px' : '30px 20px' }}>
-              {alsoList.map((pr) => <ProductCard key={pr.id} pr={pr} ctx={ctx} c={cAlso} showPrice={also.prices !== false} onClick={ctx.onProduct} />)}
+              {alsoList.map((pr, i) => <ProductCard key={pr.id} pr={pr} ctx={ctx} c={cAlso} showPrice={also.prices !== false} onClick={ctx.onProduct ? (p2) => { if (ctx.trackSelect) ctx.trackSelect(ALSO_LIST, p2, i); ctx.onProduct(p2); } : undefined} />)}
             </div>
           </div>
         </Part>

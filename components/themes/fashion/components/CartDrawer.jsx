@@ -115,7 +115,7 @@ export default function CartDrawer() {
                         <button
                           type="button"
                           aria-label="Decrease quantity"
-                          onClick={() => cart.updateQty(item.key, item.qty - 1)}
+                          onClick={() => cart.updateQty(item.key, -1)}
                         >
                           <IconMinus size={14} />
                         </button>
@@ -123,7 +123,7 @@ export default function CartDrawer() {
                         <button
                           type="button"
                           aria-label="Increase quantity"
-                          onClick={() => cart.updateQty(item.key, item.qty + 1)}
+                          onClick={() => cart.updateQty(item.key, 1)}
                         >
                           <IconPlus size={14} />
                         </button>

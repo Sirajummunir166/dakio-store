@@ -1,8 +1,6 @@
 'use client'
 import { useStorefront } from '../lib/storefront'
 import { resolveTheme } from '../lib/theme/resolveTheme'
-import VisitorTracker         from './VisitorTracker'
-import TrackingScripts        from './TrackingScripts'
 import PreviewBanner          from './PreviewBanner'
 import MinimalTemplate        from './templates/MinimalTemplate'
 import FashionTemplate        from './templates/FashionTemplate'
@@ -36,8 +34,6 @@ export default function StorefrontClient({
   if (templateKey === 'fashion_v1') {
     return (
       <>
-        {!previewMode && <TrackingScripts store={store} />}
-        {!previewMode && <VisitorTracker slug={slug} />}
         {previewMode && <PreviewBanner />}
         <FashionThemeErrorBoundary>
           <FashionThemeWrapper
@@ -74,8 +70,6 @@ export default function StorefrontClient({
 
   return (
     <>
-      {!previewMode && <TrackingScripts store={store} />}
-      {!previewMode && <VisitorTracker slug={slug} />}
       {previewMode && <PreviewBanner />}
       <Template {...templateProps} />
     </>

@@ -1,4 +1,5 @@
 'use client';
+import { useEffect } from 'react';
 import Editable from '../Editable';
 import ProductCard from '../ProductCard';
 import { baseStyles, sx } from '../theme';
@@ -15,6 +16,12 @@ export default function Feat({ sec, ctx }) {
   let picked = pickFeat(sec, cat);
   if (isPublic) picked = picked.filter((pr) => !pr.gone && !pr.empty);
   const list = picked.length ? picked : (isPublic ? [] : [{ empty: true }]);
+  // A product list on the live store: viewed once, each card a select_item.
+  const listInfo = { id: 'feat_' + sec.id, name: p.head || 'Featured products' };
+  const real = list.filter((pr) => !pr.gone && !pr.empty);
+  useEffect(() => {
+    if (ctx.trackList && real.length) ctx.trackList(listInfo, real);
+  }, [real.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
   if (isPublic && !list.length) return null;
 
   const n = Math.max(2, Math.min(8, list.length || 2));
@@ -41,7 +48,10 @@ export default function Feat({ sec, ctx }) {
             c={c}
             row={row}
             showPrice={showPrice}
-            onClick={(p2) => ctx.onLink && ctx.onLink({ t: 'prod', ref: p2.id })}
+            onClick={(p2) => {
+              if (ctx.trackSelect) ctx.trackSelect(listInfo, p2, real.indexOf(p2));
+              if (ctx.onLink) ctx.onLink({ t: 'prod', ref: p2.id });
+            }}
           />
         ))}
       </div>

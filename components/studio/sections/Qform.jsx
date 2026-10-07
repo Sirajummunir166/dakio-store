@@ -1,13 +1,20 @@
 'use client';
 // Quick order form (Phase 9) — size + qty + name + phone + address + payment,
 // no cart. On the live funnel it places a real order in Dakio Orders (tagged by
-// funnel); in the canvas it simulates the thank-you state.
+// funnel); in the canvas it simulates the thank-you state. When the store's
+// fake-order protection asks for the SMS code (202), the form shows a code step
+// and only a verified order counts as placed.
 import { useState } from 'react';
 import Editable from '../Editable';
 import { baseStyles, sx, btnColors } from '../theme';
 import { fmtPr, liveProds } from '../catalog';
 import { sizeList } from './Offer';
 import { sizeInStock, firstInStockSize, priceFor, soldOutSize } from '../variants';
+import { useCheckoutTracking, isValidBDPhone } from '../../tracking/useCheckoutTracking';
+import { itemFromStudio } from '../../../lib/tracking/items';
+
+// payment_type as the order records it (FunnelSite's label)
+const PAY_TYPE = { cod: 'COD', bkash: 'bKash', nagad: 'Nagad' };
 
 const PAY_METHODS = [
   { k: 'cod', n: 'Cash on delivery', d: 'Pay when it arrives — nothing now' },
@@ -32,12 +39,34 @@ export default function Qform({ sec, ctx }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null); // { num, tag }
   const [err, setErr] = useState(null);
+  const [otp, setOtp] = useState(null); // { sessionToken, maskedPhone, expiresAt } on a 202
+  const [otpInput, setOtpInput] = useState('');
+  const [otpErr, setOtpErr] = useState(null);
+  const [otpBusy, setOtpBusy] = useState(false);
   const payK = pay || (pays[0] && pays[0].k);
 
-  if (!bp) return null;
   // The picked size, else the first one in stock — never a sold-out size.
-  const curSize = (size && sizeInStock(bp, size) ? size : null) || firstInStockSize(bp, sizes);
-  const unitPr = priceFor(bp, curSize);
+  const curSize = bp ? ((size && sizeInStock(bp, size) ? size : null) || firstInStockSize(bp, sizes)) : null;
+  const unitPr = bp ? priceFor(bp, curSize) : 0;
+
+  // begin_checkout on the first keystroke, add_shipping_info (+ the Incomplete
+  // Order) once name + phone + address are in, then add_payment_info → purchase.
+  const item = bp ? itemFromStudio(bp, { size: curSize, qty, price: unitPr, collections: cat.collections || [] }) : null;
+  const ck = useCheckoutTracking({
+    items: item ? [item] : [],
+    value: unitPr * qty,
+    autoBegin: false,
+    contactReady: !!ctx.captureLead && !!bp && !!form.name.trim() && isValidBDPhone(form.phone) && !!form.address.trim(),
+    contactKey: [form.name, form.phone, form.address, curSize, qty].join('|'),
+    onShipping: (tracking) => ctx.captureLead({ product: bp, qty, size: curSize, ...form, tracking }),
+  });
+  const field = (k) => (ev) => {
+    const v = ev.target.value;
+    setForm((f) => ({ ...f, [k]: v }));
+    if (ctx.placeOrder && !ck.checkoutId()) ck.begin();
+  };
+
+  if (!bp) return null;
 
   const submit = async (ev) => {
     ev.stopPropagation();
@@ -47,8 +76,16 @@ export default function Qform({ sec, ctx }) {
     setErr(null);
     if (ctx.placeOrder) {
       setBusy(true);
+      const eventId = ck.purchaseId();
+      ck.paymentInfo(PAY_TYPE[payK] || payK);
       try {
-        const res = await ctx.placeOrder({ product: bp, qty, size: curSize, ...form, pay: payK });
+        const res = await ctx.placeOrder({ product: bp, qty, size: curSize, ...form, pay: payK, eventId, tracking: ck.trackingFor(eventId) });
+        if (res.otpRequired) {
+          setOtp({ sessionToken: res.sessionToken, maskedPhone: res.maskedPhone, expiresAt: res.expiresAt ? new Date(res.expiresAt) : null });
+          setOtpInput(''); setOtpErr(null);
+          return;
+        }
+        ck.purchase(res.data, { value: unitPr * qty, paymentType: PAY_TYPE[payK] || payK });
         setDone({ num: res.num, tag: res.tag });
       } catch (e2) {
         setErr(String(e2?.message || 'Couldn’t place the order — check your connection and try again.'));
@@ -61,12 +98,63 @@ export default function Qform({ sec, ctx }) {
     }
   };
 
+  const verifyOtp = async (ev) => {
+    if (ev) ev.stopPropagation();
+    if (!otp || otpBusy || otpInput.length !== 6 || !ctx.verifyOrderOtp) return;
+    setOtpErr(null); setOtpBusy(true);
+    try {
+      const r = await ctx.verifyOrderOtp(otp.sessionToken, otpInput, ck.trackingFor(ck.purchaseId()));
+      if (!r.ok) {
+        if (r.status === 410 || r.status === 429) {
+          // Expired or locked — back to the form to place it again
+          setOtp(null); setOtpInput(''); setErr(r.error || 'Verification failed. Please try again.');
+        } else {
+          setOtpErr((r.error || 'Incorrect code.') + (r.attemptsLeft != null ? ' (' + r.attemptsLeft + ' attempts left)' : ''));
+        }
+        return;
+      }
+      ck.purchase(r.data, { value: unitPr * qty, paymentType: PAY_TYPE[payK] || payK });
+      setOtp(null); setOtpInput('');
+      setDone({ num: r.num, tag: r.tag });
+    } catch (e2) {
+      setOtpErr(String(e2?.message || 'Verification failed. Try again.'));
+    } finally {
+      setOtpBusy(false);
+    }
+  };
+
   const lbl = 'font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + c.sub + '; margin-top:18px;';
   const inp = 'width:100%; padding:14px 16px; border-radius:' + Math.min(C.rs, 14) + 'px; border:1.5px solid ' + c.line + '; background:' + c.bg + '; color:' + c.fg + '; font-family:' + F.b + '; font-size:13.5px; outline:none; box-sizing:border-box;';
 
   return (
     <div style={sx(padNarrow)} data-qform={sec.id}>
-      {!done && (
+      {!done && otp && (
+        <div style={sx('margin:0 auto; max-width:420px; padding:' + (mob ? '22px 18px' : '28px 26px') + '; border-radius:' + C.r + 'px; background:' + c.card + '; border:1px solid ' + c.line + '; text-align:center;' + sh)}>
+          <div style={sx(headFont + 'font-size:' + hz(mob ? 22 : 26) + 'px; line-height:1.15;')}>Verify your number</div>
+          <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:10px; line-height:1.6;')}>
+            We sent a 6-digit code to <b style={{ color: c.fg }}>{otp.maskedPhone}</b>. Enter it below to place your order.
+          </div>
+          <input
+            type="tel" inputMode="numeric" maxLength={6} placeholder="6-digit code" value={otpInput}
+            onClick={(ev) => ev.stopPropagation()}
+            onChange={(ev) => setOtpInput(ev.target.value.replace(/\D/g, '').slice(0, 6))}
+            onKeyDown={(ev) => { if (ev.key === 'Enter') verifyOtp(ev); }}
+            style={sx(inp + 'margin-top:18px; font-size:22px; letter-spacing:8px; text-align:center;' + (otpErr ? ' border-color:#B03A2E;' : ''))}
+          />
+          {otpErr && <div style={sx('margin-top:10px; font-family:' + F.b + '; font-size:12px; color:#B03A2E;')}>{otpErr}</div>}
+          <div style={sx('font-family:' + F.b + '; font-size:12px; color:' + c.sub + '; margin-top:10px;')}>
+            Code expires in {otp.expiresAt ? Math.max(0, Math.ceil((otp.expiresAt - Date.now()) / 60000)) : 5} min.
+          </div>
+          <div onClick={verifyOtp} style={sx('margin-top:16px; display:flex; align-items:center; justify-content:center; gap:9px; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:14.5px; cursor:pointer;' + ((otpBusy || otpInput.length !== 6) ? ' opacity:0.5; pointer-events:none;' : ''))}>
+            {otpBusy && <div style={{ width: 14, height: 14, borderRadius: 99, border: '2px solid rgba(255,255,255,0.35)', borderTopColor: 'currentColor', animation: 'spin .7s linear infinite' }} />}
+            {otpBusy ? 'Verifying…' : 'Confirm order'}
+          </div>
+          <div onClick={(ev) => { ev.stopPropagation(); setOtp(null); setOtpInput(''); setOtpErr(null); }} style={sx('margin-top:12px; font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + '; cursor:pointer;')}>
+            Back to the form
+          </div>
+        </div>
+      )}
+      {!done && !otp && (
         <>
           <Editable secId={sec.id} k="head" value={p.head} style={headFont + 'font-size:' + hz(mob ? 26 : 34) + 'px; line-height:1.1; text-align:center;'} preview={preview} />
           <div style={sx('margin:24px auto 0; max-width:520px; padding:' + (mob ? '22px 18px' : '28px 26px') + '; border-radius:' + C.r + 'px; background:' + c.card + '; border:1px solid ' + c.line + ';' + sh)}>
@@ -94,11 +182,11 @@ export default function Qform({ sec, ctx }) {
               <div onClick={preview ? (ev) => { ev.stopPropagation(); setQty((q) => Math.min(bp.stock || 99, q + 1)); } : undefined} style={sx('width:34px; height:34px; border-radius:10px; border:1.5px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:800;')}>+</div>
             </div>
             <div style={sx(lbl)}>YOUR NAME</div>
-            <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.name} onChange={(ev) => setForm((f) => ({ ...f, name: ev.target.value }))} placeholder="Rahima Akter" style={sx(inp)} readOnly={!preview} /></div>
+            <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.name} onChange={field('name')} placeholder="Rahima Akter" style={sx(inp)} readOnly={!preview} /></div>
             <div style={sx(lbl)}>PHONE — WE CALL TO CONFIRM</div>
-            <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.phone} onChange={(ev) => setForm((f) => ({ ...f, phone: ev.target.value }))} placeholder="01XXX-XXXXXX" style={sx(inp)} readOnly={!preview} /></div>
+            <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.phone} onChange={field('phone')} placeholder="01XXX-XXXXXX" style={sx(inp)} readOnly={!preview} /></div>
             <div style={sx(lbl)}>DELIVERY ADDRESS</div>
-            <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.address} onChange={(ev) => setForm((f) => ({ ...f, address: ev.target.value }))} placeholder="House, road, area, city" style={sx(inp)} readOnly={!preview} /></div>
+            <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.address} onChange={field('address')} placeholder="House, road, area, city" style={sx(inp)} readOnly={!preview} /></div>
             <div style={sx(lbl)}>PAYMENT</div>
             <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {pays.map((m) => {

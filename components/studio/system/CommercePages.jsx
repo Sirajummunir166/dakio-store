@@ -12,6 +12,9 @@ import { getCart, setQty, updateSize, clearCart } from '../cartStore';
 import { priceFor } from '../variants';
 import { catProduct, priceAddOns } from '../addOns';
 import { DISTRICTS, DHAKA_DISTRICTS, getThanas, detectLocation } from '../../../lib/bd-locations';
+import { useCheckoutTracking } from '../../tracking/useCheckoutTracking';
+import { useTracking } from '../../tracking/TrackingRoot';
+import { itemFromStudio } from '../../../lib/tracking/items';
 
 function isValidBDPhone(raw) {
   const p = String(raw || '').replace(/[\s\-().]/g, '');
@@ -24,6 +27,9 @@ export const SYS10_DEFAULTS = {
   account: { head: 'Your orders', sub: 'Enter the phone number you order with — we’ll text a code, no password needed.' },
 };
 export const sys10 = (sys, k) => ({ ...SYS10_DEFAULTS[k], ...((sys || {})[k] || {}) });
+
+// payment_type as the order records it (PublicSite placeCartOrder's label)
+const PAY_TYPE = { cod: 'COD', bkash: 'bKash', nagad: 'Nagad' };
 
 const PAY_LBL = {
   cod: { n: 'Cash on delivery', d: 'Pay when it arrives — nothing now' },
@@ -85,6 +91,16 @@ export function useBag(ctx) {
   }, [ctx.storeSlug, ctx.cat, tick, mounted, ctx.demoBag]);
 }
 
+// A bag line's quantity; the public store's ctx.setLineQty also reports
+// add_to_cart / remove_from_cart. 0 removes the line.
+export function setBagLineQty(ctx, l, qty) {
+  if (ctx.setLineQty) ctx.setLineQty(l, qty);
+  else if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, qty, l.addOnOf);
+}
+
+// Resolved bag lines → GA4 items, at the price the bag shows (sizes, together prices).
+export const bagItems = (bag, cat) => bag.map((l, i) => itemFromStudio(l.p, { size: l.size, qty: l.qty, price: l.p.pr, index: i, collections: (cat && cat.collections) || [] })).filter(Boolean);
+
 export const bagTotals = (bag) => {
   const sub = bag.reduce((n, l) => n + l.p.pr * l.qty, 0);
   return { sub };
@@ -99,8 +115,16 @@ export function CartPage({ ctx, sys, edit }) {
   const { sub } = bagTotals(bag);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
   const B = btnColors('base', P);
-  const change = (l, d) => { if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, l.qty + d, l.addOnOf); };
-  const remove = (l) => { if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, 0, l.addOnOf); };
+  const change = (l, d) => setBagLineQty(ctx, l, l.qty + d);
+  const remove = (l) => setBagLineQty(ctx, l, 0);
+  // Landing on /cart is a view_cart (once, when the bag has loaded).
+  const tk = useTracking();
+  const hasBag = bag.length > 0;
+  useEffect(() => {
+    if (!hasBag || !tk.once('vc:' + window.location.pathname)) return;
+    const items = bagItems(bag, ctx.cat);
+    tk.track('view_cart', { ecommerce: { currency: tk.currency, value: sub, items } });
+  }, [hasBag]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div style={sx('padding:' + (mob ? 36 : 60) + 'px ' + (mob ? 20 : 48) + 'px 80px; max-width:660px; margin:0 auto; box-sizing:border-box; color:' + c.fg + ';')}>
@@ -217,6 +241,17 @@ export function CheckoutPage({ ctx, sys, edit }) {
   const dlv = district && !freeByAmount ? (insideDhaka ? insideCharge : outsideCharge) : 0;
   const total = sub + dlv - (couponDiscount || 0);
 
+  // begin_checkout → add_shipping_info (+ the Incomplete Order) →
+  // add_payment_info → purchase from the API's answer. Silent in the canvas.
+  const ck = useCheckoutTracking({
+    items: bagItems(bag, ctx.cat),
+    value: sub,
+    ready: !!ctx.storeSlug && bag.length > 0,
+    contactReady: !!ctx.captureLead && bag.length > 0 && !!form.name.trim() && isValidBDPhone(form.phone) && !!district && !!thana,
+    contactKey: [form.name, form.phone, form.email, form.address, district, thana].join('|'),
+    onShipping: (tracking) => ctx.captureLead && ctx.captureLead({ name: form.name, phone: form.phone, email: form.email, address: form.address, city: thana, district, bag, tracking }),
+  });
+
   const lbl = 'font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + c.sub + '; margin-top:18px;';
   const inp = 'width:100%; padding:14px 16px; border-radius:' + Math.min(C.rs, 14) + 'px; border:1.5px solid ' + c.line + '; background:' + c.card + '; color:' + c.fg + '; font-family:' + F.b + '; font-size:13.5px; outline:none; box-sizing:border-box;';
   const selectStyle = {
@@ -257,12 +292,15 @@ export function CheckoutPage({ ctx, sys, edit }) {
       return;
     }
     setBusy(true);
+    const eventId = ck.purchaseId();
+    ck.paymentInfo(PAY_TYPE[payK] || payK);
     try {
-      const res = await ctx.placeCartOrder({ bag, name: form.name, phone: form.phone, email: form.email, address: form.address, note: form.note, district, city: thana, pay: payK, couponCode: appliedCoupon?.code, shippingCharge: dlv });
+      const res = await ctx.placeCartOrder({ bag, name: form.name, phone: form.phone, email: form.email, address: form.address, note: form.note, district, city: thana, pay: payK, couponCode: appliedCoupon?.code, shippingCharge: dlv, eventId, tracking: ck.trackingFor(eventId) });
       if (res.otpRequired) {
         setOtpSessionToken(res.sessionToken); setOtpMaskedPhone(res.maskedPhone); setOtpExpiresAt(res.expiresAt ? new Date(res.expiresAt) : null);
         setOtpStep(true); setBusy(false); return;
       }
+      ck.purchase(res.data, { value: sub - (couponDiscount || 0), paymentType: PAY_TYPE[payK] || payK });
       setDone(res);
       if (ctx.storeSlug) clearCart(ctx.storeSlug);
     } catch (e2) {
@@ -274,7 +312,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
     ev && ev.stopPropagation();
     if (otpVerifying || otpInput.length !== 6 || !ctx.verifyCheckoutOtp) return;
     setOtpErr(null); setOtpVerifying(true);
-    const r = await ctx.verifyCheckoutOtp(otpSessionToken, otpInput);
+    const r = await ctx.verifyCheckoutOtp(otpSessionToken, otpInput, ck.trackingFor(ck.purchaseId()));
     if (!r.ok) {
       if (r.status === 410 || r.status === 429) {
         setOtpStep(false); setOtpInput(''); setOtpSessionToken(''); setErr(r.error || 'Verification failed. Please try again.');
@@ -283,6 +321,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
       }
       setOtpVerifying(false); return;
     }
+    ck.purchase(r.data, { value: sub - (couponDiscount || 0), paymentType: PAY_TYPE[payK] || payK });
     setDone(r);
     if (ctx.storeSlug) clearCart(ctx.storeSlug);
     setOtpVerifying(false);
@@ -304,9 +343,9 @@ export function CheckoutPage({ ctx, sys, edit }) {
                 <div style={sx('font-family:' + F.b + '; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;')}>{l.p.n}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div onClick={(e) => { e.stopPropagation(); if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, l.qty - 1, l.addOnOf); }} style={sx('width:20px; height:20px; border-radius:6px; border:1.5px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:800; font-size:11px;')}>−</div>
+                    <div onClick={(e) => { e.stopPropagation(); setBagLineQty(ctx, l, l.qty - 1); }} style={sx('width:20px; height:20px; border-radius:6px; border:1.5px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:800; font-size:11px;')}>−</div>
                     <span style={sx('font-family:' + F.b + '; font-size:11.5px; font-weight:700; min-width:12px; text-align:center;')}>{l.qty}</span>
-                    <div onClick={(e) => { e.stopPropagation(); if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, l.qty + 1, l.addOnOf); }} style={sx('width:20px; height:20px; border-radius:6px; border:1.5px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:800; font-size:11px;')}>+</div>
+                    <div onClick={(e) => { e.stopPropagation(); setBagLineQty(ctx, l, l.qty + 1); }} style={sx('width:20px; height:20px; border-radius:6px; border:1.5px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:800; font-size:11px;')}>+</div>
                   </div>
                   {sizeOptions.length > 0 && (
                     <select
@@ -320,7 +359,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
-                <div onClick={(e) => { e.stopPropagation(); if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, 0, l.addOnOf); }} style={sx('cursor:pointer; color:' + c.sub + ';')} title="Remove">
+                <div onClick={(e) => { e.stopPropagation(); setBagLineQty(ctx, l, 0); }} style={sx('cursor:pointer; color:' + c.sub + ';')} title="Remove">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
                 </div>
                 <div style={sx('font-family:' + F.b + '; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums;')}>{fmtPr(l.p.pr * l.qty)}</div>

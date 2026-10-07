@@ -11,8 +11,7 @@
 import { useEffect } from 'react';
 import { co, btnColors, sx } from './theme';
 import { fmtPr } from './catalog';
-import { setQty } from './cartStore';
-import { useBag, bagTotals, deliveryNote } from './system/CommercePages';
+import { useBag, bagTotals, deliveryNote, setBagLineQty } from './system/CommercePages';
 import ImageSlot from './ImageSlot';
 import { bagSuggestion } from './addOns';
 import { priceFor, firstInStockSize } from './variants';
@@ -35,8 +34,8 @@ export default function CartPanel({ ctx, open, onClose }) {
 
   if (!open) return null;
 
-  const change = (l, d) => { if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, l.qty + d, l.addOnOf); };
-  const remove = (l) => { if (ctx.storeSlug) setQty(ctx.storeSlug, l.pid, l.size, 0, l.addOnOf); };
+  const change = (l, d) => setBagLineQty(ctx, l, l.qty + d);
+  const remove = (l) => setBagLineQty(ctx, l, 0);
   const goProduct = (l) => { onClose(); ctx.onProduct && ctx.onProduct(l.p); };
   const goCheckout = () => { onClose(); ctx.onCheckout && ctx.onCheckout(); };
   // One suggestion; a sized add-on goes to the main product's page, where its

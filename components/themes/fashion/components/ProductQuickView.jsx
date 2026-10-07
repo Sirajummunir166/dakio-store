@@ -4,6 +4,8 @@ import { IconArrowRight, IconClose, IconMinus, IconPlus } from './Icons.jsx'
 import SalePrice from './SalePrice.jsx'
 import { useFashionTheme } from '../FashionThemeContext.jsx'
 import { getProductAvailableSizes as getAvailableSizes } from '../compat/lib-products.js'
+import { useTracking } from '../../../tracking/TrackingRoot'
+import { itemFromBasic } from '../../../../lib/tracking/items'
 
 export default function ProductQuickView() {
   const { contract, navigate, quickView } = useFashionTheme()
@@ -11,13 +13,17 @@ export default function ProductQuickView() {
   const [size, setSize] = useState(null)
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
+  const tk = useTracking()
 
   useEffect(() => {
     if (!product) return
     setSize(getAvailableSizes(product)[0] ?? null)
     setQty(1)
     setAdded(false)
-  }, [product?.id])
+    const first = getAvailableSizes(product)[0] ?? null
+    const item = itemFromBasic(product, { variant: (product.variants || []).find((v) => v.name === first) || null })
+    if (item) tk.track('view_item', { ecommerce: { currency: tk.currency, value: item.price, items: [item] } })
+  }, [product?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!product) return

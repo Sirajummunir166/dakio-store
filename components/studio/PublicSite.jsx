@@ -6,8 +6,12 @@ import { SECTION_COMPONENTS } from './sections';
 import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
 import { CartPage, CheckoutPage, AccountPage } from './system/CommercePages';
 import CartPanel from './CartPanel';
-import { cartCount, onCartChange, addToCart } from './cartStore';
+import { cartCount, onCartChange, addToCart, getCart, setQty } from './cartStore';
 import { orderVariantId } from './variants';
+import { useTracking } from '../tracking/TrackingRoot';
+import { contactEventFor } from '../../lib/tracking/events';
+import { itemFromStudio, listPayload } from '../../lib/tracking/items';
+import { catProduct } from './addOns';
 import { optImg } from './publicCatalog';
 import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
 
@@ -36,6 +40,9 @@ const FONT_HREF = {
 // (Goes well with) — the bag resolves them; no grid lists them.
 export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], extra = [], system = null, storeSlug = null, store = null }) {
   const [mob, setMob] = useState(false);
+  // Tracking (components/tracking) — also where the store's currency comes
+  // from: most Studio routes never receive the store object.
+  const tk = useTracking();
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_QUERY);
     const apply = () => setMob(mq.matches);
@@ -114,7 +121,12 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
-    if (isExternal(href)) { window.open(href, '_blank', 'noopener'); return; }
+    if (isExternal(href)) {
+      const ce = contactEventFor(href);
+      if (ce) tk.track(ce.name, ce.params);
+      window.open(href, '_blank', 'noopener');
+      return;
+    }
     window.location.href = href;
   };
 
@@ -133,12 +145,16 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
   const [cartOpen, setCartOpen] = useState(false);
 
   const seoF = doc.seo || {};
+  const cat = { products, collections, extra };
+  const itemOf = (pr, o = {}) => itemFromStudio(pr, { collections, ...o });
+  const ecom = (items) => ({ ecommerce: { currency: tk.currency, value: items.reduce((n, it) => n + it.price * it.quantity, 0), items } });
   const ctx = {
     P, F, C, tsM, denM, shCard, mob, padX,
     preview: true, isPublic: true, theme,
     menus: doc.menus, assets,
-    cat: { products, collections, extra },
+    cat,
     isSel: false,
+    currency: tk.currency,
     lazyImgs: seoF.lazy !== false,
     optImg: (u) => optImg(u, seoF),
     onGoPage: (id) => { window.location.href = pageHref(id); },
@@ -153,16 +169,42 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     // navigating away; /cart stays a real page (direct links, no-JS).
     storeSlug,
     store,
-    onCart: () => setCartOpen(true),
+    onCart: () => {
+      setCartOpen(true);
+      const items = storeSlug ? getCart(storeSlug).map((l, i) => { const p = catProduct(cat, l.pid); return p ? itemOf(p, { size: l.size, qty: l.qty, index: i }) : null; }).filter(Boolean) : [];
+      if (items.length) tk.track('view_cart', ecom(items));
+    },
     onCheckout: () => { window.location.href = (basePath || '') + '/checkout'; },
     onAccount: () => { window.location.href = (basePath || '') + '/account'; },
     // `addOnOf`: added from a product's Goes well with block (its own line).
-    addToBag: storeSlug ? (pr, qty = 1, size = null, addOnOf = null) => { addToCart(storeSlug, pr.id, qty, size, addOnOf); setCartOpen(true); } : undefined,
+    addToBag: storeSlug ? (pr, qty = 1, size = null, addOnOf = null) => {
+      addToCart(storeSlug, pr.id, qty, size, addOnOf);
+      setCartOpen(true);
+      const it = itemOf(pr, { size, qty });
+      if (it) tk.track('add_to_cart', ecom([it]));
+    } : undefined,
+    // A bag line's quantity (0 removes it) — reports the change as
+    // add_to_cart / remove_from_cart. `l` is a resolved bag line (useBag).
+    setLineQty: storeSlug ? (l, qty) => {
+      const next = Math.max(0, qty);
+      setQty(storeSlug, l.pid, l.size, next, l.addOnOf);
+      const d = next - l.qty;
+      const it = d && l.p ? itemOf(l.p, { size: l.size, qty: Math.abs(d), price: l.p.pr }) : null;
+      if (it) tk.track(d > 0 ? 'add_to_cart' : 'remove_from_cart', ecom([it]));
+    } : undefined,
+    // Product lists (shop grid, featured, related): one view per list per page.
+    trackList: (list, prods) => {
+      if (!prods.length || !tk.once('vil:' + window.location.pathname + ':' + list.id)) return;
+      tk.track('view_item_list', listPayload(list, prods.map((pr, i) => itemOf(pr, { index: i, list }))));
+    },
+    trackSelect: (list, pr, index) => tk.track('select_item', listPayload(list, [itemOf(pr, { index, list })])),
+    trackItem: (pr, size) => { const it = itemOf(pr, { size }); if (it) tk.track('view_item', ecom([it])); },
+    trackSearch: (q) => { if (q && tk.once('srch:' + window.location.pathname + ':' + q)) tk.track('search', { search_term: String(q).slice(0, 100) }); },
     // Checkout (Phase 10 \u2192 Fashion-checkout parity follow-up). A 202 means the
     // tenant's fake-order protection wants SMS verification first \u2014 the caller
     // (CheckoutPage) switches to its OTP step; this never throws for that case,
     // only for genuine request failures.
-    placeCartOrder: storeSlug ? async ({ bag, name, phone, email, address, note, district, city, pay, couponCode, shippingCharge }) => {
+    placeCartOrder: storeSlug ? async ({ bag, name, phone, email, address, note, district, city, pay, couponCode, shippingCharge, eventId = null, tracking }) => {
       const payLbl = pay === 'bkash' ? 'bKash' : pay === 'nagad' ? 'Nagad' : 'COD';
       const sizeNote = bag.filter((l) => l.size).map((l) => l.p.n + ': ' + l.size).join(' \u00b7 ');
       const fullNote = [note && note.trim(), sizeNote].filter(Boolean).join(' \u00b7 ') || undefined;
@@ -178,6 +220,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
           items: bag.map((l) => ({ productId: l.pid, variantId: orderVariantId(l.p, l.size), qty: l.qty, name: l.p.n + (l.size ? ' — ' + l.size : ''), ...(l.addOnOf ? { addOnOf: l.addOnOf } : {}) })),
           paymentMethod: payLbl, note: fullNote, shippingCharge,
           couponCode: couponCode || undefined,
+          metaEventId: eventId || undefined, tracking,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -185,15 +228,31 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         return { otpRequired: true, sessionToken: data.sessionToken, maskedPhone: data.maskedPhone, expiresAt: data.expiresAt };
       }
       if (!res.ok) throw new Error(data.error || 'Couldn\u2019t place the order \u2014 try again.');
-      return { num: data.orderNumber, msg: 'We call ' + phone.trim() + ' to confirm before shipping. Track it anytime in your account.' };
+      return { num: data.orderNumber, data, msg: 'We call ' + phone.trim() + ' to confirm before shipping. Track it anytime in your account.' };
     } : undefined,
-    verifyCheckoutOtp: storeSlug ? async (sessionToken, otp) => {
+    verifyCheckoutOtp: storeSlug ? async (sessionToken, otp, tracking) => {
       const res = await fetch(API + '/store/' + storeSlug + '/orders/verify-otp', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionToken, otp }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionToken, otp, tracking }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) return { ok: false, status: res.status, error: data.error, attemptsLeft: data.attemptsLeft };
-      return { ok: true, num: data.orderNumber, msg: 'We call the number on file to confirm before shipping. Track it anytime in your account.' };
+      return { ok: true, num: data.orderNumber, data, msg: 'We call the number on file to confirm before shipping. Track it anytime in your account.' };
+    } : undefined,
+    // Incomplete Order (Storefront lead) from checkout's add_shipping_info —
+    // the same /leads the basic checkout uses; `tracking` makes the server's
+    // Meta event AddShippingInfo (deduped), never Lead.
+    captureLead: storeSlug ? ({ name, phone, email, address, city, district, bag, tracking }) => {
+      fetch(API + '/store/' + storeSlug + '/leads', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+        body: JSON.stringify({
+          name: (name || '').trim(), phone: (phone || '').trim(), email: (email || '').trim() || undefined,
+          address: (address || '').trim() || undefined, city: city || undefined, district: district || undefined,
+          cart: bag.map((l) => ({ productId: l.pid, name: l.p.n + (l.size ? ' — ' + l.size : ''), qty: l.qty, unitPrice: l.p.pr })),
+          cartValue: bag.reduce((n, l) => n + l.p.pr * l.qty, 0),
+          sourceUrl: window.location.href,
+          tracking,
+        }),
+      }).catch(() => {});
     } : undefined,
     validateCoupon: storeSlug ? async (code, subtotal) => {
       const res = await fetch(API + '/coupons/validate', {
@@ -213,6 +272,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
       const res = await fetch(API + '/store/' + storeSlug + '/account/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionToken, otp }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'That code isn\u2019t right');
+      tk.track('login', { method: 'phone_otp' });
       return data;
     } : undefined,
   };
@@ -337,7 +397,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
             />
           )}
           <svg onClick={() => setSearchOpen((v) => !v)} width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{ cursor: 'pointer' }}><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          <a href={(basePath || '') + '/cart'} className="studio-nav-link" style={{ position: 'relative', display: 'flex' }} title="Cart" onClick={(e) => { e.preventDefault(); setCartOpen(true); }}>
+          <a href={(basePath || '') + '/cart'} className="studio-nav-link" style={{ position: 'relative', display: 'flex' }} title="Cart" onClick={(e) => { e.preventDefault(); ctx.onCart(); }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 7h12l1 14H5L6 7zM9 10V6a3 3 0 016 0v4" /></svg>
             {bagN > 0 && (
               <div style={{

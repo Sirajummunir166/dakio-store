@@ -9,7 +9,9 @@ import { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
 import { fmtPr } from './catalog';
 import { optImg } from './publicCatalog';
-import { orderVariantId } from './variants';
+import { orderVariantId, priceFor } from './variants';
+import { useTracking } from '../tracking/TrackingRoot';
+import { itemFromStudio } from '../../lib/tracking/items';
 
 const MOBILE_QUERY = '(max-width: 767px)';
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://dakio-api-production.up.railway.app/api';
@@ -39,14 +41,26 @@ export default function FunnelSite({ doc, fn, storeSlug, products = [], collecti
   const seoF = doc.seo || {};
   const product = products.find((p) => p.id === fn.pid) || products[0] || null;
 
+  // Tracking: the funnel's own pixel fires on top of the store's (never
+  // instead of it), and landing here is a view of its one product.
+  const tk = useTracking();
+  useEffect(() => {
+    const pid = String(fn.pixel || '').replace(/[^0-9]/g, '');
+    if (/^\d{10,20}$/.test(pid)) tk.addPixel(pid);
+    const it = product ? itemFromStudio(product, { collections }) : null;
+    if (it && tk.once('vi:' + window.location.pathname)) tk.track('view_item', { ecommerce: { currency: tk.currency, value: it.price, items: [it] } });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const scrollToForm = () => {
     const q = (fn.sections || []).find((s) => s.type === 'qform');
     const el = q && document.getElementById('sec-' + q.id);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // Real order placement — the funnel's whole job
-  const placeOrder = async ({ product: bp, qty, size, name, phone, address, pay }) => {
+  // Real order placement — the funnel's whole job. A 202 means the store's
+  // fake-order protection wants the SMS code first: no order exists yet, so
+  // the form shows its code step (verifyOrderOtp) — never a success.
+  const placeOrder = async ({ product: bp, qty, size, name, phone, address, pay, eventId = null, tracking }) => {
     const payLbl = pay === 'bkash' ? 'bKash' : pay === 'nagad' ? 'Nagad' : 'COD';
     const res = await fetch(`${API}/store/${storeSlug}/orders`, {
       method: 'POST',
@@ -60,17 +74,45 @@ export default function FunnelSite({ doc, fn, storeSlug, products = [], collecti
         items: [{ productId: bp.id, variantId: orderVariantId(bp, size), qty, name: bp.n + (size ? ' — ' + size : '') }],
         paymentMethod: payLbl,
         note: `Funnel: ${fn.name} (/f/${fn.slug})${size ? ' · Size: ' + size : ''}`,
+        metaEventId: eventId || undefined,
+        tracking,
       }),
     });
     const data = await res.json().catch(() => ({}));
+    if (res.status === 202 && data.status === 'OTP_REQUIRED') {
+      return { otpRequired: true, sessionToken: data.sessionToken, maskedPhone: data.maskedPhone || phone.trim(), expiresAt: data.expiresAt };
+    }
     if (!res.ok) throw new Error(data.error || 'Couldn’t place the order — try again.');
-    // FB pixel Purchase — fires only on a real 201 with an order number
-    try {
-      if (fn.pixel && typeof window !== 'undefined' && window.fbq) {
-        window.fbq('track', 'Purchase', { value: bp.pr * qty, currency: 'BDT' });
-      }
-    } catch { /* pixel is best-effort */ }
-    return { num: data.orderNumber, tag: `Saved in Dakio Orders — tagged “${fn.name}”. We call ${phone.trim()} to confirm.` };
+    return { num: data.orderNumber, data, tag: `Saved in Dakio Orders — tagged “${fn.name}”. We call ${phone.trim()} to confirm.` };
+  };
+
+  // Same body as the basic checkout's verifyOtp (CheckoutClient).
+  const verifyOrderOtp = async (sessionToken, otp, tracking) => {
+    const res = await fetch(`${API}/store/${storeSlug}/orders/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionToken, otp, tracking }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, status: res.status, error: data.error, attemptsLeft: data.attemptsLeft };
+    return { ok: true, num: data.orderNumber, data, tag: `Saved in Dakio Orders — tagged “${fn.name}”. We call the number you gave to confirm.` };
+  };
+
+  // Incomplete Order (Storefront lead) once name + phone + address are in.
+  const captureLead = ({ product: bp, qty, size, name, phone, address, tracking }) => {
+    const unitPrice = priceFor(bp, size);
+    fetch(`${API}/store/${storeSlug}/leads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        name: name.trim(), phone: phone.trim(), address: (address || '').trim() || undefined,
+        cart: [{ productId: bp.id, name: bp.n + (size ? ' — ' + size : ''), qty, unitPrice }],
+        cartValue: unitPrice * qty,
+        sourceUrl: window.location.href,
+        tracking,
+      }),
+    }).catch(() => {});
   };
 
   const ctx = {
@@ -87,6 +129,8 @@ export default function FunnelSite({ doc, fn, storeSlug, products = [], collecti
     fnPid: fn.pid,
     fnProduct: product,
     placeOrder,
+    verifyOrderOtp,
+    captureLead,
   };
 
   const renderSection = (sec) => {
@@ -114,14 +158,6 @@ export default function FunnelSite({ doc, fn, storeSlug, products = [], collecti
         @keyframes spin { to { transform:rotate(360deg); } }
         input::placeholder { color: currentColor; opacity: .38; }
       `}</style>
-      {fn.pixel && (
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${String(fn.pixel).replace(/[^0-9]/g, '')}');fbq('track','PageView');`,
-          }}
-        />
-      )}
-
       {(fn.sections || []).map(renderSection)}
 
       {fn.bar !== false && product && (

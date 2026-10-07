@@ -47,7 +47,9 @@ A contract-based layer that decouples raw API data from theme UI code. **Only im
 
 `components/themes/fashion/` is the current, actively-developed theme package (context, error boundary, wrapper, compat shims for legacy hooks like `useCart`/`useProductStore`, CMS-driven `sections/`, `defaults/presets.js`). `components/templates/` (Beauty/Bold/Fashion/Minimal/Organic/Tech) is an older, largely legacy parallel structure — check which one a task actually targets before editing.
 
-Top-level client components: `StorefrontClient`, `CheckoutClient`, `ProductDetailClient`, `TrackOrderClient`, `PreviewGate`/`PreviewBanner`, `StoreUnavailable`, `VisitorTracker`, `TrackingScripts`.
+Top-level client components: `StorefrontClient`, `CheckoutClient`, `ProductDetailClient`, `TrackOrderClient`, `PreviewGate`/`PreviewBanner`, `StoreUnavailable`.
+
+Tracking (`DAKIO_TRACKING_PLAN.md` in the repos root): both store layouts mount `components/tracking/TrackingBootstrap` (validated config JSON + one constant inline script: dataLayer, consent default, GTM) and `TrackingRoot` (provider: attribution, page views, Meta pixel, contact clicks, visitor ping). Components call `useTracking()` (a no-op outside the provider, e.g. the Studio canvas); checkouts share `useCheckoutTracking`. Pure logic lives in `lib/tracking/` (events, ids, items, schema, url, attribution, cookies, consent, dispatcher, context, config, adapters/meta) — nothing raw that identifies a shopper goes into the dataLayer.
 
 SEO / AI-discovery layer: `lib/seo.js` (schema.org Product JSON-LD via `components/ProductJsonLd.js` on all four product routes, host-aware `app/sitemap.xml` + `app/robots.txt` route handlers — the middleware skips dotted paths, so they resolve the store from the Host header) and `lib/hosts.js` (the store-vs-Dakio host test the middleware shares).
 

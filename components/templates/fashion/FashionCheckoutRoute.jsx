@@ -3,7 +3,6 @@ import { DISTRICTS, getThanas } from '../../../lib/bd-locations'
 import { storeHome } from '../../../lib/routes'
 import { fmt } from '../../../lib/storefront'
 import { fashionCss } from './tokens'
-import TrackingScripts from '../../TrackingScripts'
 
 export default function FashionCheckoutRoute(props) {
   const {
@@ -169,7 +168,6 @@ export default function FashionCheckoutRoute(props) {
 
   return (
     <div className="ft-root ft-route-checkout">
-      <TrackingScripts store={store} />
       <style>{fashionCss(accent)}{coCss}</style>
 
       <div className="ft-co-mobile-sum">

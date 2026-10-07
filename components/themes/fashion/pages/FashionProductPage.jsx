@@ -11,6 +11,10 @@ import { getCartLine } from '../compat/lib-cart.js'
 import { getProductAvailableSizes, isOnSale } from '../compat/lib-products.js'
 import { useFashionTheme } from '../FashionThemeContext.jsx'
 import GoesWellWith from '../components/GoesWellWith.jsx'
+import { useTracking } from '../../../tracking/TrackingRoot'
+import { itemFromBasic, listPayload } from '../../../../lib/tracking/items'
+
+const RELATED_LIST = { id: 'related', name: 'You may also like' }
 
 function formatPrice(amount) {
   const value = Number(amount) || 0
@@ -21,6 +25,7 @@ export default function FashionProductPage({ product }) {
   const { contract } = useFashionTheme()
   const { goHome } = useProductStore()
   const { addItem, items, openCart } = useCart()
+  const tk = useTracking()
   const [size, setSize] = useState(() => getProductAvailableSizes(product)[0] ?? null)
   const [qty, setQty] = useState(1)
   const [activeTab, setActiveTab] = useState('description')
@@ -44,6 +49,15 @@ export default function FashionProductPage({ product }) {
     setActiveTab('description')
     setStickyVisible(false)
   }, [product.id])
+
+  // view_item (at the preselected size's price), then the related list.
+  useEffect(() => {
+    const first = getProductAvailableSizes(product)[0] ?? null
+    const variant = (product.variants || []).find((v) => v.name === first) || null
+    const item = itemFromBasic(product, { variant })
+    if (item) tk.track('view_item', { ecommerce: { currency: tk.currency, value: item.price, items: [item] } })
+    if (related.length) tk.track('view_item_list', listPayload(RELATED_LIST, related.map((p, i) => itemFromBasic(p, { index: i, list: RELATED_LIST }))))
+  }, [product.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const node = purchaseRef.current
@@ -244,10 +258,12 @@ export default function FashionProductPage({ product }) {
           <section className="product-page__related">
             <h2>You May Also Like</h2>
             <div className="products-grid">
-              {related.map((item) => (
+              {related.map((item, i) => (
                 <ProductCard
                   key={item.id}
                   product={item}
+                  list={RELATED_LIST}
+                  index={i}
                   curated
                   showReviews={false}
                   showQuickView={false}

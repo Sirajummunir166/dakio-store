@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import ProductCard from '../components/ProductCard.jsx'
 import { useFashionTheme } from '../FashionThemeContext.jsx'
+import { useTracking } from '../../../tracking/TrackingRoot'
+import { itemFromBasic, listPayload } from '../../../../lib/tracking/items'
 
 function filterProducts(products, tabId, limit) {
   switch (tabId) {
@@ -58,6 +60,15 @@ export default function ProductsSection({ settings }) {
   const visibleProducts = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
   const hasMore = visibleCount < filtered.length
 
+  // One view_item_list per tab shown (load-more doesn't re-send it).
+  const tk = useTracking()
+  const list = useMemo(() => ({ id: 'home_' + (activeTab || 'all'), name: title || 'Products' }), [activeTab, title])
+  const hasVisible = visibleProducts.length > 0
+  useEffect(() => {
+    if (!hasVisible || !tk.once(`vil:${window.location.pathname}:${list.id}`)) return
+    tk.track('view_item_list', listPayload(list, visibleProducts.map((p, i) => itemFromBasic(p, { index: i, list }))))
+  }, [list.id, hasVisible]) // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <section className={`products-section ${!showTabs ? 'products-section--curated' : ''}`}>
       <div className="container">
@@ -87,10 +98,12 @@ export default function ProductsSection({ settings }) {
           {visibleProducts.length === 0 ? (
             <div className="products-empty"><p>No products in this collection yet.</p></div>
           ) : (
-            visibleProducts.map((product) => (
+            visibleProducts.map((product, i) => (
               <ProductCard
                 key={product.id}
                 product={product}
+                list={list}
+                index={i}
                 showReviews={curated || !showTabs ? false : showReviews}
                 showQuickView={showQuickView}
                 showComparePrice={showComparePrice}
