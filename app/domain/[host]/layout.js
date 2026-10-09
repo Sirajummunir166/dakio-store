@@ -2,6 +2,7 @@ import { getStoreByDomain } from '../../../lib/api'
 import StorePaused from '../../../components/StorePaused'
 import TrackingBootstrap from '../../../components/tracking/TrackingBootstrap'
 import TrackingRoot from '../../../components/tracking/TrackingRoot'
+import WebChat from '../../../components/WebChat'
 import { buildTrackingConfig } from '../../../lib/tracking/config'
 
 // While the owner starts the store over (the API's `store.paused`), every
@@ -14,11 +15,14 @@ export default async function DomainStoreLayout({ children, params }) {
   const data = await getStoreByDomain(host)
   if (data?.store?.paused) return <StorePaused store={data.store} />
   const tracking = buildTrackingConfig(data?.store, 'domain')
-  if (!tracking) return children
+  // The chat bubble, when the owner switched it on (DAKIO_WEBCHAT_PLAN.md).
+  const chat = <WebChat store={data?.store} scope="domain" />
+  if (!tracking) return <>{children}{chat}</>
   return (
     <TrackingRoot config={tracking}>
       <TrackingBootstrap config={tracking} />
       {children}
+      {chat}
     </TrackingRoot>
   )
 }
