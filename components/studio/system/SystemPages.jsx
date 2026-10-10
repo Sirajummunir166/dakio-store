@@ -406,6 +406,42 @@ function PairBlock({ ctx, pp, bp, pairs, headFont, edit }) {
 }
 
 // ── Product template (/p/<slug>) ────────────────────────────────────────────
+/* Customer reviews (review after delivery): only what the merchant approved,
+ * a short name, and "Verified purchase" — every one came from a real order.
+ * Three levels, not stars: Loved it / Liked it (a "Problem" is never shown). */
+const REVIEW_BADGE = { 3: 'Loved it 😍', 2: 'Liked it 🙂' };
+function ReviewsBlock({ reviews, ctx, c, headFont }) {
+  const { F, C, mob } = ctx;
+  const loved = reviews.filter((r) => r.rating === 3).length;
+  return (
+    <div style={sx('border-top:1px solid ' + c.line + '; padding:' + (mob ? '28px 0 34px' : '40px 0 48px') + ';')}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+        <div style={sx(headFont + 'font-size:' + (mob ? 20 : 24) + 'px; line-height:1.15; color:' + c.fg + ';')}>Customer reviews</div>
+        <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + ';')}>
+          {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}{loved ? ' · ' + loved + ' loved it' : ''}
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr' : 'repeat(2, 1fr)', gap: mob ? 12 : 16, marginTop: mob ? 16 : 22 }}>
+        {reviews.map((r) => (
+          <div key={r.id} style={sx('display:flex; gap:12px; padding:16px; border:1px solid ' + c.line + '; border-radius:' + Math.min(C.rs, 14) + 'px; background:' + (c.card || 'transparent') + ';')}>
+            {r.photoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={r.photoUrl} alt="" loading="lazy" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: Math.min(C.rs, 10), flexShrink: 0 }} />
+            )}
+            <div style={{ minWidth: 0 }}>
+              <div style={sx('font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + c.fg + ';')}>{REVIEW_BADGE[r.rating] || REVIEW_BADGE[3]}</div>
+              {r.text && <div style={sx('font-family:' + F.b + '; font-size:13.5px; line-height:1.6; color:' + c.fg + '; margin-top:6px; overflow-wrap:anywhere;')}>{r.text}</div>}
+              <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + '; margin-top:8px;')}>
+                {(r.name ? r.name + ' · ' : '') + 'Verified purchase'}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ProductPage({ ctx, sys, product, edit }) {
   const { P, F, C, mob, padX, cat } = ctx;
   const c = co('base', P);
@@ -627,6 +663,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
             </div>
           </div>
           )}
+          {Array.isArray(bp.reviews) && bp.reviews.length > 0 && <ReviewsBlock reviews={bp.reviews} ctx={ctx} c={cPd} headFont={headFont} />}
         </div>
       </Part>
       {pp.pairOn && (pairs.length > 0 || edit) && (

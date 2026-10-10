@@ -1,4 +1,4 @@
-import { getStoreByDomain, getProducts, getCategories, getPublishedSite, getProductBySlug } from '../../../../../lib/api'
+import { getStoreByDomain, getProducts, getCategories, getPublishedSite, getProductBySlug, getProductReviews } from '../../../../../lib/api'
 import StoreUnavailable from '../../../../../components/StoreUnavailable'
 import PublicSite from '../../../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../../../components/studio/publicCatalog'
@@ -52,6 +52,9 @@ export default async function DomainProductRoute({ params }) {
     }
   }
   if (!product) notFound()
+  // Approved reviews (review after delivery), drawn under the product's tabs.
+  const reviews = await getProductReviews(slug, productSlug)
+  if (reviews.length) product = { ...product, reviews }
 
   return (
     <>
