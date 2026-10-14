@@ -45,7 +45,7 @@ export default function HeaderSection({ settings }) {
             <IconMenu />
           </button>
 
-          <a href={navigate.toHome()} className="logo logo--flagship" onClick={(e) => { e.preventDefault(); setMenuOpen(false); navigate.toHome() }}>
+          <a href={contract.routing.storeHome()} className="logo logo--flagship" onClick={(e) => { e.preventDefault(); setMenuOpen(false); navigate.toHome() }}>
             <span className="logo__mark">{brandMark}</span>
             <span className="logo__text">{brandName}</span>
           </a>
@@ -80,7 +80,7 @@ export default function HeaderSection({ settings }) {
           <button type="button" className="mobile-nav__backdrop" aria-label="Close menu" onClick={closeAll} />
           <aside className="mobile-nav__panel">
             <div className="mobile-nav__head">
-              <a href="/" className="logo" onClick={(e) => { e.preventDefault(); closeAll(); navigate.toHome() }}>
+              <a href={contract.routing.storeHome()} className="logo" onClick={(e) => { e.preventDefault(); closeAll(); navigate.toHome() }}>
                 <span className="logo__mark">{brandMark}</span>
                 <span className="logo__text">{brandName}</span>
               </a>

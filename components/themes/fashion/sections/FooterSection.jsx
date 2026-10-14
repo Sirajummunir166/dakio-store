@@ -31,7 +31,7 @@ export default function FooterSection({ settings }) {
     <footer className="footer footer--flagship">
       <div className="container footer__grid">
         <div className="footer__brand">
-          <a href={navigate.toHome()} className="logo logo--footer" onClick={(e) => { e.preventDefault(); navigate.toHome() }}>
+          <a href={contract.routing.storeHome()} className="logo logo--footer" onClick={(e) => { e.preventDefault(); navigate.toHome() }}>
             <span className="logo__mark">{brandMark}</span>
             <span className="logo__text">{brandName}</span>
           </a>
