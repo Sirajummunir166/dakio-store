@@ -6,6 +6,7 @@ import ImageSlot from '../ImageSlot';
 import { fmtPr } from '../catalog';
 import { sizeList } from '../system/SystemPages';
 import { sizeInStock, firstInStockSize, priceFor, soldOutSize } from '../variants';
+import { siteText } from '../siteText';
 
 // Product detail — bound to ONE real catalog product (props.pid). Name, price
 // and compare-at render from the catalog; editing them on the canvas edits the
@@ -16,6 +17,7 @@ export default function Pdp({ sec, ctx }) {
   const { c, B } = s;
   const { F, C, mob, preview, assets, cat, isPublic } = ctx;
   const p = sec.props;
+  const tx = siteText(ctx.theme?.lang);
 
   const bp = cat.products.find((x) => x.id === p.pid) || cat.products[0];
   const [sel, setSel] = useState(null);
@@ -106,14 +108,14 @@ export default function Pdp({ sec, ctx }) {
             <Editable secId={catId} k="pr" value={fmtPr(isPublic ? priceFor(bp, curSize) : bp.pr)} style={pdpPrice} preview={preview} />
             <Editable secId={catId} k="was" value={bp.was ? fmtPr(bp.was) : ''} style={pdpWas} preview={preview} />
           </div>
-          {(stockOn || pubStockOn) && <div style={sx(pdpStock)}>{isPublic ? 'Only ' + bp.stock + ' left in stock' : stockTxt}</div>}
+          {(stockOn || pubStockOn) && <div style={sx(pdpStock)}>{isPublic ? tx('product.onlyLeft', { n: bp.stock }) : stockTxt}</div>}
           <Editable secId={sec.id} k="desc" value={p.desc} style={pdpDesc} multiline preview={preview} />
           {sizes.length > 0 && (
             <>
-              <div style={sx(pdpLbl)}>SIZE</div>
+              <div style={sx(pdpLbl)}>{tx('product.size')}</div>
               <div style={sx('display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;')}>
                 {sizes.map((z) => (
-                  <div key={z} title={sizeInStock(bp, z) ? undefined : 'Sold out'} onClick={preview && sizeInStock(bp, z) ? (e) => { e.stopPropagation(); setSel(z); } : undefined} style={sx(sizeStyle(z === curSize) + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>
+                  <div key={z} title={sizeInStock(bp, z) ? undefined : tx('product.soldOut')} onClick={preview && sizeInStock(bp, z) ? (e) => { e.stopPropagation(); setSel(z); } : undefined} style={sx(sizeStyle(z === curSize) + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>
                 ))}
               </div>
             </>
@@ -121,7 +123,7 @@ export default function Pdp({ sec, ctx }) {
           <div style={sx('display:flex; gap:10px; margin-top:24px; align-items:stretch;')}>
             <div style={sx(qtyBox)}><span>−</span><span style={{ fontWeight: 800 }}>1</span><span>+</span></div>
             <div onClick={buy} style={sx(pdpBtn)}>
-              <Editable secId={sec.id} k="btn" value={isPublic && bp.stock === 0 ? 'Sold out' : p.btn} style={''} tag="span" preview={preview} />
+              <Editable secId={sec.id} k="btn" value={isPublic && bp.stock === 0 ? tx('product.soldOut') : p.btn} style={''} tag="span" preview={preview} />
             </div>
           </div>
           <div style={sx(pdpNote)}>
@@ -129,9 +131,9 @@ export default function Pdp({ sec, ctx }) {
             <Editable secId={sec.id} k="note" value={p.note} style={''} tag="span" preview={preview} />
           </div>
           <div style={sx(pdpRows)}>
-            <div onClick={(e) => { e.stopPropagation(); setOpen((o) => ({ ...o, care: !o.care })); }} style={sx(pdpRow)}>Fabric &amp; care{chev(!!open.care)}</div>
+            <div onClick={(e) => { e.stopPropagation(); setOpen((o) => ({ ...o, care: !o.care })); }} style={sx(pdpRow)}>{tx('product.care')}{chev(!!open.care)}</div>
             {open.care && <Editable secId={sec.id} k="care" value={p.care || 'Add fabric & care notes — wash, iron, fabric blend.'} style={pdpRowBody} multiline preview={preview} />}
-            <div onClick={(e) => { e.stopPropagation(); setOpen((o) => ({ ...o, delivery: !o.delivery })); }} style={sx(pdpRow)}>Delivery &amp; returns{chev(!!open.delivery)}</div>
+            <div onClick={(e) => { e.stopPropagation(); setOpen((o) => ({ ...o, delivery: !o.delivery })); }} style={sx(pdpRow)}>{tx('product.deliveryRow')}{chev(!!open.delivery)}</div>
             {open.delivery && <Editable secId={sec.id} k="delivery" value={p.delivery || 'Add delivery & returns copy — timelines, exchange policy.'} style={pdpRowBody} multiline preview={preview} />}
           </div>
         </div>

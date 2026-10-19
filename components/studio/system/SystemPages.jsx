@@ -14,6 +14,7 @@ import { sizeInStock, firstInStockSize, priceFor, soldOutSize } from '../variant
 import RichContent, { RichContentStyles } from '../RichContent';
 import { resolveProductTabs } from '../productTabs';
 import { livePairs } from '../addOns';
+import { siteText } from '../siteText';
 
 export const SYS_DEFAULTS = {
   shop: { head: 'Shop all', cols: 4, hd: { v: 'left', bg: 'base', count: true }, gr: { bg: 'base', sp: 'normal', fCol: true, fPr: true, fSz: true, fStock: true, sort: true } },
@@ -40,6 +41,10 @@ function spY(spKey, ctx) {
 }
 
 export const sysProps = (sys, k) => ({ ...SYS_DEFAULTS[k], ...((sys || {})[k] || {}) });
+// The same, with the starter words in the site's language — the merchant's own words still win.
+// (The tab* starter copy stays English: productTabs.js recognises it as a placeholder.)
+const SYS_TEXT = { shop: { head: 'shop.head' }, col: { sub: 'shop.colSub' }, prod: { btn: 'product.btn', note: 'product.note', alsoHead: 'product.alsoHead', pairHead: 'product.pairHead', pairBtn: 'product.pairBtn' } };
+const sysPropsT = (sys, k, tx) => ({ ...SYS_DEFAULTS[k], ...Object.fromEntries(Object.entries(SYS_TEXT[k] || {}).map(([f, key]) => [f, tx(key)])), ...((sys || {})[k] || {}) });
 
 // The tab list is resolved per product — see ../productTabs.js.
 
@@ -51,6 +56,7 @@ const PRICE_BUCKETS = [
   { k: 'u6', n: '৳3,000 – 6,000', lo: 3000, hi: 6000 },
   { k: 'o6', n: 'Over ৳6,000', lo: 6000, hi: Infinity },
 ];
+// Labels come from siteText: shop.price.<k> and shop.sort.<k>.
 const SORTS = [
   { k: 'feat', n: 'Featured' },
   { k: 'plo', n: 'Price: low to high' },
@@ -88,6 +94,7 @@ const GR_SPP = { compact: { d: 44, m: 28 }, normal: { d: 64, m: 40 }, roomy: { d
 function FilterGrid({ ctx, sys, products, lockedCol, q, edit, partPrefix, label }) {
   const { P, F, C, mob, padX, cat } = ctx;
   const c = co('base', P);
+  const tx = siteText(ctx.theme?.lang);
   // Shop and collection grids are template-independent — each reads/writes
   // its own scope (sys.shop.gr vs sys.col.gr) rather than sharing shop's.
   const scope = partPrefix === 'col' ? 'col' : 'shop';
@@ -166,13 +173,13 @@ function FilterGrid({ ctx, sys, products, lockedCol, q, edit, partPrefix, label 
                 onClick={interactive ? (e) => { e.stopPropagation(); setSortOpen((v) => !v); } : undefined}
                 style={sx('display:flex; align-items:center; gap:7px; padding:9px 14px; border-radius:' + C.btn + '; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-size:12.5px; font-weight:700; cursor:pointer; background:' + c.card + ';')}
               >
-                {SORTS.find((s) => s.k === sort).n}
+                {tx('shop.sort.' + SORTS.find((s) => s.k === sort).k)}
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
               </div>
               {sortOpen && (
                 <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', right: 0, top: 42, zIndex: 30, width: 200, borderRadius: 14, background: c.card, border: '1px solid ' + c.line, boxShadow: '0 18px 50px rgba(20,22,14,0.25)', padding: 6 }}>
                   {SORTS.map((s) => (
-                    <div key={s.k} onClick={() => { setSort(s.k); setSortOpen(false); }} style={sx('padding:9px 11px; border-radius:9px; font-family:' + F.b + '; font-size:12.5px; cursor:pointer;' + (sort === s.k ? ' font-weight:800;' : ''))}>{s.n}</div>
+                    <div key={s.k} onClick={() => { setSort(s.k); setSortOpen(false); }} style={sx('padding:9px 11px; border-radius:9px; font-family:' + F.b + '; font-size:12.5px; cursor:pointer;' + (sort === s.k ? ' font-weight:800;' : ''))}>{tx('shop.sort.' + s.k)}</div>
                   ))}
                 </div>
               )}
@@ -184,7 +191,7 @@ function FilterGrid({ ctx, sys, products, lockedCol, q, edit, partPrefix, label 
             <div style={{ minWidth: 0 }}>
               {showCol && (
                 <>
-                  <div style={sx(fCap)}>COLLECTION</div>
+                  <div style={sx(fCap)}>{tx('shop.collection')}</div>
                   <div style={{ margin: '8px 0 20px' }}>
                     {cat.collections.map((c2) => (
                       <div key={c2.id} onClick={interactive ? () => setFCol(fCol === c2.id ? null : c2.id) : undefined} style={sx(fRow(fCol === c2.id))}>
@@ -197,17 +204,17 @@ function FilterGrid({ ctx, sys, products, lockedCol, q, edit, partPrefix, label 
               )}
               {showPr && (
                 <>
-                  <div style={sx(fCap)}>PRICE</div>
+                  <div style={sx(fCap)}>{tx('shop.price')}</div>
                   <div style={{ margin: '8px 0 20px' }}>
                     {PRICE_BUCKETS.map((b) => (
-                      <div key={b.k} onClick={interactive ? () => setFPr(fPr === b.k ? null : b.k) : undefined} style={sx(fRow(fPr === b.k))}>{b.n}</div>
+                      <div key={b.k} onClick={interactive ? () => setFPr(fPr === b.k ? null : b.k) : undefined} style={sx(fRow(fPr === b.k))}>{tx('shop.price.' + b.k)}</div>
                     ))}
                   </div>
                 </>
               )}
               {showSz && (
                 <>
-                  <div style={sx(fCap)}>SIZE</div>
+                  <div style={sx(fCap)}>{tx('product.size')}</div>
                   <div style={{ margin: '8px 0 20px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {allSizes.map((z) => (
                       <div key={z} onClick={interactive ? () => setFSz(fSz === z ? null : z) : undefined} style={sx(szChip(fSz === z))}>{z}</div>
@@ -218,17 +225,17 @@ function FilterGrid({ ctx, sys, products, lockedCol, q, edit, partPrefix, label 
               {showStock && (
                 <div onClick={interactive ? () => setFStock((v) => !v) : undefined} style={sx(fRow(fStock))}>
                   <div style={sx('width:17px; height:17px; border-radius:5px; border:1.5px solid ' + (fStock ? c.fg : c.line) + '; display:flex; align-items:center; justify-content:center;' + (fStock ? ' background:' + c.fg + '; color:' + c.bg + ';' : ''))}>{fStock ? '✓' : ''}</div>
-                  In stock only
+                  {tx('shop.inStock')}
                 </div>
               )}
-              {anyFilter && interactive && <div onClick={clearAll} style={sx(clearSt)}>Clear all filters</div>}
+              {anyFilter && interactive && <div onClick={clearAll} style={sx(clearSt)}>{tx('shop.clear')}</div>}
             </div>
           )}
           <div style={{ minWidth: 0 }}>
             {list.length === 0 && (
               <div style={sx('padding:60px 20px; text-align:center; font-family:' + F.b + '; font-size:14px; color:' + c.sub + ';')}>
-                Nothing matches those filters.
-                {interactive && <div onClick={clearAll} style={sx(clearSt + ' display:inline-block; margin-left:12px;')}>Clear all filters</div>}
+                {tx('shop.none')}
+                {interactive && <div onClick={clearAll} style={sx(clearSt + ' display:inline-block; margin-left:12px;')}>{tx('shop.clear')}</div>}
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(' + gridCols + ',1fr)', gap: mob ? '18px 14px' : '30px 20px' }}>
@@ -245,7 +252,8 @@ function FilterGrid({ ctx, sys, products, lockedCol, q, edit, partPrefix, label 
 export function ShopPage({ ctx, sys, q, edit }) {
   const { P, F, mob, padX, cat } = ctx;
   const c = co('base', P);
-  const sp = sysProps(sys, 'shop');
+  const tx = siteText(ctx.theme?.lang);
+  const sp = sysPropsT(sys, 'shop', tx);
   const hd = { v: 'left', bg: 'base', count: true, ...(sp.hd || {}) };
   const cH = co(hd.bg || 'base', P);
   const live = liveProds(cat);
@@ -259,12 +267,12 @@ export function ShopPage({ ctx, sys, q, edit }) {
         <div style={sx('padding:' + (mob ? 30 : 44) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) ' + (mob ? 18 : 26) + 'px; background:' + cH.bg + '; color:' + cH.fg + ';' + (centered ? ' text-align:center; display:flex; flex-direction:column; align-items:center;' : ''))}>
           <Editable secId="__sys:shop" k="head" value={sp.head} style={headFont + 'font-size:' + (mob ? 30 : 44) + 'px; line-height:1.06;'} preview={ctx.preview} />
           {hd.count !== false && (
-            <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + cH.sub + '; margin-top:8px;')}>{live.length} {live.length === 1 ? 'piece' : 'pieces'}</div>
+            <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + cH.sub + '; margin-top:8px;')}>{tx(live.length === 1 ? 'shop.pieces1' : 'shop.piecesN', { n: live.length })}</div>
           )}
           {q ? (
             <div style={{ marginTop: 12 }}>
               <div style={sx('display:inline-flex; align-items:center; padding:8px 14px; border-radius:99px; background:' + c.card + '; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-size:12.5px; font-weight:700;')}>
-                Results for “{q}”
+                {tx('shop.results', { q })}
                 {ctx.preview && ctx.onClearQ && <span onClick={(e) => { e.stopPropagation(); ctx.onClearQ(); }} style={{ cursor: 'pointer', fontWeight: 800, marginLeft: 9 }}>✕</span>}
               </div>
             </div>
@@ -279,7 +287,8 @@ export function ShopPage({ ctx, sys, q, edit }) {
 // ── Collection template (/shop/<collection>) ────────────────────────────────
 export function CollectionPage({ ctx, sys, col, edit }) {
   const { P, F, C, mob, padX, cat } = ctx;
-  const cp = sysProps(sys, 'col');
+  const tx = siteText(ctx.theme?.lang);
+  const cp = sysPropsT(sys, 'col', tx);
   const c = co(cp.bg || 'tint', P);
   const cnt = colCount(cat, col.id);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
@@ -294,10 +303,10 @@ export function CollectionPage({ ctx, sys, col, edit }) {
       <Part id="col-hero" label="COLLECTION HERO — TEMPLATE" edit={edit}>
         {!banner ? (
           <div style={sx('padding:' + Math.round(heroPadY * 0.55) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) ' + heroPadY + 'px; background:' + cHero.bg + '; color:' + cHero.fg + ';' + (centered ? ' text-align:center; display:flex; flex-direction:column; align-items:center;' : ''))}>
-            <div onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={sx(crumb)}>Shop <span style={{ opacity: 0.5 }}>/</span> {col.n}</div>
+            <div onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={sx(crumb)}>{tx('shop.crumb')} <span style={{ opacity: 0.5 }}>/</span> {col.n}</div>
             <div style={sx(headFont + 'font-size:' + (mob ? 30 : 44) + 'px; line-height:1.06; margin-top:10px;')}>{col.n}</div>
             <Editable secId="__sys:col" k="sub" value={cp.sub} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 15) + 'px; color:' + cHero.sub + '; margin-top:10px; max-width:520px;'} multiline preview={ctx.preview} />
-            <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + cHero.sub + '; margin-top:10px;')}>{cnt} {cnt === 1 ? 'piece' : 'pieces'}</div>
+            <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + cHero.sub + '; margin-top:10px;')}>{tx(cnt === 1 ? 'shop.pieces1' : 'shop.piecesN', { n: cnt })}</div>
           </div>
         ) : (
           <div style={sx('position:relative; height:' + (mob ? 260 : 340) + 'px; overflow:hidden; background:' + c.card + ';')}>
@@ -306,10 +315,10 @@ export function CollectionPage({ ctx, sys, col, edit }) {
             </div>
             <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(10,11,8,0.68), rgba(10,11,8,0.08) 60%)', pointerEvents: 'none' }} />
             <div style={sx('position:absolute; left:' + padX + 'px; right:' + padX + 'px; bottom:' + (mob ? 24 : 34) + 'px; z-index:2;')}>
-              <div onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={sx(crumb + 'color:rgba(255,255,255,0.8);')}>Shop <span style={{ opacity: 0.55 }}>/</span> {col.n}</div>
+              <div onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={sx(crumb + 'color:rgba(255,255,255,0.8);')}>{tx('shop.crumb')} <span style={{ opacity: 0.55 }}>/</span> {col.n}</div>
               <div style={sx(headFont + 'font-size:' + (mob ? 30 : 44) + 'px; line-height:1.06; margin-top:8px; color:#FFFFFF;')}>{col.n}</div>
               <Editable secId="__sys:col" k="sub" value={cp.sub} style={'font-family:' + F.b + '; font-size:' + (mob ? 13 : 14.5) + 'px; color:rgba(255,255,255,0.85); margin-top:8px; max-width:520px;'} multiline preview={ctx.preview} />
-              <div style={sx('font-family:' + F.b + '; font-size:12.5px; color:rgba(255,255,255,0.75); margin-top:8px;')}>{cnt} {cnt === 1 ? 'piece' : 'pieces'}</div>
+              <div style={sx('font-family:' + F.b + '; font-size:12.5px; color:rgba(255,255,255,0.75); margin-top:8px;')}>{tx(cnt === 1 ? 'shop.pieces1' : 'shop.piecesN', { n: cnt })}</div>
             </div>
           </div>
         )}
@@ -320,6 +329,8 @@ export function CollectionPage({ ctx, sys, col, edit }) {
 }
 
 const ALSO_LIST = { id: 'related', name: 'You may also like' };
+// productTabs.js default tab names (siteText product.tab.<k>)
+const TAB_NAMES = { desc: 'Description', specs: 'Specifications', guide: 'Size Guide', ship: 'Shipping & Returns', more: 'More' };
 
 // Resolve the "You may also like" list from the also-config — rule-based
 // (relative to the product being viewed) or hand-picked.
@@ -344,6 +355,7 @@ function pickAlso(also, bp, cat) {
 // and the server price it by the same rule (../addOns.js).
 function PairCard({ ctx, pp, bp, a, c, B }) {
   const { F, C } = ctx;
+  const tx = siteText(ctx.theme?.lang);
   const sizes = sizeList(a.p);
   const [size, setSize] = useState(() => firstInStockSize(a.p, sizes));
   const [added, setAdded] = useState(false);
@@ -368,7 +380,7 @@ function PairCard({ ctx, pp, bp, a, c, B }) {
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
           <span style={sx('font-family:' + F.b + '; font-size:13.5px; font-weight:800; font-variant-numeric:tabular-nums;')}>{fmtPr(deal ? a.together : normal)}</span>
           {deal ? <span style={sx('font-family:' + F.b + '; font-size:12px; color:' + c.sub + '; text-decoration:line-through; font-variant-numeric:tabular-nums;')}>{fmtPr(normal)}</span> : null}
-          {deal ? <span style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + ';')}>with this {bp.n.length > 22 ? 'item' : bp.n}</span> : null}
+          {deal ? <span style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + ';')}>{tx('product.withThis', { name: bp.n.length > 22 ? tx('product.item') : bp.n })}</span> : null}
         </div>
         {sizes.length > 0 && (
           <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
@@ -379,7 +391,7 @@ function PairCard({ ctx, pp, bp, a, c, B }) {
         )}
       </div>
       <div onClick={ctx.preview ? add : undefined} style={sx('flex-shrink:0; padding:10px 16px; border-radius:' + C.btn + '; background:' + (added ? 'transparent' : B.bg) + '; color:' + (added ? c.fg : B.fg) + '; border:1.5px solid ' + (added ? c.line : 'transparent') + '; font-family:' + F.b + '; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap;' + (canAdd || !ctx.preview ? '' : ' opacity:0.45;'))}>
-        {added ? 'Added ✓' : pp.pairBtn}
+        {added ? tx('product.added') : pp.pairBtn}
       </div>
     </div>
   );
@@ -409,16 +421,17 @@ function PairBlock({ ctx, pp, bp, pairs, headFont, edit }) {
 /* Customer reviews (review after delivery): only what the merchant approved,
  * a short name, and "Verified purchase" — every one came from a real order.
  * Three levels, not stars: Loved it / Liked it (a "Problem" is never shown). */
-const REVIEW_BADGE = { 3: 'Loved it 😍', 2: 'Liked it 🙂' };
+const REVIEW_BADGE = { 3: 'product.review.3', 2: 'product.review.2' };
 function ReviewsBlock({ reviews, ctx, c, headFont }) {
   const { F, C, mob } = ctx;
+  const tx = siteText(ctx.theme?.lang);
   const loved = reviews.filter((r) => r.rating === 3).length;
   return (
     <div style={sx('border-top:1px solid ' + c.line + '; padding:' + (mob ? '28px 0 34px' : '40px 0 48px') + ';')}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-        <div style={sx(headFont + 'font-size:' + (mob ? 20 : 24) + 'px; line-height:1.15; color:' + c.fg + ';')}>Customer reviews</div>
+        <div style={sx(headFont + 'font-size:' + (mob ? 20 : 24) + 'px; line-height:1.15; color:' + c.fg + ';')}>{tx('product.reviewsHead')}</div>
         <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + ';')}>
-          {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}{loved ? ' · ' + loved + ' loved it' : ''}
+          {tx(reviews.length === 1 ? 'product.reviews1' : 'product.reviewsN', { n: reviews.length })}{loved ? ' · ' + tx('product.loved', { n: loved }) : ''}
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr' : 'repeat(2, 1fr)', gap: mob ? 12 : 16, marginTop: mob ? 16 : 22 }}>
@@ -429,10 +442,10 @@ function ReviewsBlock({ reviews, ctx, c, headFont }) {
               <img src={r.photoUrl} alt="" loading="lazy" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: Math.min(C.rs, 10), flexShrink: 0 }} />
             )}
             <div style={{ minWidth: 0 }}>
-              <div style={sx('font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + c.fg + ';')}>{REVIEW_BADGE[r.rating] || REVIEW_BADGE[3]}</div>
+              <div style={sx('font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + c.fg + ';')}>{tx(REVIEW_BADGE[r.rating] || REVIEW_BADGE[3])}</div>
               {r.text && <div style={sx('font-family:' + F.b + '; font-size:13.5px; line-height:1.6; color:' + c.fg + '; margin-top:6px; overflow-wrap:anywhere;')}>{r.text}</div>}
               <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + '; margin-top:8px;')}>
-                {(r.name ? r.name + ' · ' : '') + 'Verified purchase'}
+                {(r.name ? r.name + ' · ' : '') + tx('product.verified')}
               </div>
             </div>
           </div>
@@ -446,7 +459,8 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const { P, F, C, mob, padX, cat } = ctx;
   const c = co('base', P);
   const B = btnColors('base', P);
-  const pp = sysProps(sys, 'prod');
+  const tx = siteText(ctx.theme?.lang);
+  const pp = sysPropsT(sys, 'prod', tx);
   const bp = product || liveProds(cat)[0] || cat.products[0];
   const [activeThumb, setActiveThumb] = useState(null);
   const [qty, setQtyN] = useState(1);
@@ -496,6 +510,11 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const tabs = resolveProductTabs(bp, pp, { builder: !ctx.preview });
   const shownTab = tabs.some((t) => t.key === activeTab) ? activeTab : (tabs[0] && tabs[0].key);
   const shown = tabs.find((t) => t.key === shownTab);
+  // A tab still on its default name (productTabs.js) shows it in the site's language.
+  const tabTitle = (t) => {
+    const k = String(t.key).startsWith('c_') ? 'more' : t.key;
+    return TAB_NAMES[k] && TAB_NAMES[k] === t.title ? tx('product.tab.' + k) : t.title;
+  };
   const lbl = 'font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + cPd.sub + '; margin-top:24px;';
   const buyable = bp.stock > 0 && !bp.arch && (sizes.length === 0 || !!curSize);
   const doBuy = () => {
@@ -557,7 +576,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
       <RichContentStyles />
       <Editable secId={'__cat:' + bp.id} k="n" value={bp.n} style={headFont + 'font-size:' + (mob ? 30 : 40) + 'px; line-height:1.08; min-width:0; overflow-wrap:break-word;'} preview={ctx.preview} />
       {bp.sku && (
-        <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + cPd.sub + '; margin-top:6px;')}>SKU {bp.sku}</div>
+        <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + cPd.sub + '; margin-top:6px;')}>{tx('product.sku', { sku: bp.sku })}</div>
       )}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginTop: 12 }}>
         <Editable secId={'__cat:' + bp.id} k="pr" value={fmtPr(ctx.isPublic ? priceFor(bp, curSize) : bp.pr)} style={'font-family:' + F.b + '; font-size:' + (mob ? 20 : 23) + 'px; font-weight:800; font-variant-numeric:tabular-nums;'} preview={ctx.preview} tag="span" />
@@ -565,7 +584,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
       </div>
       {pd.stock !== false && (bp.arch || bp.stock <= 3) && (
         <div style={sx('margin-top:12px; font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + ((bp.arch || bp.stock === 0) ? '#B03A2E' : '#B07A2A') + ';')}>
-          {bp.arch ? 'Hidden from your store — unhide it in Catalog' : bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : 'Only ' + bp.stock + ' left in stock'}
+          {bp.arch ? 'Hidden from your store — unhide it in Catalog' : bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : tx('product.onlyLeft', { n: bp.stock })}
         </div>
       )}
       {/* Teaser beside the price: the rich short description, else the first
@@ -577,10 +596,10 @@ export function ProductPage({ ctx, sys, product, edit }) {
         : !ctx.preview && <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 14.5) + 'px; line-height:1.7; color:' + cPd.sub + '; margin-top:16px; opacity:0.6;')}>Add a description in the product editor — fabric, fit, care.</div>}
       {pd.sizes !== false && sizes.length > 0 && (
         <>
-          <div style={sx(lbl)}>SIZE</div>
+          <div style={sx(lbl)}>{tx('product.size')}</div>
           <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
             {sizes.map((z) => (
-              <div key={z} title={sizeInStock(bp, z) ? undefined : 'Sold out'} onClick={ctx.preview && sizeInStock(bp, z) ? (e) => { e.stopPropagation(); setSelSize(z); } : undefined} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (z === curSize ? cPd.fg : cPd.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (z === curSize ? ' background:' + cPd.fg + '; color:' + cPd.bg + ';' : '') + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>
+              <div key={z} title={sizeInStock(bp, z) ? undefined : tx('product.soldOut')} onClick={ctx.preview && sizeInStock(bp, z) ? (e) => { e.stopPropagation(); setSelSize(z); } : undefined} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (z === curSize ? cPd.fg : cPd.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (z === curSize ? ' background:' + cPd.fg + '; color:' + cPd.bg + ';' : '') + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>
             ))}
           </div>
         </>
@@ -596,7 +615,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
           style={sx('flex:1; display:flex; align-items:center; justify-content:center; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:14.5px; cursor:pointer; white-space:nowrap;' + ((bp.stock === 0 || bp.arch) ? ' opacity:0.45;' : ''))}
         >
           {cartLine
-            ? <span>View cart{cartLine.qty > 1 ? ' (' + cartLine.qty + ')' : ''}</span>
+            ? <span>{tx('product.viewCart')}{cartLine.qty > 1 ? ' (' + cartLine.qty + ')' : ''}</span>
             : <Editable secId="__sys:prod" k="btn" value={pp.btn} style={''} preview={ctx.preview} tag="span" />}
         </div>
       </div>
@@ -608,11 +627,11 @@ export function ProductPage({ ctx, sys, product, edit }) {
           </div>
           <div style={sx('display:flex; align-items:center; gap:8px; font-family:' + F.b + '; font-size:12.5px; color:' + cPd.sub + ';')}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5" /></svg>
-            7-day easy returns
+            {tx('product.returns')}
           </div>
           <div style={sx('display:flex; align-items:center; gap:8px; font-family:' + F.b + '; font-size:12.5px; color:' + cPd.sub + ';')}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5" /></svg>
-            bKash · Nagad · COD
+            {tx('product.payLine')}
           </div>
         </div>
       )}
@@ -624,7 +643,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
       <Part id="prod-main" label="PRODUCT DETAIL — TEMPLATE" edit={edit}>
         <div style={sx('padding:' + (mob ? 26 : 44) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) ' + (mob ? 40 : 64) + 'px; background:' + cPd.bg + '; color:' + cPd.fg + ';')}>
           <div style={sx('font-family:' + F.b + '; font-size:12px; color:' + cPd.sub + '; margin-bottom:' + (mob ? 16 : 24) + 'px; display:flex; gap:7px; flex-wrap:wrap;')}>
-            <span onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={{ cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>Shop</span>
+            <span onClick={ctx.preview && ctx.onShop ? (e) => { e.stopPropagation(); ctx.onShop(); } : undefined} style={{ cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>{tx('shop.crumb')}</span>
             <span style={{ opacity: 0.5 }}>/</span>
             {col2 && (
               <>
@@ -646,7 +665,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
                   onClick={(e) => { e.stopPropagation(); setActiveTab(t.key); }}
                   style={sx('padding-bottom:10px; font-family:' + F.b + '; font-size:' + (mob ? 12.5 : 13.5) + 'px; font-weight:700; cursor:pointer; white-space:nowrap;' + (shownTab === t.key ? ' color:' + cPd.fg + '; border-bottom:2px solid ' + cPd.fg + ';' : ' color:' + cPd.sub + '; border-bottom:2px solid transparent;') + (t.source === 'none' ? ' opacity:0.5;' : ''))}
                 >
-                  {t.title}
+                  {tabTitle(t)}
                 </div>
               ))}
             </div>
@@ -711,14 +730,14 @@ export function ProductPage({ ctx, sys, product, edit }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={sx('font-family:' + F.b + '; font-size:13.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;')}>{bp.n}</div>
               <div style={sx('font-family:' + F.b + '; font-size:12px; color:' + cPd.sub + '; margin-top:2px;')}>
-                {fmtPr(bp.pr)}{curSize ? ' · ' + curSize : ''}{cartLine ? ' · In cart' : ''}
+                {fmtPr(bp.pr)}{curSize ? ' · ' + curSize : ''}{cartLine ? ' · ' + tx('product.inCart') : ''}
               </div>
             </div>
             <div
               onClick={buyable ? (ev) => { ev.stopPropagation(); doBuy(); } : undefined}
               style={sx('flex-shrink:0; display:flex; align-items:center; gap:8px; padding:' + (mob ? '11px 18px' : '13px 24px') + '; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap;' + (!buyable ? ' opacity:0.45;' : ''))}
             >
-              {cartLine ? 'View cart' + (cartLine.qty > 1 ? ' (' + cartLine.qty + ')' : '') : pp.btn}
+              {cartLine ? tx('product.viewCart') + (cartLine.qty > 1 ? ' (' + cartLine.qty + ')' : '') : pp.btn}
             </div>
           </div>
         </div>

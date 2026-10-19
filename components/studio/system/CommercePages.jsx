@@ -15,6 +15,7 @@ import { DISTRICTS, DHAKA_DISTRICTS, getThanas, detectLocation } from '../../../
 import { useCheckoutTracking } from '../../tracking/useCheckoutTracking';
 import { useTracking } from '../../tracking/TrackingRoot';
 import { itemFromStudio } from '../../../lib/tracking/items';
+import { siteText } from '../siteText';
 
 function isValidBDPhone(raw) {
   const p = String(raw || '').replace(/[\s\-().]/g, '');
@@ -27,15 +28,15 @@ export const SYS10_DEFAULTS = {
   account: { head: 'Your orders', sub: 'Enter the phone number you order with — we’ll text a code, no password needed.' },
 };
 export const sys10 = (sys, k) => ({ ...SYS10_DEFAULTS[k], ...((sys || {})[k] || {}) });
+// The same, with the starter words in the site's language — the merchant's own words still win.
+const SYS10_TEXT = { cart: { head: 'cart.head', note: 'cart.note' }, checkout: { note: 'checkout.defaultNote' }, account: { head: 'account.head', sub: 'account.sub' } };
+const sys10t = (sys, k, tx) => ({ ...SYS10_DEFAULTS[k], ...Object.fromEntries(Object.entries(SYS10_TEXT[k] || {}).map(([f, key]) => [f, tx(key)])), ...((sys || {})[k] || {}) });
 
 // payment_type as the order records it (PublicSite placeCartOrder's label)
 const PAY_TYPE = { cod: 'COD', bkash: 'bKash', nagad: 'Nagad' };
 
-const PAY_LBL = {
-  cod: { n: 'Cash on delivery', d: 'Pay when it arrives — nothing now' },
-  bkash: { n: 'bKash', d: 'Pay from your bKash app after the confirmation call' },
-  nagad: { n: 'Nagad', d: 'Pay from your Nagad app after the confirmation call' },
-};
+// Payment labels in the site's language (siteText checkout.pay.<k>.n / .d).
+const payLbl = (tx, k) => ({ n: tx('checkout.pay.' + k + '.n'), d: tx('checkout.pay.' + k + '.d') });
 
 // Delivery is charged by district at checkout — Dhaka district at the store's
 // inside rate, every other district at its outside rate (dakio-api
@@ -53,11 +54,12 @@ export function deliveryRates(ctx) {
   return { inside: Number(s.deliveryInsideDhaka), outside: Number(s.deliveryOutsideDhaka), freeOver: freeDeliveryOver(ctx) };
 }
 export function deliveryNote(ctx, goods = null) {
+  const tx = siteText(ctx && ctx.theme && ctx.theme.lang);
   const r = deliveryRates(ctx);
-  if (!r) return 'Set at checkout';
-  if (r.freeOver != null && goods != null && goods >= r.freeOver) return 'Free';
-  return (r.inside === 0 ? 'Free' : fmtPr(r.inside)) + ' in Dhaka · ' + (r.outside === 0 ? 'free' : fmtPr(r.outside)) + ' elsewhere'
-    + (r.freeOver != null ? ' · free over ' + fmtPr(r.freeOver) : '');
+  if (!r) return tx('delivery.setAtCheckout');
+  if (r.freeOver != null && goods != null && goods >= r.freeOver) return tx('delivery.free');
+  return tx('delivery.rates', { inside: r.inside === 0 ? tx('delivery.free') : fmtPr(r.inside), outside: r.outside === 0 ? tx('delivery.freeLower') : fmtPr(r.outside) })
+    + (r.freeOver != null ? ' · ' + tx('delivery.freeOver', { amount: fmtPr(r.freeOver) }) : '');
 }
 
 // Resolve stored cart lines against the live catalog (canvas gets a demo bag).
@@ -110,7 +112,8 @@ export const bagTotals = (bag) => {
 export function CartPage({ ctx, sys, edit }) {
   const { P, F, C, mob } = ctx;
   const c = co('base', P);
-  const cp = sys10(sys, 'cart');
+  const tx = siteText(ctx.theme?.lang);
+  const cp = sys10t(sys, 'cart', tx);
   const bag = useBag(ctx);
   const { sub } = bagTotals(bag);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
@@ -129,12 +132,12 @@ export function CartPage({ ctx, sys, edit }) {
   return (
     <div style={sx('padding:' + (mob ? 36 : 60) + 'px ' + (mob ? 20 : 48) + 'px 80px; max-width:660px; margin:0 auto; box-sizing:border-box; color:' + c.fg + ';')}>
       <Editable secId="__sys:cart" k="head" value={cp.head} style={headFont + 'font-size:' + (mob ? 28 : 38) + 'px; line-height:1.08;'} preview={ctx.preview} />
-      <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:8px;')}>{bag.length === 0 ? 'Nothing in it yet' : bag.reduce((n, l) => n + l.qty, 0) + ' ' + (bag.reduce((n, l) => n + l.qty, 0) === 1 ? 'item' : 'items')}</div>
+      <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:8px;')}>{bag.length === 0 ? tx('cart.nothingYet') : tx(bag.reduce((n, l) => n + l.qty, 0) === 1 ? 'cart.count1' : 'cart.countN', { n: bag.reduce((n, l) => n + l.qty, 0) })}</div>
       {bag.length === 0 ? (
         <div style={sx('margin-top:34px; padding:46px 24px; border-radius:' + C.r + 'px; background:' + c.card + '; border:1px solid ' + c.line + '; text-align:center; font-family:' + F.b + '; font-size:14px; color:' + c.sub + ';')}>
-          Your bag is empty.
+          {tx('cart.empty')}
           <div style={{ marginTop: 18 }}>
-            <div onClick={ctx.preview && ctx.onShop ? (ev) => { ev.stopPropagation(); ctx.onShop(); } : undefined} style={sx('display:inline-flex; padding:12px 24px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:13.5px; cursor:pointer;')}>Browse the shop</div>
+            <div onClick={ctx.preview && ctx.onShop ? (ev) => { ev.stopPropagation(); ctx.onShop(); } : undefined} style={sx('display:inline-flex; padding:12px 24px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:13.5px; cursor:pointer;')}>{tx('cart.browse')}</div>
           </div>
         </div>
       ) : (
@@ -147,12 +150,12 @@ export function CartPage({ ctx, sys, edit }) {
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div onClick={ctx.preview && ctx.onProduct ? () => ctx.onProduct(l.p) : undefined} style={sx('font-family:' + F.b + '; font-size:14px; font-weight:700; cursor:pointer;')}>{l.p.n}</div>
-                  <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + '; margin-top:2px;')}>{fmtPr(l.p.pr)}{l.p.together ? ' (was ' + fmtPr(l.p.was) + ', together price)' : ''}{l.size ? ' · ' + l.size : ''}</div>
+                  <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + '; margin-top:2px;')}>{fmtPr(l.p.pr)}{l.p.together ? ' (' + tx('cart.together', { was: fmtPr(l.p.was) }) + ')' : ''}{l.size ? ' · ' + l.size : ''}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
                     <div onClick={() => change(l, -1)} style={sx('width:26px; height:26px; border-radius:8px; border:1.5px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:800; font-size:13px;')}>−</div>
                     <div style={{ minWidth: 20, textAlign: 'center', fontWeight: 800, fontSize: 13 }}>{l.qty}</div>
                     <div onClick={() => change(l, 1)} style={sx('width:26px; height:26px; border-radius:8px; border:1.5px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:800; font-size:13px;')}>+</div>
-                    <div onClick={() => remove(l)} style={sx('font-family:' + F.b + '; font-size:11.5px; font-weight:700; color:' + c.sub + '; text-decoration:underline; text-underline-offset:3px; cursor:pointer; margin-left:6px;')}>Remove</div>
+                    <div onClick={() => remove(l)} style={sx('font-family:' + F.b + '; font-size:11.5px; font-weight:700; color:' + c.sub + '; text-decoration:underline; text-underline-offset:3px; cursor:pointer; margin-left:6px;')}>{tx('cart.remove')}</div>
                   </div>
                 </div>
                 <div style={sx('font-family:' + F.b + '; font-size:14px; font-weight:800; font-variant-numeric:tabular-nums;')}>{fmtPr(l.p.pr * l.qty)}</div>
@@ -160,17 +163,17 @@ export function CartPage({ ctx, sys, edit }) {
             ))}
           </div>
           <div style={sx('margin-top:8px; padding-top:16px; border-top:1px solid ' + c.line + '; display:flex; justify-content:space-between; font-family:' + F.b + '; font-size:14px; font-weight:700;')}>
-            <span>Subtotal</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(sub)}</span>
+            <span>{tx('cart.subtotal')}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(sub)}</span>
           </div>
           <div style={sx('margin-top:8px; display:flex; justify-content:space-between; font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + ';')}>
-            <span>Delivery</span><span>{deliveryNote(ctx, sub)}</span>
+            <span>{tx('cart.delivery')}</span><span>{deliveryNote(ctx, sub)}</span>
           </div>
           <div onClick={ctx.preview && ctx.onCheckout ? (ev) => { ev.stopPropagation(); ctx.onCheckout(); } : undefined} style={sx('margin-top:22px; display:flex; align-items:center; justify-content:center; gap:9px; padding:16px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:14.5px; cursor:pointer;')}>
-            Continue to checkout
+            {tx('cart.toCheckout')}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14m-6-6l6 6-6 6" /></svg>
           </div>
           <div style={{ marginTop: 14, textAlign: 'center' }}>
-            <span onClick={ctx.preview && ctx.onShop ? () => ctx.onShop() : undefined} style={sx('font-family:' + F.b + '; font-size:12.5px; font-weight:700; color:' + c.sub + '; text-decoration:underline; text-underline-offset:3px; cursor:pointer;')}>or keep shopping</span>
+            <span onClick={ctx.preview && ctx.onShop ? () => ctx.onShop() : undefined} style={sx('font-family:' + F.b + '; font-size:12.5px; font-weight:700; color:' + c.sub + '; text-decoration:underline; text-underline-offset:3px; cursor:pointer;')}>{tx('cart.keepShopping')}</span>
           </div>
           <div style={sx('margin-top:20px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:' + F.b + '; font-size:12px; color:' + c.sub + ';')}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M1 5h13v11H1zM14 9h4l3 3v4h-7zM6 19a2 2 0 100-4 2 2 0 000 4zM17 19a2 2 0 100-4 2 2 0 000 4z" /></svg>
@@ -191,7 +194,8 @@ export function CartPage({ ctx, sys, edit }) {
 export function CheckoutPage({ ctx, sys, edit }) {
   const { P, F, C, mob } = ctx;
   const c = co('base', P);
-  const cs = sys10(sys, 'checkout');
+  const tx = siteText(ctx.theme?.lang);
+  const cs = sys10t(sys, 'checkout', tx);
   const bag = useBag(ctx);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
   const B = btnColors('base', P);
@@ -268,7 +272,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
     try {
       const data = await ctx.validateCoupon(code.trim(), sub);
       setAppliedCoupon(data.coupon); setCouponDiscount(data.discount); setCouponErr(null);
-    } catch (e2) { setCouponErr(String(e2?.message || 'Invalid coupon')); }
+    } catch (e2) { setCouponErr(String(e2?.message || tx('checkout.couponInvalid'))); }
     setCouponLoading(false);
   };
   const removeCoupon = () => { setAppliedCoupon(null); setCouponDiscount(0); setCouponCode(''); setCouponErr(null); };
@@ -282,10 +286,10 @@ export function CheckoutPage({ ctx, sys, edit }) {
   const submit = async (ev) => {
     ev.stopPropagation();
     if (busy || !ctx.preview) return;
-    if (!form.name.trim()) { setErr('Please enter your name.'); return; }
-    if (!isValidBDPhone(form.phone)) { setErr('Please enter a valid Bangladesh mobile number (e.g. 01XXXXXXXXX).'); return; }
-    if (!district) { setErr('Please select your district.'); return; }
-    if (!thana) { setErr('Please select your thana / upazila.'); return; }
+    if (!form.name.trim()) { setErr(tx('checkout.errName')); return; }
+    if (!isValidBDPhone(form.phone)) { setErr(tx('checkout.errPhone')); return; }
+    if (!district) { setErr(tx('checkout.errDistrict')); return; }
+    if (!thana) { setErr(tx('checkout.errThana')); return; }
     setErr(null);
     if (!ctx.placeCartOrder) {
       setDone({ num: '#SHQ-1042 (preview)', msg: 'On your live store this lands in Dakio Orders and clears the bag.' });
@@ -304,7 +308,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
       setDone(res);
       if (ctx.storeSlug) clearCart(ctx.storeSlug);
     } catch (e2) {
-      setErr(String(e2?.message || 'Couldn’t place the order — try again.'));
+      setErr(String(e2?.message || tx('order.failed')));
     } finally { setBusy(false); }
   };
 
@@ -315,9 +319,9 @@ export function CheckoutPage({ ctx, sys, edit }) {
     const r = await ctx.verifyCheckoutOtp(otpSessionToken, otpInput, ck.trackingFor(ck.purchaseId()));
     if (!r.ok) {
       if (r.status === 410 || r.status === 429) {
-        setOtpStep(false); setOtpInput(''); setOtpSessionToken(''); setErr(r.error || 'Verification failed. Please try again.');
+        setOtpStep(false); setOtpInput(''); setOtpSessionToken(''); setErr(r.error || tx('checkout.verifyFailed'));
       } else {
-        setOtpErr((r.error || 'Incorrect code.') + (r.attemptsLeft != null ? ' (' + r.attemptsLeft + ' attempts left)' : ''));
+        setOtpErr((r.error || tx('checkout.wrongCode')) + (r.attemptsLeft != null ? ' (' + tx('checkout.attemptsLeft', { n: r.attemptsLeft }) + ')' : ''));
       }
       setOtpVerifying(false); return;
     }
@@ -329,7 +333,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
 
   const summaryBlock = (
     <>
-      <div style={sx('font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + c.sub + ';')}>ORDER SUMMARY</div>
+      <div style={sx('font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + c.sub + ';')}>{tx('checkout.summary')}</div>
       <div style={{ marginTop: 12 }}>
         {bag.map((l, i) => {
           const lineSizes = String(l.p.sizes || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -353,13 +357,13 @@ export function CheckoutPage({ ctx, sys, edit }) {
                       onChange={(e) => { if (ctx.storeSlug) updateSize(ctx.storeSlug, l.pid, l.size, e.target.value, l.addOnOf); }}
                       style={sx('font-family:' + F.b + '; font-size:11px; font-weight:700; color:' + c.fg + '; background:' + c.bg + '; border:1px solid ' + c.line + '; border-radius:' + Math.min(C.rs, 8) + 'px; padding:2px 5px; outline:none; cursor:pointer;')}
                     >
-                      {sizeOptions.map((z) => <option key={z} value={z}>Size {z}</option>)}
+                      {sizeOptions.map((z) => <option key={z} value={z}>{tx('cart.size', { size: z })}</option>)}
                     </select>
                   )}
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
-                <div onClick={(e) => { e.stopPropagation(); setBagLineQty(ctx, l, 0); }} style={sx('cursor:pointer; color:' + c.sub + ';')} title="Remove">
+                <div onClick={(e) => { e.stopPropagation(); setBagLineQty(ctx, l, 0); }} style={sx('cursor:pointer; color:' + c.sub + ';')} title={tx('cart.remove')}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
                 </div>
                 <div style={sx('font-family:' + F.b + '; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums;')}>{fmtPr(l.p.pr * l.qty)}</div>
@@ -372,15 +376,15 @@ export function CheckoutPage({ ctx, sys, edit }) {
       <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid ' + c.line }}>
         {appliedCoupon ? (
           <div style={sx('display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:' + Math.min(C.rs, 10) + 'px; background:rgba(62,122,69,0.1);')}>
-            <span style={sx('font-family:' + F.b + '; font-size:12.5px; font-weight:700; color:#3E7A45;')}>{appliedCoupon.code} applied</span>
-            <span onClick={removeCoupon} style={sx('font-family:' + F.b + '; font-size:11.5px; font-weight:700; color:' + c.sub + '; text-decoration:underline; text-underline-offset:3px; cursor:pointer;')}>Remove</span>
+            <span style={sx('font-family:' + F.b + '; font-size:12.5px; font-weight:700; color:#3E7A45;')}>{tx('checkout.applied', { code: appliedCoupon.code })}</span>
+            <span onClick={removeCoupon} style={sx('font-family:' + F.b + '; font-size:11.5px; font-weight:700; color:' + c.sub + '; text-decoration:underline; text-underline-offset:3px; cursor:pointer;')}>{tx('cart.remove')}</span>
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === 'Enter' && applyCoupon(couponCode)}
-              onClick={(e) => e.stopPropagation()} placeholder="Discount code"
+              onClick={(e) => e.stopPropagation()} placeholder={tx('checkout.codePlaceholder')}
               style={sx('flex:1; padding:11px 13px; border-radius:' + Math.min(C.rs, 10) + 'px; border:1.5px solid ' + c.line + '; background:' + c.bg + '; color:' + c.fg + '; font-family:' + F.b + '; font-size:12.5px; outline:none; box-sizing:border-box;')}
               readOnly={!ctx.preview}
             />
@@ -388,7 +392,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
               onClick={(e) => { e.stopPropagation(); applyCoupon(couponCode); }}
               style={sx('flex-shrink:0; display:flex; align-items:center; padding:0 16px; border-radius:' + Math.min(C.rs, 10) + 'px; background:' + (couponCode.trim() ? c.fg : c.line) + '; color:' + c.bg + '; font-family:' + F.b + '; font-weight:700; font-size:12px; cursor:pointer;')}
             >
-              {couponLoading ? '…' : 'Apply'}
+              {couponLoading ? '…' : tx('checkout.apply')}
             </div>
           </div>
         )}
@@ -397,20 +401,20 @@ export function CheckoutPage({ ctx, sys, edit }) {
 
       <div style={sx('margin-top:14px; padding-top:14px; border-top:1px solid ' + c.line + ';')}>
         <div style={sx('display:flex; justify-content:space-between; font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + '; margin-bottom:8px;')}>
-          <span>Subtotal · {bag.reduce((n, l) => n + l.qty, 0)} {bag.reduce((n, l) => n + l.qty, 0) === 1 ? 'item' : 'items'}</span>
+          <span>{tx('cart.subtotal')} · {tx(bag.reduce((n, l) => n + l.qty, 0) === 1 ? 'cart.count1' : 'cart.countN', { n: bag.reduce((n, l) => n + l.qty, 0) })}</span>
           <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(sub)}</span>
         </div>
         <div style={sx('display:flex; justify-content:space-between; font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + '; margin-bottom:8px;')}>
-          <span>Delivery{district ? ' (' + district + ')' : ''}</span>
-          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{district ? fmtPr(dlv) : 'Select district'}</span>
+          <span>{tx('cart.delivery')}{district ? ' (' + district + ')' : ''}</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{district ? fmtPr(dlv) : tx('checkout.selectDistrict')}</span>
         </div>
         {couponDiscount > 0 && (
           <div style={sx('display:flex; justify-content:space-between; font-family:' + F.b + '; font-size:12.5px; color:#3E7A45; margin-bottom:8px;')}>
-            <span>Discount</span><span>−{fmtPr(couponDiscount)}</span>
+            <span>{tx('checkout.discount')}</span><span>−{fmtPr(couponDiscount)}</span>
           </div>
         )}
         <div style={sx('display:flex; justify-content:space-between; font-family:' + F.b + '; font-size:15.5px; font-weight:800; padding-top:12px; border-top:1px solid ' + c.line + ';')}>
-          <span>Total</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(total)}</span>
+          <span>{tx('checkout.total')}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(total)}</span>
         </div>
       </div>
     </>
@@ -425,22 +429,22 @@ export function CheckoutPage({ ctx, sys, edit }) {
           <div style={sx('width:56px; height:56px; border-radius:99px; background:' + c.card + '; border:1px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; margin:0 auto 20px;')}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={P.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
           </div>
-          <div style={sx(headFont + 'font-size:' + (mob ? 24 : 28) + 'px; margin-bottom:8px;')}>Verify your number</div>
-          <div style={sx('font-family:' + F.b + '; font-size:13.5px; color:' + c.sub + '; margin-bottom:24px; line-height:1.6;')}>We sent a 6-digit code to <b style={{ color: c.fg }}>{otpMaskedPhone}</b>. Enter it below to place your order.</div>
+          <div style={sx(headFont + 'font-size:' + (mob ? 24 : 28) + 'px; margin-bottom:8px;')}>{tx('checkout.verifyHead')}</div>
+          <div style={sx('font-family:' + F.b + '; font-size:13.5px; color:' + c.sub + '; margin-bottom:24px; line-height:1.6;')}>{tx('checkout.sentCodeA')}<b style={{ color: c.fg }}>{otpMaskedPhone}</b>{tx('checkout.sentCodeB')}</div>
           <input
-            type="tel" inputMode="numeric" maxLength={6} placeholder="6-digit code" value={otpInput}
+            type="tel" inputMode="numeric" maxLength={6} placeholder={tx('checkout.otpPlaceholder')} value={otpInput}
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
             style={sx(inp + 'font-size:22px; letter-spacing:8px; text-align:center; margin-bottom:8px;' + (otpErr ? ' border-color:#B03A2E;' : ''))}
             readOnly={!ctx.preview}
           />
           {otpErr && <div style={sx('font-family:' + F.b + '; font-size:12.5px; color:#B03A2E; margin-bottom:12px;')}>{otpErr}</div>}
-          <div style={sx('font-family:' + F.b + '; font-size:12px; color:' + c.sub + '; margin-bottom:20px;')}>Code expires in {minutesLeft} minute{minutesLeft !== 1 ? 's' : ''}.</div>
+          <div style={sx('font-family:' + F.b + '; font-size:12px; color:' + c.sub + '; margin-bottom:20px;')}>{tx(minutesLeft !== 1 ? 'checkout.expiresN' : 'checkout.expires1', { n: minutesLeft })}</div>
           <div onClick={verifyOtp} style={sx('display:flex; align-items:center; justify-content:center; gap:9px; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:14px; cursor:pointer; margin-bottom:12px;' + ((otpVerifying || otpInput.length !== 6) ? ' opacity:0.5; pointer-events:none;' : ''))}>
             {otpVerifying && <div style={{ width: 14, height: 14, borderRadius: 99, border: '2px solid rgba(255,255,255,0.35)', borderTopColor: 'currentColor', animation: 'spin .7s linear infinite' }} />}
-            {otpVerifying ? 'Verifying…' : 'Confirm order'}
+            {otpVerifying ? tx('checkout.verifying') : tx('checkout.confirm')}
           </div>
-          <div onClick={() => { setOtpStep(false); setOtpInput(''); setOtpErr(null); }} style={sx('font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + '; cursor:pointer;')}>Back to checkout</div>
+          <div onClick={() => { setOtpStep(false); setOtpInput(''); setOtpErr(null); }} style={sx('font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + '; cursor:pointer;')}>{tx('checkout.back')}</div>
         </div>
       </div>
     );
@@ -452,12 +456,12 @@ export function CheckoutPage({ ctx, sys, edit }) {
         <div style={sx('margin:0 auto; width:64px; height:64px; border-radius:99px; background:' + P.accent + '; color:' + P.accentInk + '; display:flex; align-items:center; justify-content:center; animation:checkPop .4s ease both;')}>
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
         </div>
-        <div style={sx(headFont + 'font-size:' + (mob ? 28 : 36) + 'px; margin-top:18px;')}>Order placed!</div>
+        <div style={sx(headFont + 'font-size:' + (mob ? 28 : 36) + 'px; margin-top:18px;')}>{tx('checkout.placed')}</div>
         <div style={sx('font-family:' + F.b + '; font-size:16px; font-weight:800; margin-top:10px; font-variant-numeric:tabular-nums;')}>{done.num}</div>
         <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:8px; line-height:1.6; max-width:420px; margin-left:auto; margin-right:auto;')}>{done.msg}</div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' }}>
-          <div onClick={ctx.onAccount ? () => ctx.onAccount() : undefined} style={sx('padding:12px 22px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:13px; cursor:pointer;')}>Track it in your account</div>
-          <div onClick={ctx.onShop ? () => ctx.onShop() : undefined} style={sx('padding:12px 22px; border-radius:' + C.btn + '; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-weight:700; font-size:13px; cursor:pointer;')}>Keep shopping</div>
+          <div onClick={ctx.onAccount ? () => ctx.onAccount() : undefined} style={sx('padding:12px 22px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:13px; cursor:pointer;')}>{tx('checkout.track')}</div>
+          <div onClick={ctx.onShop ? () => ctx.onShop() : undefined} style={sx('padding:12px 22px; border-radius:' + C.btn + '; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-weight:700; font-size:13px; cursor:pointer;')}>{tx('checkout.keepShopping')}</div>
         </div>
       </div>
     );
@@ -466,8 +470,8 @@ export function CheckoutPage({ ctx, sys, edit }) {
   if (bag.length === 0) {
     return (
       <div style={sx('padding:' + (mob ? 60 : 90) + 'px 24px; text-align:center; color:' + c.fg + ';')}>
-        <div style={sx('font-family:' + F.b + '; font-size:14px; color:' + c.sub + '; margin-bottom:18px;')}>Your bag is empty — nothing to check out.</div>
-        <div onClick={ctx.preview && ctx.onShop ? () => ctx.onShop() : undefined} style={sx('display:inline-flex; padding:12px 24px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:13.5px; cursor:pointer;')}>Browse the shop</div>
+        <div style={sx('font-family:' + F.b + '; font-size:14px; color:' + c.sub + '; margin-bottom:18px;')}>{tx('checkout.emptyBag')}</div>
+        <div onClick={ctx.preview && ctx.onShop ? () => ctx.onShop() : undefined} style={sx('display:inline-flex; padding:12px 24px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:13.5px; cursor:pointer;')}>{tx('cart.browse')}</div>
       </div>
     );
   }
@@ -477,7 +481,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
       {mob && (
         <div style={sx('border-bottom:1px solid ' + c.line + ';')}>
           <div onClick={(e) => { e.stopPropagation(); setSummaryOpen((v) => !v); }} style={sx('padding:14px 20px; background:' + c.card + '; display:flex; align-items:center; justify-content:space-between; cursor:pointer; font-family:' + F.b + '; font-size:13px; font-weight:700;')}>
-            <span>Order summary ({bag.reduce((n, l) => n + l.qty, 0)}) {summaryOpen ? '▲' : '▼'}</span>
+            <span>{tx('checkout.summaryCount', { n: bag.reduce((n, l) => n + l.qty, 0) })} {summaryOpen ? '▲' : '▼'}</span>
             <span>{fmtPr(total)}</span>
           </div>
           {summaryOpen && <div style={sx('padding:16px 20px; background:' + c.card + ';')}>{summaryBlock}</div>}
@@ -485,57 +489,57 @@ export function CheckoutPage({ ctx, sys, edit }) {
       )}
       <div style={sx('padding:' + (mob ? 26 : 48) + 'px ' + (mob ? 20 : 48) + 'px 80px; max-width:1100px; margin:0 auto; box-sizing:border-box;')}>
         <div onClick={ctx.preview && ctx.onCart ? () => ctx.onCart() : undefined} style={sx('display:inline-flex; align-items:center; gap:7px; font-family:' + F.b + '; font-size:12.5px; font-weight:700; color:' + c.sub + '; cursor:pointer;')}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5m6 6l-6-6 6-6" /></svg>Back to bag
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5m6 6l-6-6 6-6" /></svg>{tx('checkout.backToBag')}
         </div>
-        <div style={sx(headFont + 'font-size:' + (mob ? 28 : 38) + 'px; line-height:1.08; margin-top:10px;')}>Checkout</div>
+        <div style={sx(headFont + 'font-size:' + (mob ? 28 : 38) + 'px; line-height:1.08; margin-top:10px;')}>{tx('checkout.head')}</div>
 
         <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr' : '1.1fr 0.9fr', gap: mob ? 26 : 44, marginTop: 22, alignItems: 'start' }}>
           <div style={{ minWidth: 0, maxWidth: mob ? 'none' : 480 }}>
-            <div style={sx('font-family:' + F.b + '; font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:' + c.sub + ';')}>Contact &amp; Delivery</div>
-            <div style={sx(lbl + ' margin-top:14px;')}>FULL NAME <span style={{ color: '#B03A2E' }}>*</span></div>
-            <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.name} onChange={(ev) => setForm((f) => ({ ...f, name: ev.target.value }))} placeholder="Your full name" style={sx(inp)} readOnly={!ctx.preview} /></div>
+            <div style={sx('font-family:' + F.b + '; font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:' + c.sub + ';')}>{tx('checkout.contact')}</div>
+            <div style={sx(lbl + ' margin-top:14px;')}>{tx('checkout.fullName')} <span style={{ color: '#B03A2E' }}>*</span></div>
+            <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.name} onChange={(ev) => setForm((f) => ({ ...f, name: ev.target.value }))} placeholder={tx('checkout.namePlaceholder')} style={sx(inp)} readOnly={!ctx.preview} /></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <div style={sx(lbl)}>PHONE NUMBER <span style={{ color: '#B03A2E' }}>*</span></div>
+                <div style={sx(lbl)}>{tx('checkout.phone')} <span style={{ color: '#B03A2E' }}>*</span></div>
                 <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} type="tel" value={form.phone} onChange={(ev) => setForm((f) => ({ ...f, phone: ev.target.value }))} placeholder="01XXXXXXXXX" style={sx(inp)} readOnly={!ctx.preview} /></div>
               </div>
               <div>
-                <div style={sx(lbl)}>EMAIL <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></div>
+                <div style={sx(lbl)}>{tx('checkout.email')} <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>{tx('checkout.optional')}</span></div>
                 <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} type="email" value={form.email} onChange={(ev) => setForm((f) => ({ ...f, email: ev.target.value }))} placeholder="you@email.com" style={sx(inp)} readOnly={!ctx.preview} /></div>
               </div>
             </div>
-            <div style={sx(lbl)}>FULL ADDRESS</div>
+            <div style={sx(lbl)}>{tx('checkout.address')}</div>
             <div style={{ marginTop: 8 }}>
               <textarea
                 onClick={(ev) => ev.stopPropagation()} value={form.address} rows={2}
                 onChange={(ev) => setForm((f) => ({ ...f, address: ev.target.value }))}
                 onBlur={(ev) => handleAddressBlur(ev.target.value)}
-                placeholder="House, road, area, village…" style={sx(inp + 'resize:none; line-height:1.5;')} readOnly={!ctx.preview}
+                placeholder={tx('checkout.addressPlaceholder')} style={sx(inp + 'resize:none; line-height:1.5;')} readOnly={!ctx.preview}
               />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
               <div>
-                <div style={sx(lbl + ' margin-top:0;')}>DISTRICT <span style={{ color: '#B03A2E' }}>*</span></div>
+                <div style={sx(lbl + ' margin-top:0;')}>{tx('checkout.district')} <span style={{ color: '#B03A2E' }}>*</span></div>
                 <div style={{ marginTop: 8 }}>
                   <select
                     value={district} disabled={!ctx.preview}
                     onChange={(ev) => { ev.stopPropagation(); setDistrict(ev.target.value); setThana(''); setAutoDetected(false); }}
                     onClick={(ev) => ev.stopPropagation()} style={{ ...selectStyle, color: district ? c.fg : c.sub }}
                   >
-                    <option value="">Select district</option>
+                    <option value="">{tx('checkout.selectDistrict')}</option>
                     {DISTRICTS.map((d) => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                <div style={sx(lbl + ' margin-top:0;')}>THANA / UPAZILA <span style={{ color: '#B03A2E' }}>*</span></div>
+                <div style={sx(lbl + ' margin-top:0;')}>{tx('checkout.thana')} <span style={{ color: '#B03A2E' }}>*</span></div>
                 <div style={{ marginTop: 8 }}>
                   <select
                     value={thana} disabled={!district || !ctx.preview}
                     onChange={(ev) => { ev.stopPropagation(); setThana(ev.target.value); }}
                     onClick={(ev) => ev.stopPropagation()} style={{ ...selectStyle, color: thana ? c.fg : c.sub, opacity: district ? 1 : 0.55 }}
                   >
-                    <option value="">Select thana</option>
+                    <option value="">{tx('checkout.selectThana')}</option>
                     {getThanas(district).map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
@@ -544,19 +548,19 @@ export function CheckoutPage({ ctx, sys, edit }) {
             {autoDetected && district && (
               <div style={sx('font-family:' + F.b + '; font-size:12px; color:#3E7A45; margin-top:10px; display:flex; align-items:center; gap:6px;')}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-                Auto-detected from address
+                {tx('checkout.autoDetected')}
               </div>
             )}
             {district && (
               <div style={sx('margin-top:14px; padding:12px 14px; border-radius:' + Math.min(C.rs, 12) + 'px; border:1px solid ' + c.line + '; background:' + c.card + '; display:flex; align-items:center; justify-content:space-between; font-family:' + F.b + '; font-size:13px;')}>
-                <span>{insideDhaka ? 'Inside Dhaka delivery' : 'Outside Dhaka delivery'}</span>
-                <b style={{ fontVariantNumeric: 'tabular-nums' }}>{freeByAmount ? 'Free' : fmtPr(dlv)}</b>
+                <span>{insideDhaka ? tx('checkout.insideDhaka') : tx('checkout.outsideDhaka')}</span>
+                <b style={{ fontVariantNumeric: 'tabular-nums' }}>{freeByAmount ? tx('delivery.free') : fmtPr(dlv)}</b>
               </div>
             )}
-            <div style={sx(lbl)}>ORDER NOTE <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></div>
-            <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.note} onChange={(ev) => setForm((f) => ({ ...f, note: ev.target.value }))} placeholder="Special instructions" style={sx(inp)} readOnly={!ctx.preview} /></div>
+            <div style={sx(lbl)}>{tx('checkout.orderNote')} <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>{tx('checkout.optional')}</span></div>
+            <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.note} onChange={(ev) => setForm((f) => ({ ...f, note: ev.target.value }))} placeholder={tx('checkout.notePlaceholder')} style={sx(inp)} readOnly={!ctx.preview} /></div>
 
-            <div style={sx('font-family:' + F.b + '; font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:' + c.sub + '; margin-top:26px; margin-bottom:10px;')}>Payment Method</div>
+            <div style={sx('font-family:' + F.b + '; font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:' + c.sub + '; margin-top:26px; margin-bottom:10px;')}>{tx('checkout.payment')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {hasCod && (
                 <div onClick={ctx.preview ? (ev) => { ev.stopPropagation(); setPay('cod'); } : undefined} style={sx('display:flex; align-items:center; gap:11px; padding:12px 14px; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (payGroup === 'cod' ? c.fg : c.line) + '; background:' + c.card + '; cursor:pointer;')}>
@@ -564,10 +568,10 @@ export function CheckoutPage({ ctx, sys, edit }) {
                     {payGroup === 'cod' && <div style={sx('width:9px; height:9px; border-radius:99px; background:' + c.fg + ';')} />}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={sx('font-family:' + F.b + '; font-size:13px; font-weight:700;')}>{PAY_LBL.cod.n}</div>
-                    <div style={sx('font-family:' + F.b + '; font-size:11px; color:' + c.sub + '; margin-top:1px;')}>{PAY_LBL.cod.d}</div>
+                    <div style={sx('font-family:' + F.b + '; font-size:13px; font-weight:700;')}>{payLbl(tx, 'cod').n}</div>
+                    <div style={sx('font-family:' + F.b + '; font-size:11px; color:' + c.sub + '; margin-top:1px;')}>{payLbl(tx, 'cod').d}</div>
                   </div>
-                  <img src="/payments/cash.svg" alt="Cash" style={{ height: 22, width: 'auto', flexShrink: 0 }} />
+                  <img src="/payments/cash.svg" alt={tx('checkout.cashAlt')} style={{ height: 22, width: 'auto', flexShrink: 0 }} />
                 </div>
               )}
               {hasOnline && (
@@ -577,8 +581,8 @@ export function CheckoutPage({ ctx, sys, edit }) {
                       {payGroup === 'online' && <div style={sx('width:9px; height:9px; border-radius:99px; background:' + c.fg + ';')} />}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={sx('font-family:' + F.b + '; font-size:13px; font-weight:700;')}>Pay online</div>
-                      <div style={sx('font-family:' + F.b + '; font-size:11px; color:' + c.sub + '; margin-top:1px;')}>Cards, bKash, Nagad and more</div>
+                      <div style={sx('font-family:' + F.b + '; font-size:13px; font-weight:700;')}>{tx('checkout.payOnline')}</div>
+                      <div style={sx('font-family:' + F.b + '; font-size:11px; color:' + c.sub + '; margin-top:1px;')}>{tx('checkout.payOnlineSub')}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', maxWidth: 150, justifyContent: 'flex-end' }}>
                       {onlineMethods.includes('bkash') && <img src="/payments/bkash.png" alt="bKash" style={{ height: 20, width: 'auto' }} />}
@@ -592,7 +596,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
                       {onlineMethods.map((k) => (
                         <div key={k} onClick={ctx.preview ? () => setPay(k) : undefined} style={sx('display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:8px; border:1.5px solid ' + (payK === k ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:11.5px; font-weight:700; cursor:pointer;' + (payK === k ? ' background:' + c.fg + '; color:' + c.bg + ';' : ''))}>
                           <img src={'/payments/' + (k === 'bkash' ? 'bkash.png' : 'nagad.svg')} alt="" style={{ height: 14, width: 'auto', borderRadius: 3, background: '#fff', padding: 1 }} />
-                          {PAY_LBL[k].n}
+                          {payLbl(tx, k).n}
                         </div>
                       ))}
                     </div>
@@ -602,9 +606,9 @@ export function CheckoutPage({ ctx, sys, edit }) {
             </div>
             {cs.trust !== false && (
               <div style={sx('margin-top:18px; display:flex; flex-wrap:wrap; gap:10px 22px; align-items:center;')}>
-                {['SSL secure', 'Verified merchant', '7-day easy exchange'].map((t) => (
+                {['ssl', 'verified', 'exchange'].map((t) => (
                   <div key={t} style={sx('display:flex; align-items:center; gap:7px; font-family:' + F.b + '; font-size:12px; font-weight:600; color:' + c.sub + ';')}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={P.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5" /></svg>{t}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={P.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5" /></svg>{tx('checkout.trust.' + t)}
                   </div>
                 ))}
               </div>
@@ -613,7 +617,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
             {err && <div style={sx('margin-top:16px; padding:10px 12px; border-radius:10px; background:rgba(176,58,46,0.1); color:#B03A2E; font-family:' + F.b + '; font-size:12px; line-height:1.5;')}>{err}</div>}
             <div onClick={submit} style={sx('margin-top:16px; display:flex; align-items:center; justify-content:center; gap:9px; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:14px; cursor:pointer;' + (busy ? ' opacity:0.6; pointer-events:none;' : ''))}>
               {busy && <div style={{ width: 14, height: 14, borderRadius: 99, border: '2px solid rgba(255,255,255,0.35)', borderTopColor: 'currentColor', animation: 'spin .7s linear infinite' }} />}
-              {busy ? 'Placing order…' : 'Place order — ' + fmtPr(total)}
+              {busy ? tx('checkout.placing') : tx('checkout.place', { total: fmtPr(total) })}
             </div>
             <div style={sx('margin-top:12px; display:flex; align-items:center; justify-content:center; gap:8px; font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + '; text-align:center;')}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3-8.7A2 2 0 014.1 2h3a2 2 0 012 1.7c.1 1 .4 2 .7 2.8a2 2 0 01-.5 2.1L8 9.9a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.5 2.8.7a2 2 0 011.8 2z" /></svg>
@@ -642,7 +646,8 @@ const STATUS_LBL = { PENDING: 'Confirming', CONFIRMED: 'Confirmed', PROCESSING: 
 export function AccountPage({ ctx, sys, edit }) {
   const { P, F, C, mob } = ctx;
   const c = co('base', P);
-  const ap = sys10(sys, 'account');
+  const tx = siteText(ctx.theme?.lang);
+  const ap = sys10t(sys, 'account', tx);
   const headFont = 'font-family:' + F.h + '; font-weight:' + F.hw + '; letter-spacing:' + F.ls + ';';
   const B = btnColors('base', P);
   const [step, setStep] = useState('phone'); // phone → otp → orders
@@ -668,7 +673,7 @@ export function AccountPage({ ctx, sys, edit }) {
       setSession(r.sessionToken);
       setDevCode(r.devCode || null);
       setStep('otp');
-    } catch (e2) { setErr(String(e2?.message || 'Couldn’t send the code')); }
+    } catch (e2) { setErr(String(e2?.message || tx('account.sendFailed'))); }
     finally { setBusy(false); }
   };
 
@@ -690,7 +695,7 @@ export function AccountPage({ ctx, sys, edit }) {
       const r = await ctx.accountOrders(session, otp);
       setOrders(r.orders || []);
       setStep('orders');
-    } catch (e2) { setErr(String(e2?.message || 'That code isn’t right')); }
+    } catch (e2) { setErr(String(e2?.message || tx('account.wrongCode'))); }
     finally { setBusy(false); }
   };
 
@@ -701,18 +706,18 @@ export function AccountPage({ ctx, sys, edit }) {
       <div style={sx('margin-top:26px; padding:' + (mob ? '22px 18px' : '28px 26px') + '; border-radius:' + C.r + 'px; background:' + c.card + '; border:1px solid ' + c.line + '; text-align:left;' + (ctx.shCard || ''))}>
         {step === 'phone' && (
           <>
-            <div style={sx(lbl)}>PHONE NUMBER</div>
+            <div style={sx(lbl)}>{tx('account.phone')}</div>
             <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={phone} onChange={(ev) => setPhone(ev.target.value)} placeholder="01XXX-XXXXXX" style={sx(inp)} readOnly={!ctx.preview} /></div>
             {err && <div style={sx('margin-top:10px; font-family:' + F.b + '; font-size:12px; color:#B03A2E;')}>{err}</div>}
             <div onClick={sendCode} style={sx('margin-top:14px; display:flex; align-items:center; justify-content:center; gap:9px; padding:14px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:13.5px; cursor:pointer;' + (busy ? ' opacity:0.6; pointer-events:none;' : ''))}>
               {busy && <div style={{ width: 13, height: 13, borderRadius: 99, border: '2px solid rgba(255,255,255,0.35)', borderTopColor: 'currentColor', animation: 'spin .7s linear infinite' }} />}
-              Text me a code
+              {tx('account.textMe')}
             </div>
           </>
         )}
         {step === 'otp' && (
           <>
-            <div style={sx(lbl)}>4-DIGIT CODE</div>
+            <div style={sx(lbl)}>{tx('account.code')}</div>
             <div style={{ marginTop: 10 }}>
               <input onClick={(ev) => ev.stopPropagation()} value={otp} onChange={(ev) => setOtp(ev.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="••••" maxLength={4} style={sx(inp + 'text-align:center; letter-spacing:10px; font-size:20px; font-weight:800;')} readOnly={!ctx.preview} />
             </div>
@@ -720,17 +725,17 @@ export function AccountPage({ ctx, sys, edit }) {
             {err && <div style={sx('margin-top:10px; font-family:' + F.b + '; font-size:12px; color:#B03A2E; text-align:center;')}>{err}</div>}
             <div onClick={verify} style={sx('margin-top:14px; display:flex; align-items:center; justify-content:center; gap:9px; padding:14px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:13.5px; cursor:pointer;' + (busy ? ' opacity:0.6; pointer-events:none;' : ''))}>
               {busy && <div style={{ width: 13, height: 13, borderRadius: 99, border: '2px solid rgba(255,255,255,0.35)', borderTopColor: 'currentColor', animation: 'spin .7s linear infinite' }} />}
-              Show my orders
+              {tx('account.show')}
             </div>
             <div style={{ marginTop: 14, display: 'flex', justifyContent: 'center', gap: 18 }}>
-              <span onClick={ctx.preview ? sendCode : undefined} style={sx('font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + c.sub + '; text-decoration:underline; text-underline-offset:3px; cursor:pointer;')}>Resend code</span>
-              <span onClick={ctx.preview ? () => { setStep('phone'); setErr(null); setDevCode(null); } : undefined} style={sx('font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + c.sub + '; text-decoration:underline; text-underline-offset:3px; cursor:pointer;')}>Change number</span>
+              <span onClick={ctx.preview ? sendCode : undefined} style={sx('font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + c.sub + '; text-decoration:underline; text-underline-offset:3px; cursor:pointer;')}>{tx('account.resend')}</span>
+              <span onClick={ctx.preview ? () => { setStep('phone'); setErr(null); setDevCode(null); } : undefined} style={sx('font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + c.sub + '; text-decoration:underline; text-underline-offset:3px; cursor:pointer;')}>{tx('account.change')}</span>
             </div>
           </>
         )}
         {step === 'orders' && (
           <>
-            {orders.length === 0 && <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; text-align:center; padding:14px 0;')}>No orders on this number yet.</div>}
+            {orders.length === 0 && <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; text-align:center; padding:14px 0;')}>{tx('account.none')}</div>}
             {orders.map((o, i) => (
               <div key={o.num} style={sx('display:flex; align-items:center; gap:12px; padding:13px 0;' + (i ? ' border-top:1px solid ' + c.line + ';' : ''))}>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -738,18 +743,18 @@ export function AccountPage({ ctx, sys, edit }) {
                   <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + '; margin-top:2px;')}>{fmtPr(o.total)} · {new Date(o.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</div>
                 </div>
                 <div style={sx('flex-shrink:0; padding:5px 12px; border-radius:99px; font-family:' + F.b + '; font-size:10.5px; font-weight:800; background:color-mix(in srgb, ' + (STATUS_COL[o.status] || '#B07A2A') + ' 14%, transparent); color:' + (STATUS_COL[o.status] || '#B07A2A') + ';')}>
-                  {STATUS_LBL[o.status] || o.status}
+                  {STATUS_LBL[o.status] ? tx('account.status.' + o.status) : o.status}
                 </div>
               </div>
             ))}
             <div style={{ marginTop: 14, textAlign: 'center' }}>
-              <span onClick={ctx.preview ? () => { setStep('phone'); setOrders([]); setErr(null); setDevCode(null); } : undefined} style={sx('font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + c.sub + '; text-decoration:underline; text-underline-offset:3px; cursor:pointer;')}>Not you? Change number</span>
+              <span onClick={ctx.preview ? () => { setStep('phone'); setOrders([]); setErr(null); setDevCode(null); } : undefined} style={sx('font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + c.sub + '; text-decoration:underline; text-underline-offset:3px; cursor:pointer;')}>{tx('account.notYou')}</span>
             </div>
           </>
         )}
       </div>
       {step === 'orders' && (
-        <div style={sx('margin-top:14px; font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + ';')}>Delivery updates also arrive by SMS — nothing to install.</div>
+        <div style={sx('margin-top:14px; font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + ';')}>{tx('account.sms')}</div>
       )}
     </div>
   );

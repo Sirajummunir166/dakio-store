@@ -8,12 +8,14 @@ import { baseStyles, sx, btnColors } from '../theme';
 import { fmtPr, liveProds } from '../catalog';
 import { TrustRow } from '../blocks';
 import { sizeInStock, firstInStockSize, soldOutSize } from '../variants';
+import { siteText } from '../siteText';
 
 export const sizeList = (p) => String(p?.sizes || '').split(',').map((x) => x.trim()).filter(Boolean);
 
 export default function Offer({ sec, ctx }) {
   const { P, F, C, mob, preview, cat } = ctx;
   const p = sec.props;
+  const tx = siteText(ctx.theme?.lang);
   const base = baseStyles(sec, ctx);
   const { c, headFont, accCol, pad, hz, sh } = base;
   const bp = (ctx.fnProduct) || cat.products.find((x) => x.id === ctx.fnPid) || liveProds(cat)[0] || cat.products[0];
@@ -42,24 +44,24 @@ export default function Offer({ sec, ctx }) {
             {bp.was ? (
               <>
                 <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 14 : 15) + 'px; color:' + c.sub + '; text-decoration:line-through; font-variant-numeric:tabular-nums;')}>{fmtPr(bp.was)}</div>
-                {savePct > 0 && <div style={sx('padding:3px 9px; border-radius:99px; background:' + accCol + '; color:' + P.accentInk + '; font-family:' + F.b + '; font-size:10.5px; font-weight:800;')}>SAVE {savePct}%</div>}
+                {savePct > 0 && <div style={sx('padding:3px 9px; border-radius:99px; background:' + accCol + '; color:' + P.accentInk + '; font-family:' + F.b + '; font-size:10.5px; font-weight:800;')}>{tx('offer.save', { n: savePct })}</div>}
               </>
             ) : null}
           </div>
           {bp.stock <= 5 && (
             <div style={sx('margin-top:12px; font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + (bp.stock === 0 ? '#B03A2E' : '#B07A2A') + ';')}>
-              {bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : 'Only ' + bp.stock + ' left — the drop sells through fast'}
+              {bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : tx('offer.onlyLeft', { n: bp.stock })}
             </div>
           )}
           <Editable secId={sec.id} k="desc" value={p.desc} style={'font-family:' + F.b + '; font-size:' + (mob ? 13.5 : 14.5) + 'px; line-height:1.7; color:' + c.sub + '; margin-top:16px; white-space:pre-wrap;'} multiline preview={preview} />
           {sizes.length > 0 && (
             <>
-              <div style={sx('font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + c.sub + '; margin-top:24px;')}>SIZE</div>
+              <div style={sx('font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + c.sub + '; margin-top:24px;')}>{tx('product.size')}</div>
               <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                 {sizes.map((z) => {
                   const on = z === firstInStockSize(bp, sizes);
                   return (
-                    <div key={z} title={sizeInStock(bp, z) ? undefined : 'Sold out'} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (on ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (on ? ' background:' + c.fg + '; color:' + c.bg + ';' : '') + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>
+                    <div key={z} title={sizeInStock(bp, z) ? undefined : tx('product.soldOut')} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (on ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (on ? ' background:' + c.fg + '; color:' + c.bg + ';' : '') + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>
                   );
                 })}
               </div>

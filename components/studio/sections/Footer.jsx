@@ -2,12 +2,14 @@
 import { baseStyles, sx } from '../theme';
 import Editable from '../Editable';
 import ImageSlot from '../ImageSlot';
+import { siteText } from '../siteText';
 
 export default function Footer({ sec, ctx }) {
   const s = baseStyles(sec, ctx);
   const { c } = s;
   const { F, mob, padX, preview, theme, menus, assets, onLink } = ctx;
   const p = sec.props;
+  const tx = siteText(theme?.lang);
   const cols = sec.v !== 'min';
 
   const footWrap = 'padding:' + (mob ? 44 : 68) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)) ' + (mob ? 26 : 34) + 'px; background:' + c.bg + '; color:' + c.fg + '; font-family:' + F.b + ';';
@@ -37,7 +39,7 @@ export default function Footer({ sec, ctx }) {
         </div>
         {cols && (
           <div style={{ minWidth: 0 }}>
-            <div style={sx(footColH)}>Browse</div>
+            <div style={sx(footColH)}>{tx('footer.browse')}</div>
             <div style={sx(footGrid)}>
               {fLinks.map((it, i) => (
                 <div

@@ -15,10 +15,12 @@ import { useBag, bagTotals, deliveryNote, setBagLineQty } from './system/Commerc
 import ImageSlot from './ImageSlot';
 import { bagSuggestion } from './addOns';
 import { priceFor, firstInStockSize } from './variants';
+import { siteText } from './siteText';
 
 export default function CartPanel({ ctx, open, onClose }) {
   const { P, F, C, mob } = ctx;
   const c = co('card', P);
+  const tx = siteText(ctx.theme?.lang);
   const B = btnColors('base', P);
   const bag = useBag(ctx);
   const { sub } = bagTotals(bag);
@@ -50,11 +52,11 @@ export default function CartPanel({ ctx, open, onClose }) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} role="dialog" aria-modal="true" aria-label="Shopping cart">
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} role="dialog" aria-modal="true" aria-label={tx('cart.aria')}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(10,11,8,0.45)', animation: 'cpFade .2s ease both' }} />
       <aside style={sx('position:absolute; top:0; right:0; bottom:0; width:' + (mob ? '100%' : '420px') + '; max-width:100%; background:' + c.bg + '; color:' + c.fg + '; display:flex; flex-direction:column; box-shadow:-30px 0 70px rgba(15,16,10,0.25); animation:cpSlide .25s cubic-bezier(.16,1,.3,1) both;')}>
         <div style={sx('display:flex; align-items:center; justify-content:space-between; padding:' + (mob ? '18px 20px' : '22px 26px') + '; border-bottom:1px solid ' + c.line + ';')}>
-          <div style={sx('font-family:' + F.h + '; font-weight:' + F.hw + '; font-size:19px;')}>Your Cart{count > 0 ? ' (' + count + ')' : ''}</div>
+          <div style={sx('font-family:' + F.h + '; font-weight:' + F.hw + '; font-size:19px;')}>{tx('cart.panelHead')}{count > 0 ? ' (' + count + ')' : ''}</div>
           <div onClick={onClose} style={sx('width:32px; height:32px; border-radius:99px; display:flex; align-items:center; justify-content:center; cursor:pointer; background:' + c.card + ';')}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </div>
@@ -63,9 +65,9 @@ export default function CartPanel({ ctx, open, onClose }) {
         {bag.length === 0 ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 30px', textAlign: 'center' }}>
             <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.35, marginBottom: 16 }}><path d="M6 7h12l1 14H5L6 7zM9 10V6a3 3 0 016 0v4" /></svg>
-            <div style={sx('font-family:' + F.h + '; font-weight:' + F.hw + '; font-size:17px;')}>Your cart is empty</div>
-            <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:8px; line-height:1.6;')}>Add something you love.</div>
-            <div onClick={onClose} style={sx('margin-top:20px; padding:12px 24px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:13.5px; cursor:pointer;')}>Continue shopping</div>
+            <div style={sx('font-family:' + F.h + '; font-weight:' + F.hw + '; font-size:17px;')}>{tx('cart.panelEmpty')}</div>
+            <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:8px; line-height:1.6;')}>{tx('cart.panelEmptySub')}</div>
+            <div onClick={onClose} style={sx('margin-top:20px; padding:12px 24px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:13.5px; cursor:pointer;')}>{tx('cart.continue')}</div>
           </div>
         ) : (
           <>
@@ -77,7 +79,7 @@ export default function CartPanel({ ctx, open, onClose }) {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div onClick={() => goProduct(l)} style={sx('font-family:' + F.b + '; font-size:13.5px; font-weight:700; cursor:pointer;')}>{l.p.n}</div>
-                    {l.size && <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + '; margin-top:3px;')}>Size {l.size}</div>}
+                    {l.size && <div style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + '; margin-top:3px;')}>{tx('cart.size', { size: l.size })}</div>}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div onClick={() => change(l, -1)} style={sx('width:24px; height:24px; border-radius:7px; border:1.5px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:800; font-size:12px;')}>−</div>
@@ -98,20 +100,20 @@ export default function CartPanel({ ctx, open, onClose }) {
               {tip && (
                 <div style={sx('display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:14px; border-radius:' + Math.min(C.rs, 12) + 'px; border:1px dashed ' + c.line + '; font-family:' + F.b + ';')}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={sx('font-size:11px; color:' + c.sub + '; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;')}>Goes well with your {tip.main.n}</div>
+                    <div style={sx('font-size:11px; color:' + c.sub + '; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;')}>{tx('cart.pairTip', { name: tip.main.n })}</div>
                     <div style={sx('font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;')}>{tip.pair.p.n} · {fmtPr(tipPrice)}</div>
                   </div>
-                  <div onClick={takeTip} style={sx('flex-shrink:0; padding:8px 14px; border-radius:' + C.btn + '; border:1.5px solid ' + c.fg + '; font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap;')}>{tipSized ? 'Choose size' : 'Add'}</div>
+                  <div onClick={takeTip} style={sx('flex-shrink:0; padding:8px 14px; border-radius:' + C.btn + '; border:1.5px solid ' + c.fg + '; font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap;')}>{tipSized ? tx('cart.chooseSize') : tx('cart.add')}</div>
                 </div>
               )}
               <div style={sx('display:flex; justify-content:space-between; font-family:' + F.b + '; font-size:16px; font-weight:800; margin-bottom:6px;')}>
-                <span>Subtotal</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(sub)}</span>
+                <span>{tx('cart.subtotal')}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(sub)}</span>
               </div>
               <div style={sx('display:flex; justify-content:space-between; gap:12px; font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + '; margin-bottom:16px;')}>
-                <span>Delivery</span><span style={{ textAlign: 'right' }}>{deliveryNote(ctx, sub)}</span>
+                <span>{tx('cart.delivery')}</span><span style={{ textAlign: 'right' }}>{deliveryNote(ctx, sub)}</span>
               </div>
-              <div onClick={goCheckout} style={sx('display:flex; align-items:center; justify-content:center; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:14.5px; cursor:pointer;')}>Checkout</div>
-              <div style={sx('text-align:center; margin-top:12px; font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + ';')}>bKash · Nagad · Cash on Delivery</div>
+              <div onClick={goCheckout} style={sx('display:flex; align-items:center; justify-content:center; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:14.5px; cursor:pointer;')}>{tx('cart.checkout')}</div>
+              <div style={sx('text-align:center; margin-top:12px; font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + ';')}>{tx('cart.payLine')}</div>
             </div>
           </>
         )}

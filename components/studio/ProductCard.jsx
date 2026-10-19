@@ -15,6 +15,10 @@ import ImageSlot from './ImageSlot';
 import { sx } from './theme';
 import { fmtPr, prodTag } from './catalog';
 import { sizeInStock, firstInStockSize, soldOutSize } from './variants';
+import { siteText } from './siteText';
+
+// prodTag() words → siteText keys, so the badge follows the site's language.
+const TAG_KEY = { 'Sold out': 'card.tag.soldOut', Sale: 'card.tag.sale', New: 'card.tag.new', Bestseller: 'card.tag.best', 'Low stock': 'card.tag.low' };
 
 // pr: a catalog product, OR a hand-picked slot that decayed — { gone: true }
 // (its target product was deleted/hidden) or { empty: true } (nothing picked
@@ -22,6 +26,7 @@ import { sizeInStock, firstInStockSize, soldOutSize } from './variants';
 // layouts (Featured Products' "row" variant) instead of a grid cell.
 export default function ProductCard({ pr, ctx, c, showPrice = true, onClick, row = false }) {
   const { P, F, C, mob } = ctx;
+  const tx = siteText(ctx.theme?.lang);
   const cardStyle = (row ? 'flex:0 0 ' + (mob ? '62%' : '250px') + '; ' : '') + 'min-width:0;';
   const [sizeOpen, setSizeOpen] = useState(false);
 
@@ -38,7 +43,7 @@ export default function ProductCard({ pr, ctx, c, showPrice = true, onClick, row
     return (
       <div style={sx(cardStyle)}>
         <div style={sx('aspect-ratio:3/4; border-radius:' + C.rs + 'px; position:relative; border:1.5px dashed ' + c.line + '; box-sizing:border-box; opacity:0.7;')} />
-        <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 13 : 14) + 'px; font-weight:600; margin-top:11px; opacity:0.55;')}>{pr.empty ? 'No products picked yet' : 'Product unavailable'}</div>
+        <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 13 : 14) + 'px; font-weight:600; margin-top:11px; opacity:0.55;')}>{pr.empty ? tx('card.empty') : tx('card.gone')}</div>
       </div>
     );
   }
@@ -90,20 +95,20 @@ export default function ProductCard({ pr, ctx, c, showPrice = true, onClick, row
       <div className="dk-pcard__media" style={sx('aspect-ratio:3/4; border-radius:' + C.rs + 'px; overflow:hidden; position:relative; background:' + c.card + ';' + (ctx.shCard || '') + (pr.stock === 0 ? ' opacity:0.75;' : ''))}>
         <ImageSlot slotId={'st-prod-' + pr.id} assets={{ ...(ctx.assets || {}), ['st-prod-' + pr.id]: (ctx.assets || {})['st-prod-' + pr.id] || pr.img }} fit="cover" placeholder="Product photo" preview={ctx.preview} aspect="3/4" hint="Portrait, ~900×1200px (3:4). Also shown at 4:5 on the product page — keep the product centered with margin." />
         {t && (
-          <div style={sx('position:absolute; top:10px; left:10px; z-index:2; padding:4px 9px; border-radius:' + Math.min(C.rs, 8) + 'px; background:' + (pr.stock === 0 ? '#4a4a44' : P.accent) + '; color:' + (pr.stock === 0 ? '#f4f4ef' : P.accentInk) + '; font-family:' + F.b + '; font-size:9.5px; font-weight:800; letter-spacing:0.6px; text-transform:uppercase; pointer-events:none;')}>{t}</div>
+          <div style={sx('position:absolute; top:10px; left:10px; z-index:2; padding:4px 9px; border-radius:' + Math.min(C.rs, 8) + 'px; background:' + (pr.stock === 0 ? '#4a4a44' : P.accent) + '; color:' + (pr.stock === 0 ? '#f4f4ef' : P.accentInk) + '; font-family:' + F.b + '; font-size:9.5px; font-weight:800; letter-spacing:0.6px; text-transform:uppercase; pointer-events:none;')}>{TAG_KEY[t] ? tx(TAG_KEY[t]) : t}</div>
         )}
         {quickAdd && (
           <button
             type="button"
             className={'dk-pcard__quickadd' + (sizeOpen ? ' is-open' : '')}
             onClick={quickAdd}
-            aria-label={hasVariants ? 'Choose a size for ' + pr.n : 'Add ' + pr.n + ' to cart'}
+            aria-label={hasVariants ? tx('card.chooseSizeFor', { name: pr.n }) : tx('card.addToCart', { name: pr.n })}
             style={sx('border:1px solid ' + c.line + '; background:' + quickAddBg + '; backdrop-filter:blur(10px) saturate(1.25); -webkit-backdrop-filter:blur(10px) saturate(1.25); color:' + c.fg + '; box-shadow:0 2px 12px rgba(0,0,0,0.12);')}
           >
             <span className="dk-pcard__quickadd-icon">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 7h12l1 14H5L6 7zM9 10V6a3 3 0 016 0v4M15 15h4m-2-2v4" /></svg>
             </span>
-            <span className="dk-pcard__quickadd-label" style={sx('font-family:' + F.b + '; font-size:11.5px; font-weight:700;')}>{hasVariants ? 'Select size' : 'Add to bag'}</span>
+            <span className="dk-pcard__quickadd-label" style={sx('font-family:' + F.b + '; font-size:11.5px; font-weight:700;')}>{hasVariants ? tx('card.selectSize') : tx('card.add')}</span>
           </button>
         )}
         {sizeOpen && (
@@ -111,12 +116,12 @@ export default function ProductCard({ pr, ctx, c, showPrice = true, onClick, row
             onClick={(e) => e.stopPropagation()}
             style={sx('position:absolute; z-index:5; right:10px; bottom:54px; min-width:150px; padding:10px; border-radius:' + Math.min(C.rs, 14) + 'px; background:' + c.card + '; border:1px solid ' + c.line + '; box-shadow:0 14px 34px rgba(15,16,10,0.22);')}
           >
-            <div style={sx('font-family:' + F.b + '; font-size:10px; font-weight:800; letter-spacing:1px; color:' + c.sub + '; margin-bottom:8px;')}>SELECT SIZE</div>
+            <div style={sx('font-family:' + F.b + '; font-size:10px; font-weight:800; letter-spacing:1px; color:' + c.sub + '; margin-bottom:8px;')}>{tx('card.selectSizeHead')}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {sizes.map((z) => (
                 <div
                   key={z}
-                  title={sizeInStock(pr, z) ? undefined : 'Sold out'}
+                  title={sizeInStock(pr, z) ? undefined : tx('product.soldOut')}
                   onClick={(e) => { e.stopPropagation(); if (sizeInStock(pr, z)) pickSize(z); }}
                   style={sx('min-width:32px; padding:7px 6px; text-align:center; border-radius:' + Math.min(C.rs, 10) + 'px; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-size:12px; font-weight:700; cursor:pointer;' + (sizeInStock(pr, z) ? '' : soldOutSize))}
                 >

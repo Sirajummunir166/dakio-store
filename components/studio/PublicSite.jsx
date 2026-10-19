@@ -14,6 +14,7 @@ import { itemFromStudio, listPayload } from '../../lib/tracking/items';
 import { catProduct } from './addOns';
 import { optImg } from './publicCatalog';
 import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
+import { siteText } from './siteText';
 import { barOf, contactDigits, ctaLinkOf, headerWords, ServiceActions, MobileMenu, MenuIcon, WaIcon, CallIcon } from './SiteHeaderParts';
 
 // Public renderer for a published Store Studio site — the same section components
@@ -53,6 +54,10 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
   }, []);
 
   const theme = doc.theme || {};
+  // The page's language (W0c): the site's built-in words follow theme.lang; so do
+  // screen readers and search engines (the root layout renders lang="en").
+  useEffect(() => { document.documentElement.lang = theme.lang === 'bn' ? 'bn' : 'en'; }, [theme.lang]);
+  const tx = siteText(theme.lang);
   const { P, F, C, tsM, denM, shCard } = resolveTheme(theme);
   const padX = mob ? 20 : 48;
   const page = doc.pages.find((p) => p.id === pageId) || doc.pages[0];
@@ -219,8 +224,8 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
       if (res.status === 202 && data.status === 'OTP_REQUIRED') {
         return { otpRequired: true, sessionToken: data.sessionToken, maskedPhone: data.maskedPhone, expiresAt: data.expiresAt };
       }
-      if (!res.ok) throw new Error(data.error || 'Couldn\u2019t place the order \u2014 try again.');
-      return { num: data.orderNumber, data, msg: 'We call ' + phone.trim() + ' to confirm before shipping. Track it anytime in your account.' };
+      if (!res.ok) throw new Error(data.error || tx('order.failed'));
+      return { num: data.orderNumber, data, msg: tx('order.callPhone', { phone: phone.trim() }) };
     } : undefined,
     verifyCheckoutOtp: storeSlug ? async (sessionToken, otp, tracking) => {
       const res = await fetch(API + '/store/' + storeSlug + '/orders/verify-otp', {
@@ -228,7 +233,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) return { ok: false, status: res.status, error: data.error, attemptsLeft: data.attemptsLeft };
-      return { ok: true, num: data.orderNumber, data, msg: 'We call the number on file to confirm before shipping. Track it anytime in your account.' };
+      return { ok: true, num: data.orderNumber, data, msg: tx('order.callOnFile') };
     } : undefined,
     // Incomplete Order (Storefront lead) from checkout's add_shipping_info —
     // the same /leads the basic checkout uses; `tracking` makes the server's
@@ -271,19 +276,19 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, slug: storeSlug, subtotal }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.valid) throw new Error(data.error || 'Invalid coupon');
+      if (!res.ok || !data.valid) throw new Error(data.error || tx('checkout.couponInvalid'));
       return data;
     } : undefined,
     accountOtp: storeSlug ? async (phone) => {
       const res = await fetch(API + '/store/' + storeSlug + '/account/otp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone }) });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Couldn\u2019t send the code');
+      if (!res.ok) throw new Error(data.error || tx('account.sendFailed'));
       return data;
     } : undefined,
     accountOrders: storeSlug ? async (sessionToken, otp) => {
       const res = await fetch(API + '/store/' + storeSlug + '/account/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionToken, otp }) });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'That code isn\u2019t right');
+      if (!res.ok) throw new Error(data.error || tx('account.wrongCode'));
       tk.track('login', { method: 'phone_otp' });
       return data;
     } : undefined,
@@ -368,7 +373,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
 
   return (
     <ImgCtx.Provider value={{ crops: doc.crops || {}, cropTarget: null, setCropTarget: null, onCrop: null }}>
-    <div style={{ background: P.bg, color: P.ink, fontFamily: F.b, overflow: 'hidden', minHeight: '100vh' }}>
+    <div lang={theme.lang === 'bn' ? 'bn' : 'en'} style={{ background: P.bg, color: P.ink, fontFamily: F.b, overflow: 'hidden', minHeight: '100vh' }}>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link href={`https://fonts.googleapis.com/css2?${FONT_HREF[theme.f] || FONT_HREF.clean}&display=swap`} rel="stylesheet" />
       <style>{`
@@ -436,12 +441,12 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
                 }
                 if (e.key === 'Escape') setSearchOpen(false);
               }}
-              placeholder="Search products…"
+              placeholder={tx('header.search')}
               style={{ width: 170, padding: '8px 12px', borderRadius: 99, border: '1.5px solid ' + base.line, background: base.card, color: base.fg, fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 12.5, outline: 'none' }}
             />
           )}
           <svg onClick={() => setSearchOpen((v) => !v)} width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{ cursor: 'pointer' }}><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          <a href={(basePath || '') + '/cart'} className="studio-nav-link" style={{ position: 'relative', display: 'flex' }} title="Cart" onClick={(e) => { e.preventDefault(); ctx.onCart(); }}>
+          <a href={(basePath || '') + '/cart'} className="studio-nav-link" style={{ position: 'relative', display: 'flex' }} title={tx('header.cart')} onClick={(e) => { e.preventDefault(); ctx.onCart(); }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 7h12l1 14H5L6 7zM9 10V6a3 3 0 016 0v4" /></svg>
             {bagN > 0 && (
               <div style={{
@@ -452,7 +457,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
               }}>{bagN}</div>
             )}
           </a>
-          <a href={(basePath || '') + '/account'} className="studio-nav-link" style={{ display: 'flex' }} title="Your orders">
+          <a href={(basePath || '') + '/account'} className="studio-nav-link" style={{ display: 'flex' }} title={tx('header.orders')}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 11a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 3.6-6 8-6s8 2 8 6" /></svg>
           </a>
           {mob && navItems.length > 0 ? <button type="button" onClick={() => setMenuOpen(true)} aria-label={words.menu} style={{ display: 'flex', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 2 }}><MenuIcon /></button> : null}

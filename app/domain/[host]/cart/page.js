@@ -3,6 +3,7 @@ import StoreUnavailable from '../../../../components/StoreUnavailable'
 import PublicSite from '../../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
+import { siteText } from '../../../../components/studio/siteText'
 
 // /cart on a custom domain — mirrors app/[slug]/cart.
 
@@ -13,7 +14,7 @@ export async function generateMetadata({ params }) {
   const siteData = await getPublishedSite(data.store.slug)
   if (!siteData?.site) return { title: 'Not Found' }
   const brand = siteData.site.theme?.brandName || 'Store'
-  return { ...studioMetadata(siteData.site, null), title: 'Your bag — ' + brand, robots: { index: false, follow: false } }
+  return { ...studioMetadata(siteData.site, null), title: siteText(siteData.site?.theme?.lang)('meta.cart') + ' — ' + brand, robots: { index: false, follow: false } }
 }
 
 export default async function DomainCartRoute({ params }) {

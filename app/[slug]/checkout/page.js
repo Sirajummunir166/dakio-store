@@ -3,13 +3,14 @@ import CheckoutClient from '../../../components/CheckoutClient'
 import PublicSite from '../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
+import { siteText } from '../../../components/studio/siteText'
 
 export async function generateMetadata({ params }) {
   const { slug } = await params
   const siteData = await getPublishedSite(slug)
   if (siteData?.site) {
     const brand = siteData.site.theme?.brandName || 'Store'
-    return { ...studioMetadata(siteData.site, null), title: 'Checkout — ' + brand, robots: { index: false, follow: false } }
+    return { ...studioMetadata(siteData.site, null), title: siteText(siteData.site?.theme?.lang)('meta.checkout') + ' — ' + brand, robots: { index: false, follow: false } }
   }
   const data = await getStoreBySlug(slug)
   if (!data?.store) return { title: 'Checkout' }

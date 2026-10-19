@@ -12,10 +12,12 @@ import { sizeList } from './Offer';
 import { sizeInStock, firstInStockSize, priceFor, soldOutSize } from '../variants';
 import { useCheckoutTracking, isValidBDPhone } from '../../tracking/useCheckoutTracking';
 import { itemFromStudio } from '../../../lib/tracking/items';
+import { siteText } from '../siteText';
 
 // payment_type as the order records it (FunnelSite's label)
 const PAY_TYPE = { cod: 'COD', bkash: 'bKash', nagad: 'Nagad' };
 
+// Shown in the site's language: siteText qform.pay.<k>.n / .d
 const PAY_METHODS = [
   { k: 'cod', n: 'Cash on delivery', d: 'Pay when it arrives — nothing now' },
   { k: 'bkash', n: 'bKash', d: 'Pay from your bKash app after our confirmation call' },
@@ -25,6 +27,7 @@ const PAY_METHODS = [
 export default function Qform({ sec, ctx }) {
   const { P, F, C, mob, preview, cat } = ctx;
   const p = sec.props;
+  const tx = siteText(ctx.theme?.lang);
   const base = baseStyles(sec, ctx);
   const { c, headFont, hz, sh, padNarrow } = base;
   const B = btnColors(p.bg, P);
@@ -71,8 +74,8 @@ export default function Qform({ sec, ctx }) {
   const submit = async (ev) => {
     ev.stopPropagation();
     if (busy || !preview) return;
-    if (!form.name.trim() || !form.phone.trim()) { setErr('Your name and phone number are needed — we call to confirm.'); return; }
-    if (sizes.length > 0 && !curSize) { setErr('This product is sold out in every size.'); return; }
+    if (!form.name.trim() || !form.phone.trim()) { setErr(tx('qform.errNeed')); return; }
+    if (sizes.length > 0 && !curSize) { setErr(tx('qform.errSoldOut')); return; }
     setErr(null);
     if (ctx.placeOrder) {
       setBusy(true);
@@ -88,7 +91,7 @@ export default function Qform({ sec, ctx }) {
         ck.purchase(res.data, { value: unitPr * qty, paymentType: PAY_TYPE[payK] || payK });
         setDone({ num: res.num, tag: res.tag });
       } catch (e2) {
-        setErr(String(e2?.message || 'Couldn’t place the order — check your connection and try again.'));
+        setErr(String(e2?.message || tx('qform.failed')));
       } finally {
         setBusy(false);
       }
@@ -107,9 +110,9 @@ export default function Qform({ sec, ctx }) {
       if (!r.ok) {
         if (r.status === 410 || r.status === 429) {
           // Expired or locked — back to the form to place it again
-          setOtp(null); setOtpInput(''); setErr(r.error || 'Verification failed. Please try again.');
+          setOtp(null); setOtpInput(''); setErr(r.error || tx('checkout.verifyFailed'));
         } else {
-          setOtpErr((r.error || 'Incorrect code.') + (r.attemptsLeft != null ? ' (' + r.attemptsLeft + ' attempts left)' : ''));
+          setOtpErr((r.error || tx('checkout.wrongCode')) + (r.attemptsLeft != null ? ' (' + tx('checkout.attemptsLeft', { n: r.attemptsLeft }) + ')' : ''));
         }
         return;
       }
@@ -117,7 +120,7 @@ export default function Qform({ sec, ctx }) {
       setOtp(null); setOtpInput('');
       setDone({ num: r.num, tag: r.tag });
     } catch (e2) {
-      setOtpErr(String(e2?.message || 'Verification failed. Try again.'));
+      setOtpErr(String(e2?.message || tx('qform.verifyFailed')));
     } finally {
       setOtpBusy(false);
     }
@@ -130,12 +133,12 @@ export default function Qform({ sec, ctx }) {
     <div style={sx(padNarrow)} data-qform={sec.id}>
       {!done && otp && (
         <div style={sx('margin:0 auto; max-width:420px; padding:' + (mob ? '22px 18px' : '28px 26px') + '; border-radius:' + C.r + 'px; background:' + c.card + '; border:1px solid ' + c.line + '; text-align:center;' + sh)}>
-          <div style={sx(headFont + 'font-size:' + hz(mob ? 22 : 26) + 'px; line-height:1.15;')}>Verify your number</div>
+          <div style={sx(headFont + 'font-size:' + hz(mob ? 22 : 26) + 'px; line-height:1.15;')}>{tx('checkout.verifyHead')}</div>
           <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:10px; line-height:1.6;')}>
-            We sent a 6-digit code to <b style={{ color: c.fg }}>{otp.maskedPhone}</b>. Enter it below to place your order.
+            {tx('checkout.sentCodeA')}<b style={{ color: c.fg }}>{otp.maskedPhone}</b>{tx('checkout.sentCodeB')}
           </div>
           <input
-            type="tel" inputMode="numeric" maxLength={6} placeholder="6-digit code" value={otpInput}
+            type="tel" inputMode="numeric" maxLength={6} placeholder={tx('checkout.otpPlaceholder')} value={otpInput}
             onClick={(ev) => ev.stopPropagation()}
             onChange={(ev) => setOtpInput(ev.target.value.replace(/\D/g, '').slice(0, 6))}
             onKeyDown={(ev) => { if (ev.key === 'Enter') verifyOtp(ev); }}
@@ -143,14 +146,14 @@ export default function Qform({ sec, ctx }) {
           />
           {otpErr && <div style={sx('margin-top:10px; font-family:' + F.b + '; font-size:12px; color:#B03A2E;')}>{otpErr}</div>}
           <div style={sx('font-family:' + F.b + '; font-size:12px; color:' + c.sub + '; margin-top:10px;')}>
-            Code expires in {otp.expiresAt ? Math.max(0, Math.ceil((otp.expiresAt - Date.now()) / 60000)) : 5} min.
+            {tx('qform.expires', { n: otp.expiresAt ? Math.max(0, Math.ceil((otp.expiresAt - Date.now()) / 60000)) : 5 })}
           </div>
           <div onClick={verifyOtp} style={sx('margin-top:16px; display:flex; align-items:center; justify-content:center; gap:9px; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:14.5px; cursor:pointer;' + ((otpBusy || otpInput.length !== 6) ? ' opacity:0.5; pointer-events:none;' : ''))}>
             {otpBusy && <div style={{ width: 14, height: 14, borderRadius: 99, border: '2px solid rgba(255,255,255,0.35)', borderTopColor: 'currentColor', animation: 'spin .7s linear infinite' }} />}
-            {otpBusy ? 'Verifying…' : 'Confirm order'}
+            {otpBusy ? tx('checkout.verifying') : tx('checkout.confirm')}
           </div>
           <div onClick={(ev) => { ev.stopPropagation(); setOtp(null); setOtpInput(''); setOtpErr(null); }} style={sx('margin-top:12px; font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + '; cursor:pointer;')}>
-            Back to the form
+            {tx('qform.back')}
           </div>
         </div>
       )}
@@ -167,27 +170,27 @@ export default function Qform({ sec, ctx }) {
             </div>
             {sizes.length > 0 && (
               <>
-                <div style={sx(lbl)}>SIZE</div>
+                <div style={sx(lbl)}>{tx('product.size')}</div>
                 <div style={{ display: 'flex', gap: 7, marginTop: 8, flexWrap: 'wrap' }}>
                   {sizes.map((z) => (
-                    <div key={z} title={sizeInStock(bp, z) ? undefined : 'Sold out'} onClick={preview && sizeInStock(bp, z) ? (ev) => { ev.stopPropagation(); setSize(z); } : undefined} style={sx('min-width:40px; padding:9px 0; text-align:center; border-radius:' + Math.min(C.rs, 10) + 'px; border:1.5px solid ' + (curSize === z ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:12.5px; font-weight:700; cursor:pointer;' + (curSize === z ? ' background:' + c.fg + '; color:' + c.bg + ';' : '') + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>
+                    <div key={z} title={sizeInStock(bp, z) ? undefined : tx('product.soldOut')} onClick={preview && sizeInStock(bp, z) ? (ev) => { ev.stopPropagation(); setSize(z); } : undefined} style={sx('min-width:40px; padding:9px 0; text-align:center; border-radius:' + Math.min(C.rs, 10) + 'px; border:1.5px solid ' + (curSize === z ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:12.5px; font-weight:700; cursor:pointer;' + (curSize === z ? ' background:' + c.fg + '; color:' + c.bg + ';' : '') + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>
                   ))}
                 </div>
               </>
             )}
-            <div style={sx(lbl)}>QUANTITY</div>
+            <div style={sx(lbl)}>{tx('qform.qty')}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
               <div onClick={preview ? (ev) => { ev.stopPropagation(); setQty((q) => Math.max(1, q - 1)); } : undefined} style={sx('width:34px; height:34px; border-radius:10px; border:1.5px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:800;')}>−</div>
               <div style={{ minWidth: 26, textAlign: 'center', fontWeight: 800, fontSize: 15 }}>{qty}</div>
               <div onClick={preview ? (ev) => { ev.stopPropagation(); setQty((q) => Math.min(bp.stock || 99, q + 1)); } : undefined} style={sx('width:34px; height:34px; border-radius:10px; border:1.5px solid ' + c.line + '; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:800;')}>+</div>
             </div>
-            <div style={sx(lbl)}>YOUR NAME</div>
-            <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.name} onChange={field('name')} placeholder="Rahima Akter" style={sx(inp)} readOnly={!preview} /></div>
-            <div style={sx(lbl)}>PHONE — WE CALL TO CONFIRM</div>
+            <div style={sx(lbl)}>{tx('qform.name')}</div>
+            <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.name} onChange={field('name')} placeholder={tx('qform.namePlaceholder')} style={sx(inp)} readOnly={!preview} /></div>
+            <div style={sx(lbl)}>{tx('qform.phone')}</div>
             <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.phone} onChange={field('phone')} placeholder="01XXX-XXXXXX" style={sx(inp)} readOnly={!preview} /></div>
-            <div style={sx(lbl)}>DELIVERY ADDRESS</div>
-            <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.address} onChange={field('address')} placeholder="House, road, area, city" style={sx(inp)} readOnly={!preview} /></div>
-            <div style={sx(lbl)}>PAYMENT</div>
+            <div style={sx(lbl)}>{tx('qform.address')}</div>
+            <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.address} onChange={field('address')} placeholder={tx('qform.addressPlaceholder')} style={sx(inp)} readOnly={!preview} /></div>
+            <div style={sx(lbl)}>{tx('qform.payment')}</div>
             <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {pays.map((m) => {
                 const act = payK === m.k;
@@ -197,8 +200,8 @@ export default function Qform({ sec, ctx }) {
                       {act && <div style={sx('width:9px; height:9px; border-radius:99px; background:' + c.fg + ';')} />}
                     </div>
                     <div style={{ minWidth: 0 }}>
-                      <div style={sx('font-family:' + F.b + '; font-size:13px; font-weight:700;')}>{m.n}</div>
-                      <div style={sx('font-family:' + F.b + '; font-size:11px; color:' + c.sub + '; margin-top:1px;')}>{m.d}</div>
+                      <div style={sx('font-family:' + F.b + '; font-size:13px; font-weight:700;')}>{tx('qform.pay.' + m.k + '.n')}</div>
+                      <div style={sx('font-family:' + F.b + '; font-size:11px; color:' + c.sub + '; margin-top:1px;')}>{tx('qform.pay.' + m.k + '.d')}</div>
                     </div>
                   </div>
                 );
@@ -221,11 +224,11 @@ export default function Qform({ sec, ctx }) {
           <div style={sx('margin:0 auto; width:64px; height:64px; border-radius:99px; background:' + P.accent + '; color:' + P.accentInk + '; display:flex; align-items:center; justify-content:center; animation:checkPop .4s ease both;')}>
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
           </div>
-          <div style={sx(headFont + 'font-size:' + hz(mob ? 26 : 34) + 'px; line-height:1.1; margin-top:18px;')}>Order placed!</div>
+          <div style={sx(headFont + 'font-size:' + hz(mob ? 26 : 34) + 'px; line-height:1.1; margin-top:18px;')}>{tx('checkout.placed')}</div>
           <div style={sx('font-family:' + F.b + '; font-size:15px; font-weight:800; margin-top:10px; font-variant-numeric:tabular-nums;')}>{done.num}</div>
           <div style={sx('font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; margin-top:8px; line-height:1.6;')}>{done.tag}</div>
           <div onClick={(ev) => { ev.stopPropagation(); setDone(null); setQty(1); }} style={sx('margin-top:22px; display:inline-flex; padding:11px 22px; border-radius:' + C.btn + '; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;')}>
-            Place another order
+            {tx('qform.another')}
           </div>
         </div>
       )}

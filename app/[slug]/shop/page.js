@@ -4,6 +4,7 @@ import PublicSite from '../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
 import { canonicalHostOf, canonicalMeta } from '../../../lib/seo'
+import { siteText } from '../../../components/studio/siteText'
 
 // /shop — the store system page (Phase 8): every live product with curated
 // filters + sort. Search lands here too (/shop?q=…). Template-driven — the
@@ -14,7 +15,7 @@ export async function generateMetadata({ params }) {
   const siteData = await getPublishedSite(slug)
   if (!siteData?.site) return { title: 'Not Found' }
   const brand = siteData.site.theme?.brandName || 'Store'
-  return { ...studioMetadata(siteData.site, null), title: `Shop — ${brand}`, ...canonicalMeta(canonicalHostOf(siteData, slug), '/shop') }
+  return { ...studioMetadata(siteData.site, null), title: `${siteText(siteData.site?.theme?.lang)('meta.shop')} — ${brand}`, ...canonicalMeta(canonicalHostOf(siteData, slug), '/shop') }
 }
 
 export default async function ShopRoute({ params, searchParams }) {
