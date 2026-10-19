@@ -81,4 +81,5 @@ export const SEC_NAMES = {
   story: 'Image + text', promo: 'Promo banner', quotes: 'Testimonials', faq: 'FAQ',
   mail: 'Newsletter', video: 'Video', insta: 'Instagram feed', contact: 'Contact',
   text: 'Rich text', pdp: 'Product detail', footer: 'Footer', svc: 'Services', book: 'Booking', enq: 'Enquiry form',
+  course: 'Courses & batches', gal: 'Gallery', team: 'Team', pack: 'Packages', how: 'How it works', hours: 'Hours & location', areas: 'Areas we serve', trust: 'Trust & numbers', band: 'Call to action',
 };

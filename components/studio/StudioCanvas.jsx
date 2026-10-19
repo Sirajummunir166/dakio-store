@@ -178,6 +178,9 @@ export default function StudioCanvas() {
     onService: (sv) => send('navLink', { link: { t: 'svc', ref: sv.id } }),
     onServices: () => send('sysNav', { page: 'sys-services' }),
     onServiceAction: (sv) => send('navLink', { link: { t: 'svc', ref: sv.id } }),
+    // W3: the business summary (live hours) and its main action for section buttons with no link.
+    business: (catalog && catalog.business) || null,
+    onMainAction: () => { const l = ctaLinkOf(doc, barOf(doc), (catalog && catalog.business) || null); if (l) send('navLink', { link: l }); },
     // Funnels: the one product this page sells + scroll-to-form
     fnPid: fn ? fn.pid : null,
     onOrderForm: fn ? () => {

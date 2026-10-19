@@ -186,6 +186,8 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
       const l = ctaLinkOfDoc();
       if (l) onLink(l);
     },
+    // W3: a section button with no link of its own follows the business's main action.
+    onMainAction: () => { const l = ctaLinkOfDoc(); if (l) onLink(l); },
     serviceActionLabel: () => (business?.booking?.on ? tx('svc.book') : tx('svc.ask')),
     // Booking (W2): free times, the booking itself, then the client's status page.
     bookHref: () => (basePath || '') + '/book',
