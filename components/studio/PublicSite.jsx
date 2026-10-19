@@ -246,6 +246,26 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         }),
       }).catch(() => {});
     } : undefined,
+    // The site's own forms (W0): the Contact section and the Newsletter box.
+    // Both resolve to { ok } or { ok:false, status, error, field } — never throw.
+    submitEnquiry: storeSlug ? async ({ name, phone, message, website }) => {
+      try {
+        const res = await fetch(API + '/store/' + storeSlug + '/enquiries', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: (name || '').trim(), phone: (phone || '').trim(), message: (message || '').trim() || undefined, website, sourceUrl: window.location.href }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) tk.track('generate_lead', { form: 'contact' });
+        return res.ok ? { ok: true } : { ok: false, status: res.status, error: data.error, field: data.field };
+      } catch { return { ok: false, status: 0 }; }
+    } : undefined,
+    subscribe: storeSlug ? async (value, website) => {
+      try {
+        const res = await fetch(API + '/store/' + storeSlug + '/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: String(value || '').trim(), website }) });
+        const data = await res.json().catch(() => ({}));
+        return res.ok ? { ok: true } : { ok: false, status: res.status, error: data.error };
+      } catch { return { ok: false, status: 0 }; }
+    } : undefined,
     validateCoupon: storeSlug ? async (code, subtotal) => {
       const res = await fetch(API + '/coupons/validate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, slug: storeSlug, subtotal }),
