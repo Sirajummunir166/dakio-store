@@ -22,7 +22,7 @@ export function EnquirePage({ ctx, service = null }) {
 
 const TONE = { requested: '#B7791F', confirmed: '#2F855A', cancelled: '#B03A2E', done: '#2F855A', no_show: '#6B6B6B' };
 
-export function BookingStatusPage({ ctx, booking, store, phoneDigits = null }) {
+export function BookingStatusPage({ ctx, booking, store, phoneDigits = null, pay = null }) {
   const sec = { id: 'sys-booking', type: 'book', props: { bg: 'base', sp: 'normal' } };
   const s = baseStyles(sec, ctx);
   const { c } = s;
@@ -56,6 +56,17 @@ export function BookingStatusPage({ ctx, booking, store, phoneDigits = null }) {
           {phoneDigits ? <a href={`https://wa.me/${phoneDigits}`} target="_blank" rel="noopener" style={sx(btn2)}>{tx('form.whatsapp')}</a> : null}
           {st === 'cancelled' || st === 'done' || st === 'no_show' ? <a href={ctx.bookHref ? ctx.bookHref() : '#'} style={sx(btn2)}>{tx('bstatus.again')}</a> : null}
         </div>
+        {pay ? (
+          // The store's own payment instructions (owner pick: no payment at booking yet).
+          <div data-booking-pay style={sx('margin-top:22px; padding:16px 18px; border-radius:' + Math.min(C.rs, 14) + 'px; border:1.5px dashed ' + c.line + '; font-family:' + F.b + ';')}>
+            <div style={{ fontSize: 14.5, fontWeight: 700 }}>{tx('bstatus.pay')}</div>
+            <div style={sx('font-size:13px; color:' + c.sub + '; margin-top:4px;')}>{tx('bstatus.paySub')}</div>
+            {pay.bkash ? row(tx('bstatus.bkash', { kind: tx('bstatus.kind.' + pay.bkashKind) }), pay.bkash) : null}
+            {pay.nagad ? row(tx('bstatus.nagad', { kind: tx('bstatus.kind.' + pay.nagadKind) }), pay.nagad) : null}
+            {pay.bank ? <div style={sx('padding-top:12px; border-top:1px solid ' + c.line + '; margin-top:12px; font-size:13.5px; white-space:pre-wrap;')}><span style={{ color: c.sub }}>{tx('bstatus.bank')}: </span>{pay.bank}</div> : null}
+            {pay.note ? <div style={sx('font-size:13px; color:' + c.sub + '; margin-top:10px; white-space:pre-wrap;')}>{pay.note}</div> : null}
+          </div>
+        ) : null}
         <div style={sx('font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + '; margin-top:18px;')}>{tx('bstatus.keep')}</div>
       </div>
     </div>
