@@ -8,6 +8,7 @@ import ImageSlot, { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
 import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
 import { CartPage, CheckoutPage, AccountPage } from './system/CommercePages';
+import { barOf, contactDigits, ctaLinkOf, headerWords, ServiceActions, MobileMenu, MenuIcon } from './SiteHeaderParts';
 
 const I = {
   up: 'M12 19V5m-6 6l6-6 6 6',
@@ -58,6 +59,7 @@ export default function StudioCanvas() {
   const [st, setSt] = useState(null); // {doc, curPage, device, preview, sel, building}
   const [cropTarget, setCropTarget] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [revealed, setRevealed] = useState({}); // secId → true once scrolled into view (preview)
   const [vaOpen, setVaOpen] = useState(false); // "Viewing as" picker (collection/product templates)
   const els = useRef({});
@@ -306,6 +308,14 @@ export default function StudioCanvas() {
   };
 
   const navItems = (doc.menus.header || []).slice(0, 6);
+  // The header's mode (W0) — the same parts the public site renders. In edit
+  // mode a click opens the Menus panel; in preview it follows the link.
+  const bar = barOf(doc);
+  const words = headerWords(theme.lang);
+  const svc = bar.mode === 'service';
+  const digits = contactDigits(doc);
+  const ctaLink = ctaLinkOf(doc, bar);
+  const go = (link) => (e) => { e?.stopPropagation?.(); e?.preventDefault?.(); if (preview) { if (link) send('navLink', { link }); } else send('navMenus', { bar: true }); };
 
   return (
     <ImgCtx.Provider value={{
@@ -367,6 +377,14 @@ export default function StudioCanvas() {
                 ))}
               </div>
             )}
+            {svc ? (
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
+                <ServiceActions bar={bar} label={bar.cta?.label || words.contact} P={P} C={C} mob={mob} words={words}
+                  hasWa={!!digits} hasCall={!!digits}
+                  on={{ cta: go(ctaLink), wa: go({ t: 'wa', ref: 'chat' }), call: go(null) }} />
+                {mob && navItems.length > 0 ? <span onClick={(e) => { e.stopPropagation(); if (preview) setMenuOpen(true); else send('navMenus', {}); }} style={{ display: 'flex', cursor: 'pointer' }} title={words.menu}><MenuIcon /></span> : null}
+              </div>
+            ) : (
             <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
               {searchOpen && preview && (
                 <input
@@ -394,9 +412,14 @@ export default function StudioCanvas() {
                   ...(P.accent === P.ink ? { outline: '1.5px solid ' + P.bg } : {}),
                 }}>2</div>
               </div>
+              {mob && navItems.length > 0 ? <span onClick={(e) => { e.stopPropagation(); if (preview) setMenuOpen(true); else send('navMenus', {}); }} style={{ display: 'flex', cursor: 'pointer' }} title={words.menu}><MenuIcon /></span> : null}
             </div>
+            )}
           </div>
         )}
+        <MobileMenu open={menuOpen && preview && mob} onClose={() => setMenuOpen(false)} P={P} F={F} C={C} base={base} words={words}
+          items={navItems.map((it) => ({ id: it.id, label: it.label, active: it.link.t === 'page' && it.link.ref === page.id, onClick: () => send('navLink', { link: it.link }) }))}
+          footer={svc ? <span onClick={() => { setMenuOpen(false); if (ctaLink) send('navLink', { link: ctaLink }); }} style={{ display: 'block', textAlign: 'center', padding: '13px 18px', borderRadius: C.btn, background: P.accent, color: P.accentInk, fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>{bar.cta?.label || words.contact}</span> : null} />
 
         {sysKind && (() => {
           // Collection/product templates render one live record at a time —

@@ -14,6 +14,7 @@ import { itemFromStudio, listPayload } from '../../lib/tracking/items';
 import { catProduct } from './addOns';
 import { optImg } from './publicCatalog';
 import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
+import { barOf, contactDigits, ctaLinkOf, headerWords, ServiceActions, MobileMenu, MenuIcon, WaIcon, CallIcon } from './SiteHeaderParts';
 
 // Public renderer for a published Store Studio site — the same section components
 // the studio canvas uses, in preview mode (no editing affordances), with real
@@ -67,16 +68,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
   };
 
   // WhatsApp number comes from the first Contact section anywhere on the site
-  const waDigits = () => {
-    let ph = '';
-    for (const pg of doc.pages) {
-      const s = pg.sections.find((x) => x.type === 'contact');
-      if (s && s.props.phone) { ph = s.props.phone; break; }
-    }
-    const d = String(ph).replace(/\D/g, '');
-    if (!d) return null;
-    return d.startsWith('0') ? '88' + d : d;
-  };
+  const waDigits = () => contactDigits(doc);
 
   // Resolve a stored link to an href. Deleted targets fall back gracefully:
   // a missing section scrolls to the top of its page, a missing page goes home.
@@ -329,6 +321,30 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
   };
 
   const navItems = (doc.menus?.header || []).slice(0, 6);
+  // The header's mode (W0): a shop keeps search, cart and account; a business
+  // shows its main button, WhatsApp and call. Phones get a menu drawer.
+  const bar = barOf(doc);
+  const words = headerWords(theme.lang);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const digits = waDigits();
+  const ctaLink = ctaLinkOf(doc, bar);
+  const ctaHref = ctaLink ? linkHref(ctaLink) : null;
+  const svc = bar.mode === 'service';
+  const navEntry = (it) => {
+    const href = linkHref(it.link);
+    return { id: it.id, label: it.label, href, ext: !!(href && isExternal(href)), active: it.link.t === 'page' && it.link.ref === page.id };
+  };
+  const menuFooter = svc ? (
+    <>
+      {ctaHref ? <a href={ctaHref} {...(isExternal(ctaHref) ? { target: '_blank', rel: 'noopener' } : {})} onClick={() => setMenuOpen(false)} style={{ display: 'block', textAlign: 'center', padding: '13px 18px', borderRadius: C.btn, background: P.accent, color: P.accentInk, fontWeight: 700, fontSize: 15, textDecoration: 'none' }}>{bar.cta?.label || words.contact}</a> : null}
+      {digits ? (
+        <div style={{ display: 'flex', gap: 10 }}>
+          {bar.wa ? <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener" style={{ flex: 1, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', padding: '11px 12px', borderRadius: C.btn, border: '1.5px solid ' + base.line, color: 'inherit', textDecoration: 'none', fontWeight: 600, fontSize: 14 }}><WaIcon />{words.whatsapp}</a> : null}
+          <a href={`tel:+${digits}`} style={{ flex: 1, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', padding: '11px 12px', borderRadius: C.btn, border: '1.5px solid ' + base.line, color: 'inherit', textDecoration: 'none', fontWeight: 600, fontSize: 14 }}><CallIcon />{words.call}</a>
+        </div>
+      ) : null}
+    </>
+  ) : null;
 
   return (
     <ImgCtx.Provider value={{ crops: doc.crops || {}, cropTarget: null, setCropTarget: null, onCrop: null }}>
@@ -381,6 +397,14 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
             })}
           </div>
         )}
+        {svc ? (
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <ServiceActions bar={bar} label={bar.cta?.label || words.contact} P={P} C={C} mob={mob} words={words}
+              hasWa={!!digits} hasCall={!!digits}
+              hrefs={{ cta: ctaHref, ctaExt: !!(ctaHref && isExternal(ctaHref)), wa: digits ? `https://wa.me/${digits}` : null, call: digits ? `tel:+${digits}` : null }} />
+            {mob && navItems.length > 0 ? <button type="button" onClick={() => setMenuOpen(true)} aria-label={words.menu} style={{ display: 'flex', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 2 }}><MenuIcon /></button> : null}
+          </div>
+        ) : (
         <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
           {searchOpen && (
             <input
@@ -411,8 +435,11 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
           <a href={(basePath || '') + '/account'} className="studio-nav-link" style={{ display: 'flex' }} title="Your orders">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 11a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 3.6-6 8-6s8 2 8 6" /></svg>
           </a>
+          {mob && navItems.length > 0 ? <button type="button" onClick={() => setMenuOpen(true)} aria-label={words.menu} style={{ display: 'flex', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 2 }}><MenuIcon /></button> : null}
         </div>
+        )}
       </div>
+      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} items={navItems.map(navEntry)} P={P} F={F} C={C} base={base} words={words} footer={menuFooter} />
 
       {system ? (
         system.kind === 'shop' ? <ShopPage ctx={ctx} sys={doc.sys || {}} q={system.q} />
