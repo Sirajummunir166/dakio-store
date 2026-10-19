@@ -338,9 +338,12 @@ export default function StudioCanvas() {
     }}>
       <div
         ref={rootRef}
+        {...(theme.lang === 'bn' ? { 'data-bn-site': '' } : {})}
         onClick={() => { setVaOpen(false); if (!preview) send('sel', { id: null }); }}
         style={{ background: P.bg, color: P.ink, fontFamily: F.b, overflow: 'hidden', minHeight: 400 }}
       >
+        {/* Bangla letters join into one shape: tracking pulls them apart (same rule as the live site). */}
+        {theme.lang === 'bn' ? <style>{'[data-bn-site] *, [data-bn-site] *::before, [data-bn-site] *::after { letter-spacing: 0 !important; }'}</style> : null}
         {/* Funnel chrome-free banner (edit mode): no nav, no menus, no leaks */}
         {fn && !preview && (
           <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 16px', background: '#1A1D12', color: '#f4f6ec', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 11.5, fontWeight: 600 }}>

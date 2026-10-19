@@ -424,11 +424,13 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
 
   return (
     <ImgCtx.Provider value={{ crops: doc.crops || {}, cropTarget: null, setCropTarget: null, onCrop: null }}>
-    <div lang={theme.lang === 'bn' ? 'bn' : 'en'} style={{ background: P.bg, color: P.ink, fontFamily: F.b, overflow: 'hidden', minHeight: '100vh' }}>
+    <div lang={theme.lang === 'bn' ? 'bn' : 'en'} {...(theme.lang === 'bn' ? { 'data-bn-site': '' } : {})} style={{ background: P.bg, color: P.ink, fontFamily: F.b, overflow: 'hidden', minHeight: '100vh' }}>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link href={`https://fonts.googleapis.com/css2?${FONT_HREF[theme.f] || FONT_HREF.clean}&display=swap`} rel="stylesheet" />
       <style>{`
         html, body { margin:0; scroll-behavior:smooth; }
+        /* Bangla letters join into one shape: tracking pulls them apart (the eyebrows, labels and buttons are tracked for Latin). */
+        [data-bn-site] *, [data-bn-site] *::before, [data-bn-site] *::after { letter-spacing: 0 !important; }
         @keyframes marquee { 0% { transform:translateX(0); } 100% { transform:translateX(-33.333%); } }
         @keyframes rvrise { 0% { opacity:0; transform:translateY(30px); } 100% { opacity:1; transform:translateY(0); } }
         @keyframes rvfade { 0% { opacity:0; } 100% { opacity:1; } }
