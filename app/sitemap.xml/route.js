@@ -31,7 +31,7 @@ export async function GET(req) {
   const site = siteData?.site || null
   if (site?.seo?.noindex) return new Response('Not found', { status: 404 })
 
-  const xml = sitemapXml(storeUrls({ origin: `https://${host}`, site, products, categories, services }))
+  const xml = sitemapXml(storeUrls({ origin: `https://${host}`, site, products, categories, services, booking: data.store.business?.booking?.on === true }))
   return new Response(xml, {
     headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400' },
   })

@@ -6,6 +6,7 @@ import { SECTION_COMPONENTS } from './sections';
 import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
 import { CartPage, CheckoutPage, AccountPage } from './system/CommercePages';
 import { ServicesPage, ServicePage } from './system/ServicePages';
+import { BookPage, EnquirePage, BookingStatusPage } from './system/BookingPages';
 import CartPanel from './CartPanel';
 import { cartCount, onCartChange, addToCart, getCart, setQty } from './cartStore';
 import { orderVariantId } from './variants';
@@ -16,7 +17,7 @@ import { catProduct } from './addOns';
 import { optImg } from './publicCatalog';
 import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
 import { siteText } from './siteText';
-import { barOf, contactDigits, ctaLinkOf, headerWords, ServiceActions, MobileMenu, MenuIcon, WaIcon, CallIcon } from './SiteHeaderParts';
+import { barOf, contactDigits, ctaLinkOf, ctaLabelOf, headerWords, ServiceActions, MobileMenu, MenuIcon, WaIcon, CallIcon } from './SiteHeaderParts';
 
 // Public renderer for a published Store Studio site — the same section components
 // the studio canvas uses, in preview mode (no editing affordances), with real
@@ -110,6 +111,11 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
       const sv = services.find((x) => x.id === link.ref);
       return sv && sv.slug ? `${basePath}/s/${sv.slug}` : null;
     }
+    if (link.t === 'book' || link.t === 'enq') {
+      // The booking page and the enquiry page (W2); ref = a service id, or 'any'.
+      const sv = link.ref && link.ref !== 'any' ? services.find((x) => x.id === link.ref) : null;
+      return `${basePath}/${link.t === 'book' ? 'book' : 'enquire'}` + (sv && sv.slug ? `?service=${encodeURIComponent(sv.slug)}` : '');
+    }
     if (link.t === 'sys') return `${basePath}/${link.ref}` || null; // services / shop / cart / checkout / account
     return null;
   };
@@ -168,15 +174,39 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     onCollection: (c2) => { if (c2 && c2.slug) window.location.href = `${basePath}/shop/${c2.slug}`; },
     onProduct: (pr) => { if (pr && pr.slug) window.location.href = `${basePath}/p/${pr.slug}`; },
     onClearQ: () => { window.location.href = (basePath || '') + '/shop'; },
-    // Services (W1): a service's page, the list, and the main button on a service (W2 books it).
+    // Services (W1): a service's page, the list, and the main button on a service.
+    // Once the business books online (W2) that button books the service;
+    // before, it opens the service's page, and there it follows the header's button.
     business,
     onService: (sv) => { if (sv && sv.slug) window.location.href = `${basePath}/s/${sv.slug}`; },
     onServices: () => { window.location.href = (basePath || '') + '/services'; },
     onServiceAction: (sv, o = {}) => {
+      if (business?.booking?.on && sv && sv.slug) { window.location.href = `${basePath}/book?service=${encodeURIComponent(sv.slug)}`; return; }
       if (!o.fromPage && sv && sv.slug) { window.location.href = `${basePath}/s/${sv.slug}`; return; }
       const l = ctaLinkOfDoc();
       if (l) onLink(l);
     },
+    serviceActionLabel: () => (business?.booking?.on ? tx('svc.book') : tx('svc.ask')),
+    // Booking (W2): free times, the booking itself, then the client's status page.
+    bookHref: () => (basePath || '') + '/book',
+    getSlots: storeSlug ? async (service, date) => {
+      try {
+        const q = new URLSearchParams({ service: String(service) });
+        if (date) q.set('date', date);
+        const res = await fetch(API + '/store/' + storeSlug + '/slots?' + q.toString(), { cache: 'no-store' });
+        const data = await res.json().catch(() => ({}));
+        return res.ok ? { ok: true, data } : { ok: false, status: res.status, code: data.code, error: data.error };
+      } catch { return { ok: false, status: 0 }; }
+    } : undefined,
+    book: storeSlug ? async (body) => {
+      try {
+        const res = await fetch(API + '/store/' + storeSlug + '/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, name: (body.name || '').trim(), phone: (body.phone || '').trim(), note: (body.note || '').trim() || undefined }) });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.token) tk.track('generate_lead', { form: 'booking' });
+        return res.ok ? { ok: true, ...data } : { ok: false, status: res.status, code: data.code, field: data.field, error: data.error };
+      } catch { return { ok: false, status: 0 }; }
+    } : undefined,
+    onBooked: (token) => { window.location.href = `${basePath}/b/${token}`; },
     // Phase 10 — the buying path. Adding to the bag or opening the cart from
     // the header/product page shows the preview panel in place rather than
     // navigating away; /cart stays a real page (direct links, no-JS).
@@ -269,14 +299,14 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     } : undefined,
     // The site's own forms (W0): the Contact section and the Newsletter box.
     // Both resolve to { ok } or { ok:false, status, error, field } — never throw.
-    submitEnquiry: storeSlug ? async ({ name, phone, message, website }) => {
+    submitEnquiry: storeSlug ? async ({ name, phone, message, serviceId, website, form = 'contact' }) => {
       try {
         const res = await fetch(API + '/store/' + storeSlug + '/enquiries', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: (name || '').trim(), phone: (phone || '').trim(), message: (message || '').trim() || undefined, website, sourceUrl: window.location.href }),
+          body: JSON.stringify({ name: (name || '').trim(), phone: (phone || '').trim(), message: (message || '').trim() || undefined, serviceId: serviceId || undefined, website, sourceUrl: window.location.href }),
         });
         const data = await res.json().catch(() => ({}));
-        if (res.ok) tk.track('generate_lead', { form: 'contact' });
+        if (res.ok) tk.track('generate_lead', { form });
         return res.ok ? { ok: true } : { ok: false, status: res.status, error: data.error, field: data.field };
       } catch { return { ok: false, status: 0 }; }
     } : undefined,
@@ -363,14 +393,15 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
 
   const navItems = (doc.menus?.header || []).slice(0, 6);
   // Asking about a service (W1, before booking): the header's main button, else WhatsApp, else the Contact section.
-  function ctaLinkOfDoc() { return ctaLinkOf(doc, barOf(doc)); }
+  function ctaLinkOfDoc() { return ctaLinkOf(doc, barOf(doc), business); }
   // The header's mode (W0): a shop keeps search, cart and account; a business
   // shows its main button, WhatsApp and call. Phones get a menu drawer.
   const bar = barOf(doc);
   const words = headerWords(theme.lang);
   const [menuOpen, setMenuOpen] = useState(false);
   const digits = waDigits();
-  const ctaLink = ctaLinkOf(doc, bar);
+  const ctaLink = ctaLinkOf(doc, bar, business);
+  const ctaLabel = ctaLabelOf(bar, words, business);
   const ctaHref = ctaLink ? linkHref(ctaLink) : null;
   const svc = bar.mode === 'service';
   const navEntry = (it) => {
@@ -379,7 +410,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
   };
   const menuFooter = svc ? (
     <>
-      {ctaHref ? <a href={ctaHref} {...(isExternal(ctaHref) ? { target: '_blank', rel: 'noopener' } : {})} onClick={() => setMenuOpen(false)} style={{ display: 'block', textAlign: 'center', padding: '13px 18px', borderRadius: C.btn, background: P.accent, color: P.accentInk, fontWeight: 700, fontSize: 15, textDecoration: 'none' }}>{bar.cta?.label || words.contact}</a> : null}
+      {ctaHref ? <a href={ctaHref} {...(isExternal(ctaHref) ? { target: '_blank', rel: 'noopener' } : {})} onClick={() => setMenuOpen(false)} style={{ display: 'block', textAlign: 'center', padding: '13px 18px', borderRadius: C.btn, background: P.accent, color: P.accentInk, fontWeight: 700, fontSize: 15, textDecoration: 'none' }}>{ctaLabel}</a> : null}
       {digits ? (
         <div style={{ display: 'flex', gap: 10 }}>
           {bar.wa ? <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener" style={{ flex: 1, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', padding: '11px 12px', borderRadius: C.btn, border: '1.5px solid ' + base.line, color: 'inherit', textDecoration: 'none', fontWeight: 600, fontSize: 14 }}><WaIcon />{words.whatsapp}</a> : null}
@@ -442,7 +473,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         )}
         {svc ? (
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <ServiceActions bar={bar} label={bar.cta?.label || words.contact} P={P} C={C} mob={mob} words={words}
+            <ServiceActions bar={bar} label={ctaLabel} P={P} C={C} mob={mob} words={words}
               hasWa={!!digits} hasCall={!!digits}
               hrefs={{ cta: ctaHref, ctaExt: !!(ctaHref && isExternal(ctaHref)), wa: digits ? `https://wa.me/${digits}` : null, call: digits ? `tel:+${digits}` : null }} />
             {mob && navItems.length > 0 ? <button type="button" onClick={() => setMenuOpen(true)} aria-label={words.menu} style={{ display: 'flex', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 2 }}><MenuIcon /></button> : null}
@@ -492,6 +523,9 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         : system.kind === 'account' ? <AccountPage ctx={ctx} sys={doc.sys || {}} />
         : system.kind === 'services' ? <ServicesPage ctx={ctx} sys={doc.sys || {}} />
         : system.kind === 'service' ? <ServicePage ctx={ctx} service={system.service} />
+        : system.kind === 'book' ? <BookPage ctx={ctx} service={system.service || null} />
+        : system.kind === 'enquire' ? <EnquirePage ctx={ctx} service={system.service || null} />
+        : system.kind === 'booking' ? <BookingStatusPage ctx={ctx} booking={system.booking} store={system.store} phoneDigits={system.phoneDigits || waDigits()} />
         : <ProductPage ctx={ctx} sys={doc.sys || {}} product={system.product} />
       ) : (
         (page.sections || []).map(renderSection)

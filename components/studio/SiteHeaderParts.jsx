@@ -11,8 +11,8 @@ import { useEffect } from 'react';
 // account. 'service' shows the business's main button plus WhatsApp and call.
 
 const WORDS = {
-  en: { menu: 'Menu', close: 'Close menu', contact: 'Contact us', call: 'Call', whatsapp: 'WhatsApp' },
-  bn: { menu: 'মেনু', close: 'মেনু বন্ধ করুন', contact: 'যোগাযোগ করুন', call: 'কল করুন', whatsapp: 'হোয়াটসঅ্যাপ' },
+  en: { menu: 'Menu', close: 'Close menu', contact: 'Contact us', book: 'Book now', call: 'Call', whatsapp: 'WhatsApp' },
+  bn: { menu: 'মেনু', close: 'মেনু বন্ধ করুন', contact: 'যোগাযোগ করুন', book: 'বুক করুন', call: 'কল করুন', whatsapp: 'হোয়াটসঅ্যাপ' },
 };
 export const headerWords = (lang) => WORDS[lang === 'bn' ? 'bn' : 'en'];
 
@@ -35,15 +35,26 @@ export function contactDigits(doc) {
   return null;
 }
 
-/** The link the main button follows: the owner's, else WhatsApp, else the first Contact section. */
-export function ctaLinkOf(doc, bar) {
+/**
+ * The link the main button follows: the owner's, else the booking page when
+ * the business takes bookings online (W2), else WhatsApp, else the first
+ * Contact section. `business` is the store's summary from the API.
+ */
+export function ctaLinkOf(doc, bar, business = null) {
   if (bar.cta?.link) return bar.cta.link;
+  if (business?.booking?.on) return { t: 'book', ref: 'any' };
   if (contactDigits(doc)) return { t: 'wa', ref: 'chat' };
   for (const pg of doc?.pages || []) {
     const s = (pg.sections || []).find((x) => x.type === 'contact' && !x.hidden);
     if (s) return { t: 'sec', ref: pg.id, sec: s.id };
   }
   return null;
+}
+
+/** The main button's words: the owner's, else "Book now" when it books, else "Contact us". */
+export function ctaLabelOf(bar, words, business = null) {
+  if (bar.cta?.label) return bar.cta.label;
+  return business?.booking?.on && !bar.cta?.link ? words.book : words.contact;
 }
 
 const ico = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round' };

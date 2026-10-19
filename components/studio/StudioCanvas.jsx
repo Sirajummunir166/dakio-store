@@ -9,7 +9,7 @@ import { SECTION_COMPONENTS } from './sections';
 import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
 import { CartPage, CheckoutPage, AccountPage } from './system/CommercePages';
 import { ServicesPage } from './system/ServicePages';
-import { barOf, contactDigits, ctaLinkOf, headerWords, ServiceActions, MobileMenu, MenuIcon } from './SiteHeaderParts';
+import { barOf, contactDigits, ctaLinkOf, ctaLabelOf, headerWords, ServiceActions, MobileMenu, MenuIcon } from './SiteHeaderParts';
 
 const I = {
   up: 'M12 19V5m-6 6l6-6 6 6',
@@ -321,7 +321,9 @@ export default function StudioCanvas() {
   const words = headerWords(theme.lang);
   const svc = bar.mode === 'service';
   const digits = contactDigits(doc);
-  const ctaLink = ctaLinkOf(doc, bar);
+  const business = (catalog && catalog.business) || null;
+  const ctaLink = ctaLinkOf(doc, bar, business);
+  const ctaLabel = ctaLabelOf(bar, words, business);
   const go = (link) => (e) => { e?.stopPropagation?.(); e?.preventDefault?.(); if (preview) { if (link) send('navLink', { link }); } else send('navMenus', { bar: true }); };
 
   return (
@@ -386,7 +388,7 @@ export default function StudioCanvas() {
             )}
             {svc ? (
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
-                <ServiceActions bar={bar} label={bar.cta?.label || words.contact} P={P} C={C} mob={mob} words={words}
+                <ServiceActions bar={bar} label={ctaLabel} P={P} C={C} mob={mob} words={words}
                   hasWa={!!digits} hasCall={!!digits}
                   on={{ cta: go(ctaLink), wa: go({ t: 'wa', ref: 'chat' }), call: go(null) }} />
                 {mob && navItems.length > 0 ? <span onClick={(e) => { e.stopPropagation(); if (preview) setMenuOpen(true); else send('navMenus', {}); }} style={{ display: 'flex', cursor: 'pointer' }} title={words.menu}><MenuIcon /></span> : null}
@@ -426,7 +428,7 @@ export default function StudioCanvas() {
         )}
         <MobileMenu open={menuOpen && preview && mob} onClose={() => setMenuOpen(false)} P={P} F={F} C={C} base={base} words={words}
           items={navItems.map((it) => ({ id: it.id, label: it.label, active: it.link.t === 'page' && it.link.ref === page.id, onClick: () => send('navLink', { link: it.link }) }))}
-          footer={svc ? <span onClick={() => { setMenuOpen(false); if (ctaLink) send('navLink', { link: ctaLink }); }} style={{ display: 'block', textAlign: 'center', padding: '13px 18px', borderRadius: C.btn, background: P.accent, color: P.accentInk, fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>{bar.cta?.label || words.contact}</span> : null} />
+          footer={svc ? <span onClick={() => { setMenuOpen(false); if (ctaLink) send('navLink', { link: ctaLink }); }} style={{ display: 'block', textAlign: 'center', padding: '13px 18px', borderRadius: C.btn, background: P.accent, color: P.accentInk, fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>{ctaLabel}</span> : null} />
 
         {sysKind && (() => {
           // Collection/product templates render one live record at a time —
