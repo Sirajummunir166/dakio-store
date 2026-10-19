@@ -1,10 +1,11 @@
-import { getStoreBySlug, getProducts, getCategories, getPublishedSite } from '../../lib/api'
+import { getStoreBySlug, getProducts, getCategories, getPublishedSite, getServices } from '../../lib/api'
+import JsonLd from '../../components/JsonLd'
 import StorefrontClient from '../../components/StorefrontClient'
 import StoreUnavailable from '../../components/StoreUnavailable'
 import PublicSite from '../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
-import { canonicalHostOf, canonicalMeta } from '../../lib/seo'
+import { canonicalHostOf, canonicalMeta, businessJsonLd, faqJsonLd } from '../../lib/seo'
 
 export async function generateMetadata({ params }) {
   const { slug } = await params
@@ -30,11 +31,12 @@ export async function generateMetadata({ params }) {
 export default async function StorePage({ params }) {
   const { slug } = await params
 
-  const [storeData, siteData, products, categories] = await Promise.all([
+  const [storeData, siteData, products, categories, services] = await Promise.all([
     getStoreBySlug(slug),
     getPublishedSite(slug),
     getProducts(slug),
     getCategories(slug),
+    getServices(slug),
   ])
 
   if (storeData.notFound) notFound()
@@ -48,15 +50,22 @@ export default async function StorePage({ params }) {
   // engine below stays the fallback for tenants that never published one.
   if (siteData.site) {
     const catalog = toStudioCatalog(products, categories)
+    const host = canonicalHostOf(siteData, slug)
+    const home = siteData.site.pages.find((p) => p.id === 'home') || siteData.site.pages[0]
     return (
-      <PublicSite
-      storeSlug={slug}
-        doc={siteData.site}
-        pageId="home"
-        basePath={`/${slug}`}
-        products={catalog.products}
-        collections={catalog.collections} extra={catalog.extra}
-      />
+      <>
+        <JsonLd data={businessJsonLd(storeData.store, { url: host ? `https://${host}/` : undefined, services })} />
+        <JsonLd data={faqJsonLd(home)} />
+        <PublicSite
+          storeSlug={slug}
+          doc={siteData.site}
+          pageId="home"
+          basePath={`/${slug}`}
+          products={catalog.products}
+          collections={catalog.collections} extra={catalog.extra}
+          services={services} business={storeData.store.business || null}
+        />
+      </>
     )
   }
 

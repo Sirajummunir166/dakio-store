@@ -5,6 +5,7 @@ import { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
 import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
 import { CartPage, CheckoutPage, AccountPage } from './system/CommercePages';
+import { ServicesPage, ServicePage } from './system/ServicePages';
 import CartPanel from './CartPanel';
 import { cartCount, onCartChange, addToCart, getCart, setQty } from './cartStore';
 import { orderVariantId } from './variants';
@@ -40,7 +41,8 @@ const FONT_HREF = {
 // { kind: 'shop'|'col'|'prod', col?, product?, q? } with nav + footer intact.
 // `extra`: add-ons the products' pairings carried that are not among `products`
 // (Goes well with) — the bag resolves them; no grid lists them.
-export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], extra = [], system = null, storeSlug = null, store = null }) {
+// `services` (W1): the store's live Services for the Services section and pages; `business`: the store's business summary.
+export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], extra = [], system = null, storeSlug = null, store = null, services = [], business = null }) {
   const [mob, setMob] = useState(false);
   // Tracking (components/tracking) — also where the store's currency comes
   // from: most Studio routes never receive the store object.
@@ -103,7 +105,12 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
       const c = collections.find((x) => x.id === link.ref) || collections.find((x) => x.n === link.ref);
       return c && c.slug ? `${basePath}/shop/${c.slug}` : null;
     }
-    if (link.t === 'sys') return `${basePath}/${link.ref}` || null; // shop / cart / checkout / account
+    if (link.t === 'svc') {
+      // One service's page (W1): the ref is its id, so a rename keeps the link.
+      const sv = services.find((x) => x.id === link.ref);
+      return sv && sv.slug ? `${basePath}/s/${sv.slug}` : null;
+    }
+    if (link.t === 'sys') return `${basePath}/${link.ref}` || null; // services / shop / cart / checkout / account
     return null;
   };
 
@@ -142,7 +149,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
   const [cartOpen, setCartOpen] = useState(false);
 
   const seoF = doc.seo || {};
-  const cat = { products, collections, extra };
+  const cat = { products, collections, extra, services };
   const itemOf = (pr, o = {}) => itemFromStudio(pr, { collections, ...o });
   const ecom = (items) => ({ ecommerce: { currency: tk.currency, value: items.reduce((n, it) => n + it.price * it.quantity, 0), items } });
   const ctx = {
@@ -161,6 +168,15 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     onCollection: (c2) => { if (c2 && c2.slug) window.location.href = `${basePath}/shop/${c2.slug}`; },
     onProduct: (pr) => { if (pr && pr.slug) window.location.href = `${basePath}/p/${pr.slug}`; },
     onClearQ: () => { window.location.href = (basePath || '') + '/shop'; },
+    // Services (W1): a service's page, the list, and the main button on a service (W2 books it).
+    business,
+    onService: (sv) => { if (sv && sv.slug) window.location.href = `${basePath}/s/${sv.slug}`; },
+    onServices: () => { window.location.href = (basePath || '') + '/services'; },
+    onServiceAction: (sv, o = {}) => {
+      if (!o.fromPage && sv && sv.slug) { window.location.href = `${basePath}/s/${sv.slug}`; return; }
+      const l = ctaLinkOfDoc();
+      if (l) onLink(l);
+    },
     // Phase 10 — the buying path. Adding to the bag or opening the cart from
     // the header/product page shows the preview panel in place rather than
     // navigating away; /cart stays a real page (direct links, no-JS).
@@ -346,6 +362,8 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
   };
 
   const navItems = (doc.menus?.header || []).slice(0, 6);
+  // Asking about a service (W1, before booking): the header's main button, else WhatsApp, else the Contact section.
+  function ctaLinkOfDoc() { return ctaLinkOf(doc, barOf(doc)); }
   // The header's mode (W0): a shop keeps search, cart and account; a business
   // shows its main button, WhatsApp and call. Phones get a menu drawer.
   const bar = barOf(doc);
@@ -472,6 +490,8 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         : system.kind === 'cart' ? <CartPage ctx={ctx} sys={doc.sys || {}} />
         : system.kind === 'checkout' ? <CheckoutPage ctx={ctx} sys={doc.sys || {}} />
         : system.kind === 'account' ? <AccountPage ctx={ctx} sys={doc.sys || {}} />
+        : system.kind === 'services' ? <ServicesPage ctx={ctx} sys={doc.sys || {}} />
+        : system.kind === 'service' ? <ServicePage ctx={ctx} service={system.service} />
         : <ProductPage ctx={ctx} sys={doc.sys || {}} product={system.product} />
       ) : (
         (page.sections || []).map(renderSection)

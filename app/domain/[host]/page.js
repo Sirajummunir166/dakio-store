@@ -1,10 +1,11 @@
-import { getStoreByDomain, getProducts, getCategories, getPublishedSite } from '../../../lib/api'
+import { getStoreByDomain, getProducts, getCategories, getPublishedSite, getServices } from '../../../lib/api'
+import JsonLd from '../../../components/JsonLd'
 import StorefrontClient from '../../../components/StorefrontClient'
 import StoreUnavailable from '../../../components/StoreUnavailable'
 import StoreNotFound from '../../../components/StoreNotFound'
 import PublicSite from '../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../components/studio/publicCatalog'
-import { canonicalHostOf, canonicalMeta } from '../../../lib/seo'
+import { canonicalHostOf, canonicalMeta, businessJsonLd, faqJsonLd } from '../../../lib/seo'
 
 export async function generateMetadata({ params }) {
   const { host } = await params
@@ -46,25 +47,33 @@ export default async function DomainStorePage({ params }) {
   }
 
   const slug = storeData.store.slug
-  const [siteData, products, categories] = await Promise.all([
+  const [siteData, products, categories, services] = await Promise.all([
     getPublishedSite(slug),
     getProducts(slug),
     getCategories(slug),
+    getServices(slug),
   ])
 
   // Published Store Studio site takes over; legacy theme engine is the fallback.
   // basePath is '' — on a custom domain the site lives at the root.
   if (siteData.site) {
     const catalog = toStudioCatalog(products, categories)
+    const canon = canonicalHostOf(storeData, slug)
+    const home = siteData.site.pages.find((p) => p.id === 'home') || siteData.site.pages[0]
     return (
-      <PublicSite
-      storeSlug={slug}
-        doc={siteData.site}
-        pageId="home"
-        basePath=""
-        products={catalog.products}
-        collections={catalog.collections} extra={catalog.extra}
-      />
+      <>
+        <JsonLd data={businessJsonLd(storeData.store, { url: canon ? `https://${canon}/` : undefined, services })} />
+        <JsonLd data={faqJsonLd(home)} />
+        <PublicSite
+          storeSlug={slug}
+          doc={siteData.site}
+          pageId="home"
+          basePath=""
+          products={catalog.products}
+          collections={catalog.collections} extra={catalog.extra}
+          services={services} business={storeData.store.business || null}
+        />
+      </>
     )
   }
 

@@ -3,6 +3,20 @@
 // `theme.lang` picks the language; English is the fallback for any missing key.
 
 const EN = {
+  'svc.title': 'Our services',
+  'svc.book': 'Book',
+  'svc.ask': 'Ask about this',
+  'svc.from': 'from {price}',
+  'svc.onQuote': 'on quote',
+  'svc.hours': '{n} h',
+  'svc.mins': '{n} min',
+  'svc.days': '{n} days',
+  'svc.price': 'Price',
+  'svc.time': 'Takes',
+  'svc.all': 'All services',
+  'svc.gone': 'This service is not offered any more.',
+  'svc.empty': 'Your services show here — add them on the Services page in Dakio.',
+  'meta.services': 'Services',
   'meta.shop': 'Shop',
   'meta.cart': 'Your bag',
   'meta.checkout': 'Checkout',
@@ -241,6 +255,20 @@ const EN = {
 };
 
 const BN = {
+  'svc.title': 'আমাদের সার্ভিস',
+  'svc.book': 'বুক করুন',
+  'svc.ask': 'এ বিষয়ে জানতে চাই',
+  'svc.from': '{price} থেকে',
+  'svc.onQuote': 'আলোচনা সাপেক্ষে',
+  'svc.hours': '{n} ঘণ্টা',
+  'svc.mins': '{n} মিনিট',
+  'svc.days': '{n} দিন',
+  'svc.price': 'দাম',
+  'svc.time': 'সময় লাগে',
+  'svc.all': 'সব সার্ভিস',
+  'svc.gone': 'এই সার্ভিসটি এখন আর দেওয়া হয় না।',
+  'svc.empty': 'আপনার সার্ভিসগুলো এখানে দেখাবে — Dakio-র সার্ভিস পেজে যোগ করুন।',
+  'meta.services': 'সার্ভিস',
   'meta.shop': 'শপ',
   'meta.cart': 'আপনার কার্ট',
   'meta.checkout': 'চেকআউট',

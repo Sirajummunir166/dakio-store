@@ -1,4 +1,4 @@
-import { getStoreByDomain, getProducts, getCategories, getPublishedSite } from '../../lib/api'
+import { getStoreByDomain, getProducts, getCategories, getPublishedSite, getServices } from '../../lib/api'
 import { storeUrls, sitemapXml, canonicalHostOf } from '../../lib/seo'
 import { hostOf, isCustomDomain } from '../../lib/hosts'
 
@@ -22,15 +22,16 @@ export async function GET(req) {
   const canonical = canonicalHostOf(data, slug)
   if (canonical !== host) return Response.redirect(`https://${canonical}/sitemap.xml`, 301)
 
-  const [siteData, products, categories] = await Promise.all([
+  const [siteData, products, categories, services] = await Promise.all([
     getPublishedSite(slug),
     getProducts(slug, { limit: SITEMAP_PRODUCTS }),
     getCategories(slug),
+    getServices(slug),
   ])
   const site = siteData?.site || null
   if (site?.seo?.noindex) return new Response('Not found', { status: 404 })
 
-  const xml = sitemapXml(storeUrls({ origin: `https://${host}`, site, products, categories }))
+  const xml = sitemapXml(storeUrls({ origin: `https://${host}`, site, products, categories, services }))
   return new Response(xml, {
     headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400' },
   })

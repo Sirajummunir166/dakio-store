@@ -8,6 +8,7 @@ import ImageSlot, { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
 import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
 import { CartPage, CheckoutPage, AccountPage } from './system/CommercePages';
+import { ServicesPage } from './system/ServicePages';
 import { barOf, contactDigits, ctaLinkOf, headerWords, ServiceActions, MobileMenu, MenuIcon } from './SiteHeaderParts';
 
 const I = {
@@ -22,6 +23,7 @@ const I = {
 // Store system pages (Phase 8) — the dark strip above the canvas that tells an
 // editor which data-bound template they're looking at. Edit mode only.
 const SYS_BANNER_TXT = {
+  services: 'Store page · /services — your live Services list. Prices and times come from the Services page.',
   shop: 'Store page · /shop — data-bound to your catalog. Filters and search work right here.',
   col: 'Collection template — every collection renders through this one page.',
   prod: 'Product template — edit it once, every product follows.',
@@ -156,7 +158,8 @@ export default function StudioCanvas() {
   const brandText = (theme.brandMode ?? 'text') !== 'image';
   const brandName = theme.brandName ?? 'Shahrqee';
 
-  const cat = catalog && Array.isArray(catalog.products) && catalog.products.length ? catalog : DEMO_CATALOG;
+  // Services (W1) come from the store even when the products fall back to the demo catalog.
+  const cat = { ...(catalog && Array.isArray(catalog.products) && catalog.products.length ? catalog : DEMO_CATALOG), services: (catalog && catalog.services) || [] };
 
   const ctxFor = (sec) => ({
     P, F, C, tsM, denM, shCard, mob, padX, preview, theme,
@@ -171,6 +174,10 @@ export default function StudioCanvas() {
     onCollection: (c2) => send('sysNav', { page: 'sys-col', colId: c2.id }),
     onProduct: (pr) => send('sysNav', { page: 'sys-prod', pid: pr.id }),
     onClearQ: () => send('sysNav', { page: 'sys-shop' }),
+    // Services (W1): a service opens the Services page with it in view; the list is a system page.
+    onService: (sv) => send('navLink', { link: { t: 'svc', ref: sv.id } }),
+    onServices: () => send('sysNav', { page: 'sys-services' }),
+    onServiceAction: (sv) => send('navLink', { link: { t: 'svc', ref: sv.id } }),
     // Funnels: the one product this page sells + scroll-to-form
     fnPid: fn ? fn.pid : null,
     onOrderForm: fn ? () => {
@@ -481,6 +488,7 @@ export default function StudioCanvas() {
                   onSysProp: (scope, key, val) => send('prop', { id: '__sys:' + scope, key, val }),
                 };
                 const sys = doc.sys || {};
+                if (sysKind === 'services') return <ServicesPage ctx={sysCtx} sys={sys} />;
                 if (sysKind === 'shop') return <ShopPage ctx={sysCtx} sys={sys} q={st.sysQ} edit={edit} />;
                 if (sysKind === 'col') return curCol ? <CollectionPage ctx={sysCtx} sys={sys} col={curCol} edit={edit} /> : null;
                 if (sysKind === 'cart' || sysKind === 'checkout') {

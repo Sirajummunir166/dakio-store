@@ -15,8 +15,10 @@ import Pdp from './Pdp';
 import Footer from './Footer';
 import Offer from './Offer';
 import Qform from './Qform';
+import Svc from './Svc';
 
 export const SECTION_COMPONENTS = {
+  svc: Svc,
   ann: Ann, hero: Hero, feat: Feat, cols: Cols, story: Story, promo: Promo, quotes: Quotes,
   faq: Faq, mail: Mail, video: Video, insta: Insta, contact: Contact, text: Text, pdp: Pdp,
   footer: Footer,
