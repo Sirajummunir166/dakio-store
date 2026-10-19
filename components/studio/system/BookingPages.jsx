@@ -22,7 +22,7 @@ export function EnquirePage({ ctx, service = null }) {
 
 const TONE = { requested: '#B7791F', confirmed: '#2F855A', cancelled: '#B03A2E', done: '#2F855A', no_show: '#6B6B6B' };
 
-export function BookingStatusPage({ ctx, booking, store, phoneDigits = null, pay = null }) {
+export function BookingStatusPage({ ctx, booking, store, phoneDigits = null, pay = null, calendar = null }) {
   const sec = { id: 'sys-booking', type: 'book', props: { bg: 'base', sp: 'normal' } };
   const s = baseStyles(sec, ctx);
   const { c } = s;
@@ -56,6 +56,14 @@ export function BookingStatusPage({ ctx, booking, store, phoneDigits = null, pay
           {phoneDigits ? <a href={`https://wa.me/${phoneDigits}`} target="_blank" rel="noopener" style={sx(btn2)}>{tx('form.whatsapp')}</a> : null}
           {st === 'cancelled' || st === 'done' || st === 'no_show' ? <a href={ctx.bookHref ? ctx.bookHref() : '#'} style={sx(btn2)}>{tx('bstatus.again')}</a> : null}
         </div>
+        {calendar ? (
+          // Add to my calendar (DAKIO_ONE_PLACE_PLAN.md C3): Google's link, and an .ics file for iPhone and the rest.
+          <div data-booking-calendar style={sx('margin-top:18px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-family:' + F.b + ';')}>
+            <span style={sx('font-size:13px; color:' + c.sub + '; margin-right:2px;')}>{tx('bstatus.addCal')}</span>
+            <a href={calendar.google} target="_blank" rel="noopener" style={sx(btn2 + 'padding:9px 16px; font-size:13.5px;')}>Google</a>
+            <a href={calendar.ics} style={sx(btn2 + 'padding:9px 16px; font-size:13.5px;')}>{tx('bstatus.addCalOther')}</a>
+          </div>
+        ) : null}
         {pay ? (
           // The store's own payment instructions (owner pick: no payment at booking yet).
           <div data-booking-pay style={sx('margin-top:22px; padding:16px 18px; border-radius:' + Math.min(C.rs, 14) + 'px; border:1.5px dashed ' + c.line + '; font-family:' + F.b + ';')}>

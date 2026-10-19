@@ -529,7 +529,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         : system.kind === 'service' ? <ServicePage ctx={ctx} service={system.service} />
         : system.kind === 'book' ? <BookPage ctx={ctx} service={system.service || null} />
         : system.kind === 'enquire' ? <EnquirePage ctx={ctx} service={system.service || null} />
-        : system.kind === 'booking' ? <BookingStatusPage ctx={ctx} booking={system.booking} store={system.store} phoneDigits={system.phoneDigits || waDigits()} pay={system.pay || null} />
+        : system.kind === 'booking' ? <BookingStatusPage ctx={ctx} booking={system.booking} store={system.store} phoneDigits={system.phoneDigits || waDigits()} pay={system.pay || null} calendar={system.calendar || null} />
         : <ProductPage ctx={ctx} sys={doc.sys || {}} product={system.product} />
       ) : (
         (page.sections || []).map(renderSection)

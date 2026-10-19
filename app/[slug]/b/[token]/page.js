@@ -42,7 +42,7 @@ export default async function BookingStatusRoute({ params }) {
       products={catalog.products}
       collections={catalog.collections} extra={catalog.extra}
       services={services} business={storeData.store.business || null}
-      system={{ kind: 'booking', booking: r.booking || null, store: r.store || { name: storeData.store.name }, phoneDigits, pay: r.pay || null }}
+      system={{ kind: 'booking', booking: r.booking || null, store: r.store || { name: storeData.store.name }, phoneDigits, pay: r.pay || null, calendar: r.calendar || null }}
     />
   )
 }
