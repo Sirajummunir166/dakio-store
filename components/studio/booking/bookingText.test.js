@@ -26,3 +26,11 @@ test('Dhaka today rolls over at 18:00 UTC; the next date crosses months', () => 
   assert.equal(nextDate('2026-10-31'), '2026-11-01');
   assert.equal(nextDate('2026-12-31'), '2027-01-01');
 });
+
+test('every reason the booking API refuses a time with has its words in Bangla and English (SB-80)', async () => {
+  const { SITE_TEXT } = await import('../siteText.js');
+  for (const key of ['book.taken', 'book.past', 'book.closed', 'book.tooMany']) {
+    assert.ok(SITE_TEXT.en[key], key);
+    assert.ok(SITE_TEXT.bn[key] && SITE_TEXT.bn[key] !== SITE_TEXT.en[key], `${key} in Bangla`);
+  }
+});
