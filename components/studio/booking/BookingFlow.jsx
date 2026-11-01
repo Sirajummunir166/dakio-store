@@ -76,7 +76,9 @@ export default function BookingFlow({ ctx, c, s, initialService = null }) {
       setState({ busy: false, err: null, done: true });
       return;
     }
-    if (r.code === 'taken') { setState({ busy: false, err: tx('book.taken') }); setTime(null); load(svc, day); return; }
+    // A time that is taken, gone or outside the hours: say why in the site's language, show the free times again.
+    if (['taken', 'past', 'closed'].includes(r.code)) { setState({ busy: false, err: tx('book.' + r.code) }); setTime(null); load(svc, day); return; }
+    if (r.code === 'too_many') { setState({ busy: false, err: tx('book.tooMany') }); return; }
     if (r.code === 'booking_off') { setOff(true); setState({ busy: false, err: null }); return; }
     setState({ busy: false, err: r.field === 'phone' ? tx('form.badPhone') : r.field === 'name' ? tx('form.needName') : (r.error || tx('form.error')) });
   };
