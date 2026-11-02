@@ -66,9 +66,11 @@ export default function Promo({ sec, ctx }) {
         <Editable secId={sec.id} k="head" value={p.head} style={promoHead} preview={preview} />
         <Editable secId={sec.id} k="sub" value={p.sub} style={promoSub} multiline preview={preview} />
         <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, flexWrap: 'wrap' }}>
-          <div style={sx(codeChip)}>
-            Code: <Editable secId={sec.id} k="code" value={p.code} style={'font-weight:800;'} preview={preview} tag="span" />
-          </div>
+          {(!preview || (p.code && String(p.code).trim())) && (
+            <div style={sx(codeChip)}>
+              Code: <Editable secId={sec.id} k="code" value={p.code} style={'font-weight:800;'} preview={preview} tag="span" />
+            </div>
+          )}
           {cdOn && (
             <div style={{ display: 'flex', gap: 7 }}>
               {boxes.map(([num, lbl]) => (

@@ -1,11 +1,12 @@
 'use client';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { send } from './bridge';
+import { canvasCopy } from './canvasCopy';
 
 // Shared image-slot context: crops (slotId → {x,y,z}) applied everywhere the
 // slot renders, plus the crop-editor wiring (canvas edit mode only).
 // x/y = object-position percentages (0–100), z = zoom (1–4).
-export const ImgCtx = createContext({ crops: {}, cropTarget: null, setCropTarget: null, onCrop: null });
+export const ImgCtx = createContext({ crops: {}, cropTarget: null, setCropTarget: null, onCrop: null, uiLang: 'en' });
 
 export function cropStyle(crop, fit) {
   const c = crop || {};
@@ -140,6 +141,8 @@ export default function ImageSlot({ slotId, assets, placeholder = '', fit = 'cov
   }, [cropping]);
 
   const active = cropping && draft ? draft : crop;
+  // Builder guidance in the merchant's UI language (SST-27)
+  const tx = (s) => canvasCopy(s, img.uiLang);
 
   return (
     <div
@@ -152,10 +155,14 @@ export default function ImageSlot({ slotId, assets, placeholder = '', fit = 'cov
         cursor: cropping ? 'grab' : preview ? 'default' : 'pointer',
         ...(cropping ? { touchAction: 'none' } : {}),
       }}
-      title={preview || cropping ? undefined : 'Click to swap image · double-click to set focus & crop'}
+      title={preview || cropping ? undefined : tx('Click to swap image · double-click to set focus & crop')}
     >
       {src ? (
         <img src={src} alt="" draggable={false} onLoad={(e) => setNat({ w: e.target.naturalWidth, h: e.target.naturalHeight })} style={cropStyle(active, fit)} />
+      ) : preview ? (
+        // Live store / preview: an empty slot is a quiet block — the builder's
+        // "Hero image — your best product shot" guidance never reaches shoppers (SST-46).
+        <div data-empty-slot style={{ position: 'absolute', inset: 0, background: 'rgba(128,128,128,0.06)' }} />
       ) : (
         <div style={{
           position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -163,18 +170,18 @@ export default function ImageSlot({ slotId, assets, placeholder = '', fit = 'cov
           fontSize: 11.5, fontWeight: 600, letterSpacing: '0.2px', color: 'currentColor', opacity: 0.45,
           backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(128,128,128,0.06) 10px, rgba(128,128,128,0.06) 20px)',
         }}>
-          {!preview && aspect && <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.5px', padding: '2px 8px', borderRadius: 99, border: '1px solid currentColor' }}>{String(aspect).replace('/', ':')}</div>}
-          <div>{(!preview && hint) || placeholder}</div>
+          {aspect && <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.5px', padding: '2px 8px', borderRadius: 99, border: '1px solid currentColor' }}>{String(aspect).replace('/', ':')}</div>}
+          <div>{tx(hint || placeholder)}</div>
         </div>
       )}
       {!preview && !cropping && mismatch && (
         <div
           onClick={(e) => { e.stopPropagation(); img.setCropTarget && img.setCropTarget(slotId); }}
           onPointerDown={(e) => e.stopPropagation()}
-          title="This photo's shape doesn't match this frame — click to recenter"
+          title={tx("This photo's shape doesn't match this frame — click to recenter")}
           style={{ position: 'absolute', bottom: 8, left: 8, zIndex: 2, padding: '5px 10px', borderRadius: 99, background: '#B07A2A', color: '#fff', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 10, fontWeight: 800, letterSpacing: '0.3px', cursor: 'pointer', boxShadow: '0 6px 16px rgba(20,22,14,0.3)' }}
         >
-          ⚠ Recenter photo
+          {tx('⚠ Recenter photo')}
         </div>
       )}
       {cropping && (
@@ -182,14 +189,14 @@ export default function ImageSlot({ slotId, assets, placeholder = '', fit = 'cov
           <div style={{ position: 'absolute', inset: 0, outline: '3px solid #C6F035', outlineOffset: -3, pointerEvents: 'none', zIndex: 2 }} />
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2, backgroundImage: 'linear-gradient(rgba(255,255,255,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.25) 1px, transparent 1px)', backgroundSize: '33.34% 33.34%' }} />
           <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 3, padding: '5px 11px', borderRadius: 99, background: '#1A1D12', color: '#f4f6ec', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 10.5, fontWeight: 800, letterSpacing: '0.4px', pointerEvents: 'none' }}>
-            DRAG TO REFRAME · SCROLL TO ZOOM{aspect ? ' · ' + String(aspect).replace('/', ':') : ''}
+            {tx('DRAG TO REFRAME · SCROLL TO ZOOM')}{aspect ? ' · ' + String(aspect).replace('/', ':') : ''}
           </div>
           <div
             onClick={(e) => { e.stopPropagation(); finish(); }}
             onPointerDown={(e) => e.stopPropagation()}
             style={{ position: 'absolute', bottom: 10, right: 10, zIndex: 3, padding: '7px 16px', borderRadius: 99, background: '#C6F035', color: '#1A1D12', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 11.5, fontWeight: 800, cursor: 'pointer', boxShadow: '0 8px 22px rgba(26,29,18,0.35)' }}
           >
-            Done
+            {tx('Done')}
           </div>
         </>
       )}

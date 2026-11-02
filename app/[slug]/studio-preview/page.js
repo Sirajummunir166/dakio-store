@@ -14,7 +14,7 @@ export const metadata = { robots: { index: false, follow: false }, title: 'Draft
 
 export default async function StudioPreviewPage({ params, searchParams }) {
   const { slug } = await params
-  const { token } = await searchParams
+  const { token, page: pageParam } = await searchParams
   if (!token) notFound()
 
   const res = await fetch(`${BASE}/store/${slug}/site-draft?token=${encodeURIComponent(token)}`, { cache: 'no-store' })
@@ -27,6 +27,9 @@ export default async function StudioPreviewPage({ params, searchParams }) {
     )
   }
   const { site, commentsOpen } = await res.json()
+  // ?page=<id> renders that draft page; nav links carry the token so a
+  // reviewer stays in the draft (SST-45: a click left for the live store).
+  const pageId = (site.pages || []).some((p) => p.id === pageParam) ? pageParam : 'home'
 
   const [products, categories] = await Promise.all([getProducts(slug), getCategories(slug)])
   const catalog = toStudioCatalog(products, categories)
@@ -39,12 +42,13 @@ export default async function StudioPreviewPage({ params, searchParams }) {
       </div>
       <PublicSite
         doc={site}
-        pageId="home"
+        pageId={pageId}
+        previewToken={token}
         basePath={`/${slug}`}
         products={catalog.products}
         collections={catalog.collections} extra={catalog.extra}
       />
-      {commentsOpen && <PreviewComments slug={slug} token={token} apiBase={BASE} />}
+      {commentsOpen && <PreviewComments key={pageId} slug={slug} token={token} apiBase={BASE} />}
     </div>
   )
 }

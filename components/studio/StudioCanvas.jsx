@@ -70,7 +70,7 @@ export default function StudioCanvas() {
 
   useEffect(() => {
     const off = listen((m) => {
-      if (m.t === 'state') setSt({ doc: m.doc, catalog: m.catalog, curPage: m.curPage, device: m.device, preview: m.preview, sel: m.sel, building: m.building, cmts: m.cmts || [], cmtOpen: m.cmtOpen || null, sysCol: m.sysCol || null, sysPid: m.sysPid || null, sysQ: m.sysQ || null });
+      if (m.t === 'state') setSt({ doc: m.doc, catalog: m.catalog, curPage: m.curPage, device: m.device, preview: m.preview, sel: m.sel, building: m.building, cmts: m.cmts || [], cmtOpen: m.cmtOpen || null, sysCol: m.sysCol || null, sysPid: m.sysPid || null, sysQ: m.sysQ || null, uiLang: m.uiLang === 'bn' ? 'bn' : 'en' });
       if (m.t === 'scrollToSec') {
         const el = els.current[m.id];
         if (el) send('secOffset', { id: m.id, top: el.offsetTop });
@@ -335,6 +335,7 @@ export default function StudioCanvas() {
       cropTarget,
       setCropTarget: preview ? null : setCropTarget,
       onCrop: (slotId, val) => send('crop', { slotId, val }),
+      uiLang: st.uiLang || 'en',
     }}>
       <div
         ref={rootRef}

@@ -14,7 +14,7 @@ import { useTracking } from '../tracking/TrackingRoot';
 import { contactEventFor } from '../../lib/tracking/events';
 import { itemFromStudio, listPayload } from '../../lib/tracking/items';
 import { catProduct } from './addOns';
-import { optImg } from './publicCatalog';
+import { optImg, toStudioCatalog } from './publicCatalog';
 import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
 import { siteText } from './siteText';
 import { barOf, contactDigits, ctaLinkOf, ctaLabelOf, headerWords, ServiceActions, MobileMenu, MenuIcon, WaIcon, CallIcon } from './SiteHeaderParts';
@@ -43,7 +43,9 @@ const FONT_HREF = {
 // `extra`: add-ons the products' pairings carried that are not among `products`
 // (Goes well with) — the bag resolves them; no grid lists them.
 // `services` (W1): the store's live Services for the Services section and pages; `business`: the store's business summary.
-export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], extra = [], system = null, storeSlug = null, store = null, services = [], business = null }) {
+// `previewToken`: the shared draft-preview link (app/[slug]/studio-preview) —
+// page links stay inside the preview so a reviewer sees draft pages (SST-45).
+export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], extra = [], system = null, storeSlug = null, store = null, services = [], business = null, previewToken = null }) {
   const [mob, setMob] = useState(false);
   // Tracking (components/tracking) — also where the store's currency comes
   // from: most Studio routes never receive the store object.
@@ -71,6 +73,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
 
   const pageHref = (id) => {
     const pg = doc.pages.find((p) => p.id === id);
+    if (previewToken) return `${basePath}/studio-preview?token=${encodeURIComponent(previewToken)}${pg && pg.id !== 'home' ? '&page=' + encodeURIComponent(pg.id) : ''}`;
     if (!pg || pg.slug === '/') return basePath || '/';
     return basePath + pg.slug;
   };
@@ -214,6 +217,13 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     // navigating away; /cart stays a real page (direct links, no-JS).
     storeSlug,
     store,
+    // Bag lines outside the loaded catalogue are read by id (useBag, SST-30)
+    fetchProducts: storeSlug ? async (ids) => {
+      const res = await fetch(API + '/store/' + storeSlug + '/products?limit=100&ids=' + encodeURIComponent(ids.join(',')));
+      if (!res.ok) return [];
+      const data = await res.json().catch(() => ({}));
+      return toStudioCatalog(data.products || []).products;
+    } : undefined,
     onCart: () => {
       setCartOpen(true);
       const items = storeSlug ? getCart(storeSlug).map((l, i) => { const p = catProduct(cat, l.pid); return p ? itemOf(p, { size: l.size, qty: l.qty, index: i }) : null; }).filter(Boolean) : [];

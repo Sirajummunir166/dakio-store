@@ -78,12 +78,13 @@ export default function Contact({ sec, ctx }) {
         </div>
         {split && (
           <div style={sx(contactCard)}>
-            <div style={sx(cLbl)}>{tx('form.visit')}</div>
-            <Editable secId={sec.id} k="addr" value={p.addr} style={cVal} multiline preview={preview} />
-            <div style={sx(cLbl2)}>{tx('form.callWa')}</div>
-            <Editable secId={sec.id} k="phone" value={p.phone} style={cVal} preview={preview} />
-            <div style={sx(cLbl2)}>{tx('form.hours')}</div>
-            <Editable secId={sec.id} k="hours" value={p.hours} style={cVal} preview={preview} />
+            {/* An empty detail is left out on the live store, never shown blank */}
+            {(!preview || p.addr) && <><div style={sx(cLbl)}>{tx('form.visit')}</div>
+            <Editable secId={sec.id} k="addr" value={p.addr} style={cVal} multiline preview={preview} /></>}
+            {(!preview || p.phone) && <><div style={sx(cLbl2)}>{tx('form.callWa')}</div>
+            <Editable secId={sec.id} k="phone" value={p.phone} style={cVal} preview={preview} /></>}
+            {(!preview || p.hours) && <><div style={sx(cLbl2)}>{tx('form.hours')}</div>
+            <Editable secId={sec.id} k="hours" value={p.hours} style={cVal} preview={preview} /></>}
             <div style={sx(waChip)} onClick={onWa} role={onWa ? 'link' : undefined}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a4 4 0 01-4 4H8l-5 3V6a4 4 0 014-4h10a4 4 0 014 4v9z" /></svg>
               {tx('form.whatsapp')}

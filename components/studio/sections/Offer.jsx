@@ -18,7 +18,8 @@ export default function Offer({ sec, ctx }) {
   const tx = siteText(ctx.theme?.lang);
   const base = baseStyles(sec, ctx);
   const { c, headFont, accCol, pad, hz, sh } = base;
-  const bp = (ctx.fnProduct) || cat.products.find((x) => x.id === ctx.fnPid) || liveProds(cat)[0] || cat.products[0];
+  // A live funnel shows its own product only (SST-29); the canvas may preview with any.
+  const bp = ctx.isPublic ? ctx.fnProduct : ((ctx.fnProduct) || cat.products.find((x) => x.id === ctx.fnPid) || liveProds(cat)[0] || cat.products[0]);
   if (!bp) return null;
   const sizes = sizeList(bp);
   const B = btnColors(p.bg, P);

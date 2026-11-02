@@ -1,4 +1,4 @@
-import { getStoreByDomain, getProducts, getCategories, getPublishedSite } from '../../../../../lib/api'
+import { getStoreByDomain, getProducts, getProductsByIds, getCategories, getPublishedSite } from '../../../../../lib/api'
 import StoreUnavailable from '../../../../../components/StoreUnavailable'
 import FunnelSite from '../../../../../components/studio/FunnelSite'
 import { toStudioCatalog } from '../../../../../components/studio/publicCatalog'
@@ -30,9 +30,10 @@ export default async function DomainFunnelRoute({ params }) {
   if (!fn) notFound()
 
   const [products, categories] = await Promise.all([getProducts(slug), getCategories(slug)])
+  if (fn.pid && !products.some((p) => p.id === fn.pid)) products.push(...(await getProductsByIds(slug, [fn.pid])))
   const catalog = toStudioCatalog(products, categories)
 
   return (
-    <FunnelSite doc={siteData.site} fn={fn} storeSlug={slug} products={catalog.products} collections={catalog.collections} />
+    <FunnelSite doc={siteData.site} fn={fn} storeSlug={slug} store={storeData.store} products={catalog.products} collections={catalog.collections} />
   )
 }

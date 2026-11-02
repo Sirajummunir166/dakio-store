@@ -1,7 +1,7 @@
 import { getStoreByDomain, getProducts, getCategories, getPublishedSite } from '../../../../../lib/api'
 import StoreUnavailable from '../../../../../components/StoreUnavailable'
 import PublicSite from '../../../../../components/studio/PublicSite'
-import { toStudioCatalog, collectionPage } from '../../../../../components/studio/publicCatalog'
+import { toStudioCatalog, collectionPage, studioMetadata } from '../../../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
 import { canonicalHostOf, canonicalMeta } from '../../../../../lib/seo'
 
@@ -18,6 +18,7 @@ export async function generateMetadata({ params }) {
   const col = categories.find((c) => c.slug === colSlug)
   if (!col) return { title: 'Not Found' }
   return {
+    ...studioMetadata(siteData.site, null), // noindex / Search Console (SST-33)
     title: `${col.name} — ${siteData.site.theme?.brandName || 'Store'}`,
     description: `Shop ${col.name} online.`,
     // The /shop/<collection> template is the collection's one address.

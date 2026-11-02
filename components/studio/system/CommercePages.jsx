@@ -69,6 +69,10 @@ export function deliveryNote(ctx, goods = null) {
 export function useBag(ctx) {
   const [tick, setTick] = useState(0);
   const [mounted, setMounted] = useState(false);
+  // Products of bag lines the page's catalogue does not hold, read by id —
+  // a line added on a product page outside the list used to vanish from the
+  // drawer, /cart and /checkout (Store Studio audit SST-30). id → product|null.
+  const [fetched, setFetched] = useState({});
   useEffect(() => {
     setMounted(true);
     if (!ctx.storeSlug) return;
@@ -76,12 +80,24 @@ export function useBag(ctx) {
     window.addEventListener('studio-cart-change', h);
     return () => window.removeEventListener('studio-cart-change', h);
   }, [ctx.storeSlug]);
+  useEffect(() => {
+    if (!mounted || !ctx.storeSlug || !ctx.fetchProducts) return;
+    const missing = [...new Set(getCart(ctx.storeSlug).map((l) => l.pid))].filter((pid) => !catProduct(ctx.cat, pid) && !(pid in fetched));
+    if (!missing.length) return;
+    let dead = false;
+    ctx.fetchProducts(missing).then((list) => {
+      if (dead) return;
+      setFetched((f) => ({ ...f, ...Object.fromEntries(missing.map((id) => [id, (list || []).find((p) => p.id === id) || null])) }));
+    }).catch(() => {});
+    return () => { dead = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, ctx.storeSlug, ctx.cat, tick, fetched]);
   return useMemo(() => {
     const lines = ctx.storeSlug ? (mounted ? getCart(ctx.storeSlug) : []) : (ctx.demoBag || []);
     const bag = lines
       .map((l) => {
         // The catalog, else an add-on the pairings carried (Goes well with).
-        const p = catProduct(ctx.cat, l.pid);
+        const p = catProduct(ctx.cat, l.pid) || fetched[l.pid] || null;
         // A size's variant can carry its own price — the order charges it, so
         // every bag total (drawer, /cart, /checkout) shows that price too.
         return { ...l, p: p ? { ...p, pr: priceFor(p, l.size) } : p };
@@ -90,7 +106,7 @@ export function useBag(ctx) {
     // An add-on beside its main product: the together price, by the server's rule.
     return priceAddOns(bag, ctx.cat);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx.storeSlug, ctx.cat, tick, mounted, ctx.demoBag]);
+  }, [ctx.storeSlug, ctx.cat, tick, mounted, ctx.demoBag, fetched]);
 }
 
 // A bag line's quantity; the public store's ctx.setLineQty also reports
