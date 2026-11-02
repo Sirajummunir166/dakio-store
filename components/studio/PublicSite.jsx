@@ -4,7 +4,7 @@ import { co, resolveTheme } from './theme';
 import { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
 import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
-import { CartPage, CheckoutPage, AccountPage } from './system/CommercePages';
+import { CartPage, CheckoutPage, AccountPage, sys10, checkoutPays } from './system/CommercePages';
 import { ServicesPage, ServicePage } from './system/ServicePages';
 import { BookPage, EnquirePage, BookingStatusPage } from './system/BookingPages';
 import CartPanel from './CartPanel';
@@ -165,6 +165,8 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     P, F, C, tsM, denM, shCard, mob, padX,
     preview: true, isPublic: true, theme,
     menus: doc.menus, assets,
+    // The footer's payment marks are the checkout's own methods (SST-58).
+    payMethods: checkoutPays(sys10(doc.sys, 'checkout')),
     cat,
     isSel: false,
     currency: tk.currency,
@@ -403,7 +405,10 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     );
   };
 
-  const navItems = (doc.menus?.header || []).slice(0, 6);
+  // Every header link the merchant added (up to the 30 the builder allows): the
+  // row wraps, the phone drawer lists them all. A 7th link and on were dropped
+  // without a word (Store Studio audit SST-57).
+  const navItems = doc.menus?.header || [];
   // Asking about a service (W1, before booking): the header's main button, else WhatsApp, else the Contact section.
   function ctaLinkOfDoc() { return ctaLinkOf(doc, barOf(doc), business); }
   // The header's mode (W0): a shop keeps search, cart and account; a business
@@ -471,7 +476,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
           )}
         </a>
         {!mob && (
-          <div style={{ display: 'flex', gap: 26, fontSize: 13, fontWeight: 600, color: base.sub }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', columnGap: 26, rowGap: 8, minWidth: 0, fontSize: 13, fontWeight: 600, color: base.sub }}>
             {navItems.map((it) => {
               const href = linkHref(it.link);
               const active = it.link.t === 'page' && it.link.ref === page.id;

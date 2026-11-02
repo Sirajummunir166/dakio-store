@@ -7,7 +7,7 @@ import Editable from './Editable';
 import ImageSlot, { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
 import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
-import { CartPage, CheckoutPage, AccountPage } from './system/CommercePages';
+import { CartPage, CheckoutPage, AccountPage, sys10, checkoutPays } from './system/CommercePages';
 import { ServicesPage } from './system/ServicePages';
 import { barOf, contactDigits, ctaLinkOf, ctaLabelOf, headerWords, ServiceActions, MobileMenu, MenuIcon } from './SiteHeaderParts';
 
@@ -164,6 +164,7 @@ export default function StudioCanvas() {
   const ctxFor = (sec) => ({
     P, F, C, tsM, denM, shCard, mob, padX, preview, theme,
     menus: doc.menus, assets: doc.assets || {},
+    payMethods: checkoutPays(sys10(doc.sys, 'checkout')),
     cat,
     isSel: !preview && sel === (sec && sec.id),
     onGoPage: (id) => send('goPage', { id }),
@@ -317,7 +318,8 @@ export default function StudioCanvas() {
     );
   };
 
-  const navItems = (doc.menus.header || []).slice(0, 6);
+  // Every header link, as on the live store (SST-57).
+  const navItems = doc.menus.header || [];
   // The header's mode (W0) — the same parts the public site renders. In edit
   // mode a click opens the Menus panel; in preview it follows the link.
   const bar = barOf(doc);
@@ -377,7 +379,7 @@ export default function StudioCanvas() {
               </div>
             )}
             {!mob && (
-              <div style={{ display: 'flex', gap: 26, fontSize: 13, fontWeight: 600, color: base.sub }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', columnGap: 26, rowGap: 8, minWidth: 0, fontSize: 13, fontWeight: 600, color: base.sub }}>
                 {navItems.map((it) => (
                   <span
                     key={it.id}
@@ -419,14 +421,8 @@ export default function StudioCanvas() {
                 width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{ cursor: 'pointer' }} title="Search — /shop?q="
               ><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
               <div style={{ position: 'relative', cursor: 'pointer' }} title="Cart — /cart" onClick={(e) => { e.stopPropagation(); send('sysNav', { page: 'sys-cart' }); }}>
+                {/* No count badge: the canvas has no bag, and a made-up "2" read as one (SST-51) */}
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 7h12l1 14H5L6 7zM9 10V6a3 3 0 016 0v4" /></svg>
-                <div style={{
-                  position: 'absolute', top: -6, right: -9, minWidth: 15, height: 15, borderRadius: 99,
-                  background: P.accent, color: P.accentInk, fontSize: 9, fontWeight: 800,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px',
-                  fontFamily: "'Hanken Grotesk',sans-serif",
-                  ...(P.accent === P.ink ? { outline: '1.5px solid ' + P.bg } : {}),
-                }}>2</div>
               </div>
               {mob && navItems.length > 0 ? <span onClick={(e) => { e.stopPropagation(); if (preview) setMenuOpen(true); else send('navMenus', {}); }} style={{ display: 'flex', cursor: 'pointer' }} title={words.menu}><MenuIcon /></span> : null}
             </div>

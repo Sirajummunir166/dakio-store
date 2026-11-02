@@ -28,6 +28,8 @@ export const SYS10_DEFAULTS = {
   account: { head: 'Your orders', sub: 'Enter the phone number you order with — we’ll text a code, no password needed.' },
 };
 export const sys10 = (sys, k) => ({ ...SYS10_DEFAULTS[k], ...((sys || {})[k] || {}) });
+// The payment methods the store's checkout offers, in its order (cod / bkash / nagad).
+export const checkoutPays = (cs) => (cs.payOrder || ['cod', 'bkash', 'nagad']).filter((k) => (cs.pays || {})[k] !== false);
 // The same, with the starter words in the site's language — the merchant's own words still win.
 const SYS10_TEXT = { cart: { head: 'cart.head', note: 'cart.note' }, checkout: { note: 'checkout.defaultNote' }, account: { head: 'account.head', sub: 'account.sub' } };
 const sys10t = (sys, k, tx) => ({ ...SYS10_DEFAULTS[k], ...Object.fromEntries(Object.entries(SYS10_TEXT[k] || {}).map(([f, key]) => [f, tx(key)])), ...((sys || {})[k] || {}) });
@@ -221,7 +223,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
   // no real card-payment capability anywhere in the platform to back that up —
   // every method here (COD, bKash, Nagad) is still "pay manually, we record
   // which one for the merchant to reconcile," not a live charge.
-  const pays = (cs.payOrder || ['cod', 'bkash', 'nagad']).filter((k) => (cs.pays || {})[k] !== false);
+  const pays = checkoutPays(cs);
   const [pay, setPay] = useState(null);
   const payK = pay && pays.includes(pay) ? pay : pays[0];
   const onlineMethods = pays.filter((k) => k === 'bkash' || k === 'nagad');
@@ -603,8 +605,6 @@ export function CheckoutPage({ ctx, sys, edit }) {
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', maxWidth: 150, justifyContent: 'flex-end' }}>
                       {onlineMethods.includes('bkash') && <img src="/payments/bkash.png" alt="bKash" style={{ height: 20, width: 'auto' }} />}
                       {onlineMethods.includes('nagad') && <img src="/payments/nagad.svg" alt="Nagad" style={{ height: 20, width: 'auto' }} />}
-                      <img src="/payments/visa.png" alt="Visa" style={{ height: 20, width: 'auto' }} />
-                      <img src="/payments/mastercard.png" alt="Mastercard" style={{ height: 20, width: 'auto' }} />
                     </div>
                   </div>
                   {payGroup === 'online' && onlineMethods.length > 1 && (
@@ -622,7 +622,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
             </div>
             {cs.trust !== false && (
               <div style={sx('margin-top:18px; display:flex; flex-wrap:wrap; gap:10px 22px; align-items:center;')}>
-                {['ssl', 'verified', 'exchange'].map((t) => (
+                {['ssl', 'exchange'].map((t) => (
                   <div key={t} style={sx('display:flex; align-items:center; gap:7px; font-family:' + F.b + '; font-size:12px; font-weight:600; color:' + c.sub + ';')}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={P.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5" /></svg>{tx('checkout.trust.' + t)}
                   </div>
