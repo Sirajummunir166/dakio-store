@@ -4,6 +4,8 @@ import Editable from '../Editable';
 import ImageSlot from '../ImageSlot';
 import { siteText } from '../siteText';
 
+const PAY_CHIP = { bkash: 'bKash', nagad: 'Nagad', cod: 'COD' };
+
 export default function Footer({ sec, ctx }) {
   const s = baseStyles(sec, ctx);
   const { c } = s;
@@ -59,8 +61,10 @@ export default function Footer({ sec, ctx }) {
       <div style={sx(footBottom)}>
         <Editable secId={sec.id} k="note" value={p.note} style={'min-width:0;'} preview={preview} />
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {['bKash', 'Nagad', 'VISA', 'COD'].map((n) => (
-            <div key={n} style={sx(payChip)}>{n}</div>
+          {/* The ways this store takes payment (its checkout settings) — never a
+              card mark: no store takes cards (Store Studio audit SST-58). */}
+          {['bkash', 'nagad', 'cod'].filter((k) => (ctx.payMethods || ['cod', 'bkash', 'nagad']).includes(k)).map((k) => (
+            <div key={k} style={sx(payChip)}>{PAY_CHIP[k]}</div>
           ))}
         </div>
       </div>

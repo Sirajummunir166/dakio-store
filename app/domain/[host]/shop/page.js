@@ -1,4 +1,4 @@
-import { getStoreByDomain, getProducts, getCategories, getPublishedSite } from '../../../../lib/api'
+import { getStoreByDomain, getProducts, CATALOG_MAX, getCategories, getPublishedSite } from '../../../../lib/api'
 import StoreUnavailable from '../../../../components/StoreUnavailable'
 import PublicSite from '../../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../../components/studio/publicCatalog'
@@ -31,8 +31,8 @@ export default async function DomainShopRoute({ params, searchParams }) {
   const siteData = await getPublishedSite(slug)
   if (!siteData.site) notFound()
 
-  const [products, categories] = await Promise.all([getProducts(slug), getCategories(slug)])
-  const catalog = toStudioCatalog(products, categories)
+  const [products, categories] = await Promise.all([getProducts(slug, { limit: CATALOG_MAX }), getCategories(slug)])
+  const catalog = toStudioCatalog(products, categories, { list: true })
 
   return (
     <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} extra={catalog.extra} system={{ kind: 'shop', q }} />

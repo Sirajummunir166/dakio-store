@@ -1,4 +1,4 @@
-import { getStoreBySlug, getProducts, getCategories, getPublishedSite, getServices } from '../../lib/api'
+import { getStoreBySlug, getProducts, CATALOG_MAX, getCategories, getPublishedSite, getServices } from '../../lib/api'
 import JsonLd from '../../components/JsonLd'
 import StorefrontClient from '../../components/StorefrontClient'
 import StoreUnavailable from '../../components/StoreUnavailable'
@@ -31,10 +31,12 @@ export async function generateMetadata({ params }) {
 export default async function StorePage({ params }) {
   const { slug } = await params
 
+  // A published studio site lists the whole catalogue; the legacy theme reads main's 48.
+  const site = getPublishedSite(slug)
   const [storeData, siteData, products, categories, services] = await Promise.all([
     getStoreBySlug(slug),
-    getPublishedSite(slug),
-    getProducts(slug),
+    site,
+    site.then((s) => getProducts(slug, s?.site ? { limit: CATALOG_MAX } : {})),
     getCategories(slug),
     getServices(slug),
   ])
@@ -49,7 +51,7 @@ export default async function StorePage({ params }) {
   // Published Store Studio site takes over the storefront; the legacy theme
   // engine below stays the fallback for tenants that never published one.
   if (siteData.site) {
-    const catalog = toStudioCatalog(products, categories)
+    const catalog = toStudioCatalog(products, categories, { list: true })
     const host = canonicalHostOf(siteData, slug)
     const home = siteData.site.pages.find((p) => p.id === 'home') || siteData.site.pages[0]
     return (

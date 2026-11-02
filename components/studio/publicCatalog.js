@@ -54,7 +54,10 @@ export function collectionPage(col, catalog) {
   };
 }
 
-export function toStudioCatalog(products = [], categories = []) {
+// `list`: a route that lists the whole catalogue (home, shop, collection,
+// custom page, draft preview) ships it to the browser; the product page's own
+// text (description, short description, tabs) stays out — /p/<slug> has it.
+export function toStudioCatalog(products = [], categories = [], { list = false } = {}) {
   const ranked = products.filter((p) => p.rank != null).length;
   let unrankedNext = ranked;
   const mapped = products.map((p) => ({
@@ -70,11 +73,13 @@ export function toStudioCatalog(products = [], categories = []) {
       arch: false,
       img: (Array.isArray(p.images) && p.images[0]) || p.imageUrl || null,
       slug: p.slug,
-      desc: p.description || '',
-      shortDesc: p.shortDescription || '',
-      // Product-page tabs (specs / size guide / shipping / custom), rich HTML
-      // from the merchant's product editor — see productTabs.js.
-      tabs: Array.isArray(p.contentTabs) ? p.contentTabs : [],
+      ...(list ? null : {
+        desc: p.description || '',
+        shortDesc: p.shortDescription || '',
+        // Product-page tabs (specs / size guide / shipping / custom), rich HTML
+        // from the merchant's product editor — see productTabs.js.
+        tabs: Array.isArray(p.contentTabs) ? p.contentTabs : [],
+      }),
       // Real variant rows, so a picked size maps to its stock, price and id
       // (components/studio/variants.js) instead of living only in a note.
       vars: Array.isArray(p.variants)

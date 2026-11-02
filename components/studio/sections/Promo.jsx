@@ -11,19 +11,20 @@ export default function Promo({ sec, ctx }) {
   const base = baseStyles(sec, ctx);
   const { c, headFont, hz, sh } = base;
 
-  const cdOn = p.cd !== false;
-
   // Countdown target: the merchant's "Offer ends" moment (p.ends) when set,
-  // otherwise a demo offset counting down from mount. The demo path tracks
-  // elapsed-time-since-mount so SSR and the client's first render match; the
-  // real-end path reads the clock, so its digits carry suppressHydrationWarning
-  // (server vs client can differ by a second).
+  // otherwise — in the editor only — a demo offset counting down from mount.
+  // The demo path tracks elapsed-time-since-mount so SSR and the client's
+  // first render match; the real-end path reads the clock, so its digits carry
+  // suppressHydrationWarning (server vs client can differ by a second).
   const CD_OFFSET = (2 * 24 * 3600 + 14 * 3600 + 22 * 60) * 1000;
   const endsMs = (() => {
     if (!p.ends) return null;
     const t = new Date(p.ends).getTime();
     return isNaN(t) ? null : t;
   })();
+  // Shoppers only see a countdown to a real end: without one the demo restarted
+  // on every visit — urgency that never runs out (Store Studio audit SST-56).
+  const cdOn = p.cd !== false && (!preview || endsMs != null);
   const startRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
@@ -66,9 +67,11 @@ export default function Promo({ sec, ctx }) {
         <Editable secId={sec.id} k="head" value={p.head} style={promoHead} preview={preview} />
         <Editable secId={sec.id} k="sub" value={p.sub} style={promoSub} multiline preview={preview} />
         <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, flexWrap: 'wrap' }}>
-          <div style={sx(codeChip)}>
-            Code: <Editable secId={sec.id} k="code" value={p.code} style={'font-weight:800;'} preview={preview} tag="span" />
-          </div>
+          {(!preview || (p.code && String(p.code).trim())) && (
+            <div style={sx(codeChip)}>
+              Code: <Editable secId={sec.id} k="code" value={p.code} style={'font-weight:800;'} preview={preview} tag="span" />
+            </div>
+          )}
           {cdOn && (
             <div style={{ display: 'flex', gap: 7 }}>
               {boxes.map(([num, lbl]) => (

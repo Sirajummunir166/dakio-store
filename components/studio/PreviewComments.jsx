@@ -11,6 +11,7 @@ export default function PreviewComments({ slug, token, apiBase }) {
   const [txt, setTxt] = useState('');
   const [sent, setSent] = useState({});
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
 
   useEffect(() => {
     const place = () => {
@@ -39,7 +40,15 @@ export default function PreviewComments({ slug, token, apiBase }) {
         setSent((s) => ({ ...s, [openFor]: (s[openFor] || 0) + 1 }));
         setTxt('');
         setOpenFor(null);
+        setErr(null);
+      } else {
+        // Comments switched off, link reset or expired — say so; the typed
+        // text stays (SST-21: a 403 used to leave the box open, silent).
+        const data = await res.json().catch(() => ({}));
+        setErr(data.error || (res.status === 403 ? 'Comments are turned off for this preview' : 'Couldn’t send — this preview link may have expired'));
       }
+    } catch {
+      setErr('Couldn’t send — check your connection and try again');
     } finally {
       setBusy(false);
     }
@@ -81,9 +90,10 @@ export default function PreviewComments({ slug, token, apiBase }) {
             rows={2}
             style={{ ...ui, marginTop: 6, width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 9, border: '1.5px solid rgba(27,30,21,0.14)', background: '#fbfcf7', fontSize: 12, outline: 'none', resize: 'none' }}
           />
+          {err && <div role="alert" data-preview-comment-error style={{ marginTop: 8, padding: '8px 10px', borderRadius: 9, background: 'rgba(176,58,46,0.1)', color: '#B03A2E', fontSize: 11.5, fontWeight: 600, lineHeight: 1.45 }}>{err}</div>}
           <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
             <div onClick={send} style={{ flex: 1, padding: 9, borderRadius: 9, background: '#C6F035', color: '#1A1D12', textAlign: 'center', fontSize: 12, fontWeight: 800, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? 'Sending…' : 'Send'}</div>
-            <div onClick={() => setOpenFor(null)} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid rgba(27,30,21,0.2)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Cancel</div>
+            <div onClick={() => { setOpenFor(null); setErr(null); }} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid rgba(27,30,21,0.2)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Cancel</div>
           </div>
         </div>
       )}

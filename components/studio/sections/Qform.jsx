@@ -13,6 +13,8 @@ import { sizeInStock, firstInStockSize, priceFor, soldOutSize } from '../variant
 import { useCheckoutTracking, isValidBDPhone } from '../../tracking/useCheckoutTracking';
 import { itemFromStudio } from '../../../lib/tracking/items';
 import { siteText } from '../siteText';
+import { DISTRICTS } from '../../../lib/bd-locations';
+import { deliveryCharge } from '../delivery';
 
 // payment_type as the order records it (FunnelSite's label)
 const PAY_TYPE = { cod: 'COD', bkash: 'bKash', nagad: 'Nagad' };
@@ -31,13 +33,15 @@ export default function Qform({ sec, ctx }) {
   const base = baseStyles(sec, ctx);
   const { c, headFont, hz, sh, padNarrow } = base;
   const B = btnColors(p.bg, P);
-  const bp = (ctx.fnProduct) || cat.products.find((x) => x.id === ctx.fnPid) || liveProds(cat)[0] || cat.products[0];
+  // A live funnel orders its own product only (SST-29); the canvas may preview with any.
+  const bp = ctx.isPublic ? ctx.fnProduct : ((ctx.fnProduct) || cat.products.find((x) => x.id === ctx.fnPid) || liveProds(cat)[0] || cat.products[0]);
   const sizes = bp ? sizeList(bp) : [];
   const pays = PAY_METHODS.filter((m) => (p.pays || {})[m.k] !== false);
 
   const [size, setSize] = useState(null);
   const [qty, setQty] = useState(1);
   const [form, setForm] = useState({ name: '', phone: '', address: '' });
+  const [district, setDistrict] = useState('');
   const [pay, setPay] = useState(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null); // { num, tag }
@@ -52,6 +56,11 @@ export default function Qform({ sec, ctx }) {
   const curSize = bp ? ((size && sizeInStock(bp, size) ? size : null) || firstInStockSize(bp, sizes)) : null;
   const unitPr = bp ? priceFor(bp, curSize) : 0;
 
+  // Delivery by district with the store's own rates — checkout's rule
+  // (../delivery.js). Shown before the order, charged the same (SST-47).
+  const goods = unitPr * qty;
+  const dlv = deliveryCharge(ctx, district, goods);
+
   // begin_checkout on the first keystroke, add_shipping_info (+ the Incomplete
   // Order) once name + phone + address are in, then add_payment_info → purchase.
   const item = bp ? itemFromStudio(bp, { size: curSize, qty, price: unitPr, collections: cat.collections || [] }) : null;
@@ -59,9 +68,9 @@ export default function Qform({ sec, ctx }) {
     items: item ? [item] : [],
     value: unitPr * qty,
     autoBegin: false,
-    contactReady: !!ctx.captureLead && !!bp && !!form.name.trim() && isValidBDPhone(form.phone) && !!form.address.trim(),
-    contactKey: [form.name, form.phone, form.address, curSize, qty].join('|'),
-    onShipping: (tracking) => ctx.captureLead({ product: bp, qty, size: curSize, ...form, tracking }),
+    contactReady: !!ctx.captureLead && !!bp && !!form.name.trim() && isValidBDPhone(form.phone) && !!form.address.trim() && !!district,
+    contactKey: [form.name, form.phone, form.address, district, curSize, qty].join('|'),
+    onShipping: (tracking) => ctx.captureLead({ product: bp, qty, size: curSize, ...form, district, tracking }),
   });
   const field = (k) => (ev) => {
     const v = ev.target.value;
@@ -76,19 +85,20 @@ export default function Qform({ sec, ctx }) {
     if (busy || !preview) return;
     if (!form.name.trim() || !form.phone.trim()) { setErr(tx('qform.errNeed')); return; }
     if (sizes.length > 0 && !curSize) { setErr(tx('qform.errSoldOut')); return; }
+    if (!district) { setErr(tx('checkout.errDistrict')); return; }
     setErr(null);
     if (ctx.placeOrder) {
       setBusy(true);
       const eventId = ck.purchaseId();
       ck.paymentInfo(PAY_TYPE[payK] || payK);
       try {
-        const res = await ctx.placeOrder({ product: bp, qty, size: curSize, ...form, pay: payK, eventId, tracking: ck.trackingFor(eventId) });
+        const res = await ctx.placeOrder({ product: bp, qty, size: curSize, ...form, district, shippingCharge: dlv, pay: payK, eventId, tracking: ck.trackingFor(eventId) });
         if (res.otpRequired) {
           setOtp({ sessionToken: res.sessionToken, maskedPhone: res.maskedPhone, expiresAt: res.expiresAt ? new Date(res.expiresAt) : null });
           setOtpInput(''); setOtpErr(null);
           return;
         }
-        ck.purchase(res.data, { value: unitPr * qty, paymentType: PAY_TYPE[payK] || payK });
+        ck.purchase(res.data, { value: goods + dlv, paymentType: PAY_TYPE[payK] || payK });
         setDone({ num: res.num, tag: res.tag });
       } catch (e2) {
         setErr(String(e2?.message || tx('qform.failed')));
@@ -116,7 +126,7 @@ export default function Qform({ sec, ctx }) {
         }
         return;
       }
-      ck.purchase(r.data, { value: unitPr * qty, paymentType: PAY_TYPE[payK] || payK });
+      ck.purchase(r.data, { value: goods + dlv, paymentType: PAY_TYPE[payK] || payK });
       setOtp(null); setOtpInput('');
       setDone({ num: r.num, tag: r.tag });
     } catch (e2) {
@@ -190,6 +200,18 @@ export default function Qform({ sec, ctx }) {
             <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.phone} onChange={field('phone')} placeholder="01XXX-XXXXXX" style={sx(inp)} readOnly={!preview} /></div>
             <div style={sx(lbl)}>{tx('qform.address')}</div>
             <div style={{ marginTop: 8 }}><input onClick={(ev) => ev.stopPropagation()} value={form.address} onChange={field('address')} placeholder={tx('qform.addressPlaceholder')} style={sx(inp)} readOnly={!preview} /></div>
+            <div style={sx(lbl)}>{tx('checkout.district')}</div>
+            <div style={{ marginTop: 8 }}>
+              <select
+                value={district} disabled={!preview} data-qform-district
+                onClick={(ev) => ev.stopPropagation()}
+                onChange={(ev) => { ev.stopPropagation(); setDistrict(ev.target.value); if (ctx.placeOrder && !ck.checkoutId()) ck.begin(); }}
+                style={sx(inp + (district ? '' : ' color:' + c.sub + ';'))}
+              >
+                <option value="">{tx('checkout.selectDistrict')}</option>
+                {DISTRICTS.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
             <div style={sx(lbl)}>{tx('qform.payment')}</div>
             <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {pays.map((m) => {
@@ -206,6 +228,11 @@ export default function Qform({ sec, ctx }) {
                   </div>
                 );
               })}
+            </div>
+            <div data-qform-total style={sx('margin-top:18px; padding-top:14px; border-top:1px solid ' + c.line + '; font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + ';')}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}><span>{tx('cart.subtotal')}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(goods)}</span></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}><span>{tx('cart.delivery')}{district ? ' (' + district + ')' : ''}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{district ? (dlv ? fmtPr(dlv) : tx('delivery.free')) : tx('checkout.selectDistrict')}</span></div>
+              <div style={sx('display:flex; justify-content:space-between; padding-top:10px; border-top:1px solid ' + c.line + '; color:' + c.fg + '; font-size:15px; font-weight:800;')}><span>{tx('checkout.total')}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPr(goods + dlv)}</span></div>
             </div>
             {err && <div style={sx('margin-top:12px; padding:10px 12px; border-radius:10px; background:rgba(176,58,46,0.1); color:#B03A2E; font-family:' + F.b + '; font-size:12px; line-height:1.5;')}>{err}</div>}
             <div onClick={submit} style={sx('margin-top:18px; display:flex; align-items:center; justify-content:center; gap:9px; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:800; font-size:14.5px; cursor:pointer;' + (busy ? ' opacity:0.6; pointer-events:none;' : ''))}>

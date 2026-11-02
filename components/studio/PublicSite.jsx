@@ -4,7 +4,7 @@ import { co, resolveTheme } from './theme';
 import { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
 import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
-import { CartPage, CheckoutPage, AccountPage } from './system/CommercePages';
+import { CartPage, CheckoutPage, AccountPage, sys10, checkoutPays } from './system/CommercePages';
 import { ServicesPage, ServicePage } from './system/ServicePages';
 import { BookPage, EnquirePage, BookingStatusPage } from './system/BookingPages';
 import CartPanel from './CartPanel';
@@ -14,7 +14,7 @@ import { useTracking } from '../tracking/TrackingRoot';
 import { contactEventFor } from '../../lib/tracking/events';
 import { itemFromStudio, listPayload } from '../../lib/tracking/items';
 import { catProduct } from './addOns';
-import { optImg } from './publicCatalog';
+import { optImg, toStudioCatalog } from './publicCatalog';
 import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
 import { siteText } from './siteText';
 import { barOf, contactDigits, ctaLinkOf, ctaLabelOf, headerWords, ServiceActions, MobileMenu, MenuIcon, WaIcon, CallIcon } from './SiteHeaderParts';
@@ -43,7 +43,9 @@ const FONT_HREF = {
 // `extra`: add-ons the products' pairings carried that are not among `products`
 // (Goes well with) — the bag resolves them; no grid lists them.
 // `services` (W1): the store's live Services for the Services section and pages; `business`: the store's business summary.
-export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], extra = [], system = null, storeSlug = null, store = null, services = [], business = null }) {
+// `previewToken`: the shared draft-preview link (app/[slug]/studio-preview) —
+// page links stay inside the preview so a reviewer sees draft pages (SST-45).
+export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], extra = [], system = null, storeSlug = null, store = null, services = [], business = null, previewToken = null }) {
   const [mob, setMob] = useState(false);
   // Tracking (components/tracking) — also where the store's currency comes
   // from: most Studio routes never receive the store object.
@@ -71,6 +73,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
 
   const pageHref = (id) => {
     const pg = doc.pages.find((p) => p.id === id);
+    if (previewToken) return `${basePath}/studio-preview?token=${encodeURIComponent(previewToken)}${pg && pg.id !== 'home' ? '&page=' + encodeURIComponent(pg.id) : ''}`;
     if (!pg || pg.slug === '/') return basePath || '/';
     return basePath + pg.slug;
   };
@@ -162,6 +165,8 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     P, F, C, tsM, denM, shCard, mob, padX,
     preview: true, isPublic: true, theme,
     menus: doc.menus, assets,
+    // The footer's payment marks are the checkout's own methods (SST-58).
+    payMethods: checkoutPays(sys10(doc.sys, 'checkout')),
     cat,
     isSel: false,
     currency: tk.currency,
@@ -214,6 +219,13 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     // navigating away; /cart stays a real page (direct links, no-JS).
     storeSlug,
     store,
+    // Bag lines outside the loaded catalogue are read by id (useBag, SST-30)
+    fetchProducts: storeSlug ? async (ids) => {
+      const res = await fetch(API + '/store/' + storeSlug + '/products?limit=100&ids=' + encodeURIComponent(ids.join(',')));
+      if (!res.ok) return [];
+      const data = await res.json().catch(() => ({}));
+      return toStudioCatalog(data.products || []).products;
+    } : undefined,
     onCart: () => {
       setCartOpen(true);
       const items = storeSlug ? getCart(storeSlug).map((l, i) => { const p = catProduct(cat, l.pid); return p ? itemOf(p, { size: l.size, qty: l.qty, index: i }) : null; }).filter(Boolean) : [];
@@ -393,7 +405,10 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     );
   };
 
-  const navItems = (doc.menus?.header || []).slice(0, 6);
+  // Every header link the merchant added (up to the 30 the builder allows): the
+  // row wraps, the phone drawer lists them all. A 7th link and on were dropped
+  // without a word (Store Studio audit SST-57).
+  const navItems = doc.menus?.header || [];
   // Asking about a service (W1, before booking): the header's main button, else WhatsApp, else the Contact section.
   function ctaLinkOfDoc() { return ctaLinkOf(doc, barOf(doc), business); }
   // The header's mode (W0): a shop keeps search, cart and account; a business
@@ -461,7 +476,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
           )}
         </a>
         {!mob && (
-          <div style={{ display: 'flex', gap: 26, fontSize: 13, fontWeight: 600, color: base.sub }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', columnGap: 26, rowGap: 8, minWidth: 0, fontSize: 13, fontWeight: 600, color: base.sub }}>
             {navItems.map((it) => {
               const href = linkHref(it.link);
               const active = it.link.t === 'page' && it.link.ref === page.id;

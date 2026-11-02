@@ -73,3 +73,13 @@ test('review: chained add-ons and split lines get the normal price in both carts
   const chainedBasic = repriceCart([main, { key: 's', productId: 'scarf', qty: 1, addOnOf: 'dress', basePrice: 600, togetherPrice: null, unitPrice: 600 }, { key: 'p', productId: 'pin', qty: 1, addOnOf: 'scarf', basePrice: 80, togetherPrice: 50, unitPrice: 80 }])
   assert.equal(chainedBasic[2].unitPrice, 80)
 })
+
+test('final check FC-SST-02: a list route catalogue leaves out the product page text', () => {
+  const api = [{ id: 'p1', name: 'Saree', sku: 'S-1', sellingPrice: 900, slug: 'saree', description: '<p>Long text</p>', shortDescription: 'Short', contentTabs: [{ key: 'specs', html: '<p>x</p>' }], variants: [{ id: 'v1', name: 'L', stock: 2 }] }]
+  const pdp = toStudioCatalog(api, []).products[0]
+  assert.equal(pdp.desc, '<p>Long text</p>')
+  assert.equal(pdp.tabs.length, 1)
+  const listed = toStudioCatalog(api, [], { list: true }).products[0]
+  assert.equal('desc' in listed || 'shortDesc' in listed || 'tabs' in listed, false)
+  assert.deepEqual({ ...listed }, (({ desc, shortDesc, tabs, ...rest }) => rest)(pdp))
+})

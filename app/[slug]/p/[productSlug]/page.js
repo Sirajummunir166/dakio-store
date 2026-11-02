@@ -15,8 +15,10 @@ export async function generateMetadata({ params }) {
   const { slug, productSlug } = await params
   const siteData = await getPublishedSite(slug)
   if (!siteData?.site) return { title: 'Not Found' }
-  const products = await getProducts(slug)
-  const p = (products || []).find((x) => x.slug === productSlug)
+  // The product's own read — never a capped list, which titled older
+  // products "Not Found" with no canonical (Store Studio audit SST-31).
+  const one = await getProductBySlug(slug, productSlug)
+  const p = one && one.slug === productSlug ? one : null
   const brand = siteData.site.theme?.brandName || 'Store'
   const img = p && ((Array.isArray(p.images) && p.images[0]) || p.imageUrl)
   return {
@@ -42,7 +44,7 @@ export default async function ProductRoute({ params }) {
   let product = catalog.products.find((p) => p.slug === productSlug)
   let raw = products.find((p) => p.slug === productSlug)
   if (!product) {
-    // Not among the newest 48 (e.g. an add-on from a Goes well with block):
+    // Not among the loaded catalogue (e.g. an add-on from a Goes well with block):
     // the product's own read, mapped the same way.
     const one = await getProductBySlug(slug, productSlug)
     if (one && one.slug === productSlug) {

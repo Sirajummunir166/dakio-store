@@ -15,8 +15,9 @@ export async function generateMetadata({ params }) {
   if (!data?.store) return { title: 'Not Found' }
   const siteData = await getPublishedSite(data.store.slug)
   if (!siteData?.site) return { title: 'Not Found' }
-  const products = await getProducts(data.store.slug)
-  const p = (products || []).find((x) => x.slug === productSlug)
+  // The product's own read, not a capped list (SST-31)
+  const one = await getProductBySlug(data.store.slug, productSlug)
+  const p = one && one.slug === productSlug ? one : null
   const brand = siteData.site.theme?.brandName || 'Store'
   const img = p && ((Array.isArray(p.images) && p.images[0]) || p.imageUrl)
   return {

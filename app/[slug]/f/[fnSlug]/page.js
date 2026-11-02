@@ -1,4 +1,4 @@
-import { getProducts, getCategories, getPublishedSite } from '../../../../lib/api'
+import { getProducts, getProductsByIds, getCategories, getPublishedSite, getStoreBySlug } from '../../../../lib/api'
 import StoreUnavailable from '../../../../components/StoreUnavailable'
 import FunnelSite from '../../../../components/studio/FunnelSite'
 import { toStudioCatalog } from '../../../../components/studio/publicCatalog'
@@ -31,10 +31,13 @@ export default async function FunnelRoute({ params }) {
   const fn = (siteData.site.funnels || []).find((f) => f.slug === fnSlug)
   if (!fn) notFound()
 
-  const [products, categories] = await Promise.all([getProducts(slug), getCategories(slug)])
+  const [products, categories, storeData] = await Promise.all([getProducts(slug), getCategories(slug), getStoreBySlug(slug)])
+  // The funnel's product by its own read when the list does not hold it — a
+  // funnel never falls back to another product (SST-29).
+  if (fn.pid && !products.some((p) => p.id === fn.pid)) products.push(...(await getProductsByIds(slug, [fn.pid])))
   const catalog = toStudioCatalog(products, categories)
 
   return (
-    <FunnelSite doc={siteData.site} fn={fn} storeSlug={slug} products={catalog.products} collections={catalog.collections} />
+    <FunnelSite doc={siteData.site} fn={fn} storeSlug={slug} store={storeData?.store || null} products={catalog.products} collections={catalog.collections} />
   )
 }
