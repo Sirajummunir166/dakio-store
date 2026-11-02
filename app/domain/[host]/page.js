@@ -59,7 +59,7 @@ export default async function DomainStorePage({ params }) {
   // Published Store Studio site takes over; legacy theme engine is the fallback.
   // basePath is '' — on a custom domain the site lives at the root.
   if (siteData.site) {
-    const catalog = toStudioCatalog(products, categories)
+    const catalog = toStudioCatalog(products, categories, { list: true })
     const canon = canonicalHostOf(storeData, slug)
     const home = siteData.site.pages.find((p) => p.id === 'home') || siteData.site.pages[0]
     return (

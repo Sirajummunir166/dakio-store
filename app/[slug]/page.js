@@ -51,7 +51,7 @@ export default async function StorePage({ params }) {
   // Published Store Studio site takes over the storefront; the legacy theme
   // engine below stays the fallback for tenants that never published one.
   if (siteData.site) {
-    const catalog = toStudioCatalog(products, categories)
+    const catalog = toStudioCatalog(products, categories, { list: true })
     const host = canonicalHostOf(siteData, slug)
     const home = siteData.site.pages.find((p) => p.id === 'home') || siteData.site.pages[0]
     return (

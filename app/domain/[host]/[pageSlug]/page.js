@@ -49,7 +49,7 @@ export default async function DomainStudioSubPage({ params }) {
   const [products, categories, services] = await Promise.all([getProducts(slug, { limit: CATALOG_MAX }), getCategories(slug), getServices(slug)])
   const servicesPage = !page && pageSlug === 'services' && services.length > 0
   if (!page && !servicesPage) notFound()
-  const catalog = toStudioCatalog(products, categories)
+  const catalog = toStudioCatalog(products, categories, { list: true })
 
   return (
     <>
