@@ -40,10 +40,18 @@ export default function FashionTheme({ contract }) {
 }
 
 // Replace Veluna placeholder branding with the merchant's real store data
-// and fix default product tab so all products show instead of badge-filtered "new"
+// and fix default product tab so all products show instead of badge-filtered "new".
+// A Live campaign's banner takes the top bar while it runs — the campaign form
+// promises it, and the theme never showed it (Campaigns audit CMP-14).
 function patchStoreSections(sections, store) {
-  if (!store?.name || !Array.isArray(sections)) return sections
-  return sections.map((s) => {
+  if (!Array.isArray(sections)) return sections
+  const banner = store?.campaignBanner || null
+  const withBanner = !banner ? sections
+    : sections.some((s) => s.type === 'topbar')
+      ? sections.map((s) => (s.type === 'topbar' ? { ...s, enabled: true, settings: { ...s.settings, message: banner } } : s))
+      : [{ id: 'campaign-topbar', type: 'topbar', enabled: true, settings: { message: banner } }, ...sections]
+  if (!store?.name) return withBanner
+  return withBanner.map((s) => {
     if (s.type === 'header' && s.settings?.brandName === 'Veluna') {
       return {
         ...s,

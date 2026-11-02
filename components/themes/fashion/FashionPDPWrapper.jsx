@@ -15,6 +15,7 @@ import FashionStyleInjector from './styles/FashionStyleInjector.jsx'
 import FashionProductDetail from './FashionProductDetail.jsx'
 import CartDrawer from './components/CartDrawer.jsx'
 import ProductQuickView from './components/ProductQuickView.jsx'
+import TopbarSection from './sections/TopbarSection.jsx'
 
 /**
  * FashionPDPWrapper
@@ -84,6 +85,8 @@ export default function FashionPDPWrapper({
     <FashionThemeProvider contract={contract}>
       <FashionStyleInjector accentColor={store.accentColor} />
       <div className="veluna">
+        {/* The running campaign's banner on the product page too (CMP-14). */}
+        {store.campaignBanner && <TopbarSection settings={{ message: store.campaignBanner }} />}
         <FashionProductDetail />
       </div>
       <CartDrawer />
