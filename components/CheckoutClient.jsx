@@ -36,11 +36,15 @@ export default function CheckoutClient({ store, slug }) {
   const [thana, setThana]         = useState('')
   const [autoDetected, setAutoDetected] = useState(false)
   const [formErr, setFormErr]   = useState('')
+  // The order was refused for its coupon (400 COUPON_INVALID, Campaigns audit
+  // CPN-07): the message itself offers "remove the code" — on a phone the
+  // coupon's own Remove sits inside the collapsed summary.
+  const [couponRefused, setCouponRefused] = useState(false)
   const [placing, setPlacing]   = useState(false)
   const [orderNum, setOrderNum] = useState('')
 
   const [couponCode, setCouponCode]         = useState('')
-  const [couponDiscount, setCouponDiscount] = useState(0)
+  const [rawCouponDiscount, setCouponDiscount] = useState(0)
   const [couponErr, setCouponErr]           = useState('')
   const [appliedCoupon, setAppliedCoupon]   = useState(null)
   const [couponLoading, setCouponLoading]   = useState(false)
@@ -66,12 +70,17 @@ export default function CheckoutClient({ store, slug }) {
   }, [slug])
 
   const cartTotal    = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0)
+  // A coupon never takes more than the goods — a ৳2,000 code on a ৳450 cart
+  // showed "Complete order · Tk −1,550" while the order charged ৳60 (CPN-04).
+  // The server caps it too; this keeps a stale amount from showing after the
+  // cart shrinks.
+  const couponDiscount = Math.min(Math.max(0, Number(rawCouponDiscount) || 0), cartTotal)
   const cartCount    = cart.reduce((s, i) => s + i.qty, 0)
   const isInsideDhaka = DHAKA_DISTRICTS.includes(district)
   // Free over the store's threshold — the server bills it the same way.
   const freeOver = Number(store?.freeDeliveryOver) > 0 ? Number(store.freeDeliveryOver) : null
   const shippingCharge = district && !(freeOver != null && cartTotal >= freeOver) ? (isInsideDhaka ? insideDhakaCharge : outsideDhakaCharge) : 0
-  const orderTotal   = cartTotal + shippingCharge - (couponDiscount || 0)
+  const orderTotal   = Math.max(0, cartTotal + shippingCharge - couponDiscount)
 
   function handleAddressBlur(val) {
     if (!val.trim()) return
@@ -109,6 +118,7 @@ export default function CheckoutClient({ store, slug }) {
 
   function removeCoupon() {
     setAppliedCoupon(null); setCouponDiscount(0); setCouponCode(''); setCouponErr('')
+    if (couponRefused) { setFormErr(''); setCouponRefused(false) }
   }
 
   // Saves the Incomplete Order (Storefront lead). `tracking` carries the
@@ -174,7 +184,7 @@ export default function CheckoutClient({ store, slug }) {
     if (!isValidBDPhone(form.phone)) { setFormErr('Please enter a valid Bangladesh mobile number (e.g. 01XXXXXXXXX)'); return }
     if (!district)                   { setFormErr('Please select your district'); return }
     if (!thana)                      { setFormErr('Please select your thana / upazila'); return }
-    setFormErr(''); setPlacing(true)
+    setFormErr(''); setCouponRefused(false); setPlacing(true)
     // The purchase's event id, shared with the server's Meta Purchase. Kept
     // across the SMS-code step and a retry (the server replays, never doubles).
     const metaEventId = ck.purchaseId()
@@ -208,7 +218,10 @@ export default function CheckoutClient({ store, slug }) {
         setPlacing(false)
         return
       }
-      if (!r.ok) throw new Error(data?.error || 'Order failed')
+      if (!r.ok) {
+        if (data?.code === 'COUPON_INVALID') setCouponRefused(true)
+        throw new Error(data?.error || 'Order failed')
+      }
       // 201 — fire browser Purchase and show confirmation
       fireOrderSuccess(data)
     } catch (e) {
@@ -227,6 +240,15 @@ export default function CheckoutClient({ store, slug }) {
       })
       const data = await r.json()
       if (!r.ok) {
+        // The coupon stopped applying while the code was on its way: back to
+        // the form, where the refusal offers to remove it.
+        if (data?.code === 'COUPON_INVALID') {
+          setOtpStep(false); setOtpInput(''); setOtpSessionToken('')
+          setFormErr(data.error || 'This coupon can no longer be used.')
+          setCouponRefused(true)
+          setOtpVerifying(false)
+          return
+        }
         if (r.status === 410 || r.status === 429) {
           // Expired or locked — reset back to checkout form
           setOtpStep(false)
@@ -281,6 +303,7 @@ export default function CheckoutClient({ store, slug }) {
         autoDetected={autoDetected}
         setAutoDetected={setAutoDetected}
         formErr={formErr}
+        couponRefused={couponRefused}
         placing={placing}
         placeOrder={placeOrder}
         orderNum={orderNum}
@@ -516,6 +539,12 @@ export default function CheckoutClient({ store, slug }) {
             {formErr && (
               <div style={{ fontSize: '13px', color: '#dc2626', marginBottom: '16px', padding: '12px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px' }}>
                 {formErr}
+                {couponRefused && appliedCoupon && (
+                  <button type="button" onClick={removeCoupon}
+                    style={{ display: 'block', marginTop: '8px', background: 'none', border: 'none', padding: 0, color: '#991b1b', fontSize: '13px', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: FONT }}>
+                    Remove code {appliedCoupon.code}
+                  </button>
+                )}
               </div>
             )}
 

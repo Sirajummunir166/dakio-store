@@ -9,7 +9,7 @@ export default function FashionCheckoutRoute(props) {
     store, slug, accent, router,
     cart, cartReady, form, setForm,
     district, setDistrict, thana, setThana, autoDetected, setAutoDetected,
-    formErr, placing, placeOrder, orderNum,
+    formErr, couponRefused, placing, placeOrder, orderNum,
     couponCode, setCouponCode, couponDiscount, couponErr, appliedCoupon, couponLoading, applyCoupon, removeCoupon,
     otpStep, otpInput, setOtpInput, otpErr, setOtpErr, otpVerifying, verifyOtp, otpMaskedPhone, otpExpiresAt, setOtpStep,
     cartTotal, cartCount, shippingCharge, orderTotal, isInsideDhaka, handleAddressBlur,
@@ -240,7 +240,18 @@ export default function FashionCheckoutRoute(props) {
               </div>
             </div>
 
-            {formErr && <div className="ft-co-err">{formErr}</div>}
+            {formErr && (
+              <div className="ft-co-err">
+                {formErr}
+                {/* A refused coupon: remove it right here (CPN-07) — on a phone its own Remove is inside the closed summary. */}
+                {couponRefused && appliedCoupon && (
+                  <button type="button" onClick={removeCoupon}
+                    style={{ display: 'block', marginTop: 8, background: 'none', border: 'none', padding: 0, color: '#B42318', fontSize: 13, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}>
+                    Remove code {appliedCoupon.code}
+                  </button>
+                )}
+              </div>
+            )}
             <button type="button" className="ft-co-submit" onClick={placeOrder} disabled={placing}>
               {placing ? 'Placing order…' : `Complete order · ${fmt(orderTotal, store?.currency)}`}
             </button>
