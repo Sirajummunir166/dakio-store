@@ -25,7 +25,7 @@ const FONT_HREF = {
   banglas: 'family=Hanken+Grotesk:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Serif+Bengali:wght@500;600;700',
 };
 
-export default function FunnelSite({ doc, fn, storeSlug, products = [], collections = [] }) {
+export default function FunnelSite({ doc, fn, storeSlug, store = null, products = [], collections = [] }) {
   const [mob, setMob] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_QUERY);
@@ -39,7 +39,9 @@ export default function FunnelSite({ doc, fn, storeSlug, products = [], collecti
   const { P, F, C, tsM, denM, shCard } = resolveTheme(theme);
   const padX = mob ? 20 : 48;
   const seoF = doc.seo || {};
-  const product = products.find((p) => p.id === fn.pid) || products[0] || null;
+  // The funnel's own product, never a stand-in: the newest product used to
+  // take its place — on the page and in the real order (Store Studio audit SST-29).
+  const product = products.find((p) => p.id === fn.pid) || null;
 
   // Tracking: the funnel's own pixel fires on top of the store's (never
   // instead of it), and landing here is a view of its one product.
@@ -60,7 +62,10 @@ export default function FunnelSite({ doc, fn, storeSlug, products = [], collecti
   // Real order placement — the funnel's whole job. A 202 means the store's
   // fake-order protection wants the SMS code first: no order exists yet, so
   // the form shows its code step (verifyOrderOtp) — never a success.
-  const placeOrder = async ({ product: bp, qty, size, name, phone, address, pay, eventId = null, tracking }) => {
+  // The district decides the delivery charge (Dhaka district = inside rate,
+  // every other = outside, as at checkout); it used to be sent as "—", so a
+  // Dhaka buyer paid the outside rate the form never showed (SST-47).
+  const placeOrder = async ({ product: bp, qty, size, name, phone, address, district, shippingCharge, pay, eventId = null, tracking }) => {
     const payLbl = pay === 'bkash' ? 'bKash' : pay === 'nagad' ? 'Nagad' : 'COD';
     const res = await fetch(`${API}/store/${storeSlug}/orders`, {
       method: 'POST',
@@ -69,10 +74,11 @@ export default function FunnelSite({ doc, fn, storeSlug, products = [], collecti
         name: name.trim(),
         phone: phone.trim(),
         address: (address || '').trim() || '—',
-        city: '—',
-        district: '—',
+        city: district,
+        district,
         items: [{ productId: bp.id, variantId: orderVariantId(bp, size), qty, name: bp.n + (size ? ' — ' + size : '') }],
         paymentMethod: payLbl,
+        shippingCharge,
         note: `Funnel: ${fn.name} (/f/${fn.slug})${size ? ' · Size: ' + size : ''}`,
         metaEventId: eventId || undefined,
         tracking,
@@ -99,7 +105,7 @@ export default function FunnelSite({ doc, fn, storeSlug, products = [], collecti
   };
 
   // Incomplete Order (Storefront lead) once name + phone + address are in.
-  const captureLead = ({ product: bp, qty, size, name, phone, address, tracking }) => {
+  const captureLead = ({ product: bp, qty, size, name, phone, address, district, tracking }) => {
     const unitPrice = priceFor(bp, size);
     fetch(`${API}/store/${storeSlug}/leads`, {
       method: 'POST',
@@ -107,6 +113,7 @@ export default function FunnelSite({ doc, fn, storeSlug, products = [], collecti
       keepalive: true,
       body: JSON.stringify({
         name: name.trim(), phone: phone.trim(), address: (address || '').trim() || undefined,
+        city: district || undefined, district: district || undefined,
         cart: [{ productId: bp.id, name: bp.n + (size ? ' — ' + size : ''), qty, unitPrice }],
         cartValue: unitPrice * qty,
         sourceUrl: window.location.href,
@@ -128,6 +135,7 @@ export default function FunnelSite({ doc, fn, storeSlug, products = [], collecti
     onOrderForm: scrollToForm,
     fnPid: fn.pid,
     fnProduct: product,
+    store,
     placeOrder,
     verifyOrderOtp,
     captureLead,
@@ -145,6 +153,15 @@ export default function FunnelSite({ doc, fn, storeSlug, products = [], collecti
       </div>
     );
   };
+
+  if (!product) {
+    return (
+      <div style={{ minHeight: '70vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 30, textAlign: 'center', background: P.bg, color: P.ink, fontFamily: "'Hanken Grotesk',sans-serif" }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>This offer isn’t available right now</div>
+        <div style={{ fontSize: 14, opacity: 0.7 }}>The product on this page is no longer on sale.</div>
+      </div>
+    );
+  }
 
   return (
     <ImgCtx.Provider value={{ crops: doc.crops || {}, cropTarget: null, setCropTarget: null, onCrop: null }}>

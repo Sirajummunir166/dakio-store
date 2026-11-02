@@ -1,4 +1,4 @@
-import { getStoreByDomain, getProducts, getCategories, getPublishedSite } from '../../../../../lib/api'
+import { getStoreByDomain, getProducts, CATALOG_MAX, getCategories, getPublishedSite } from '../../../../../lib/api'
 import StoreUnavailable from '../../../../../components/StoreUnavailable'
 import PublicSite from '../../../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../../../components/studio/publicCatalog'
@@ -30,7 +30,7 @@ export default async function DomainCollectionRoute({ params }) {
   const siteData = await getPublishedSite(slug)
   if (!siteData.site) notFound()
 
-  const [products, categories] = await Promise.all([getProducts(slug), getCategories(slug)])
+  const [products, categories] = await Promise.all([getProducts(slug, { limit: CATALOG_MAX }), getCategories(slug)])
   const catalog = toStudioCatalog(products, categories)
   const col = catalog.collections.find((c) => c.slug === colSlug)
   if (!col) notFound()

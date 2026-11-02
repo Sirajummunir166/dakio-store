@@ -1,4 +1,4 @@
-import { getStoreBySlug, getProducts, getCategories, getPublishedSite, getServices } from '../../../lib/api'
+import { getStoreBySlug, getProducts, CATALOG_MAX, getCategories, getPublishedSite, getServices } from '../../../lib/api'
 import StoreUnavailable from '../../../components/StoreUnavailable'
 import PublicSite from '../../../components/studio/PublicSite'
 import JsonLd from '../../../components/JsonLd'
@@ -41,7 +41,7 @@ export default async function StudioSubPage({ params }) {
   }
 
   const page = findPage(siteData.site, pageSlug)
-  const [storeData, products, categories, services] = await Promise.all([getStoreBySlug(slug), getProducts(slug), getCategories(slug), getServices(slug)])
+  const [storeData, products, categories, services] = await Promise.all([getStoreBySlug(slug), getProducts(slug, { limit: CATALOG_MAX }), getCategories(slug), getServices(slug)])
   const servicesPage = !page && pageSlug === 'services' && services.length > 0
   if (!page && !servicesPage) notFound()
   const catalog = toStudioCatalog(products, categories)

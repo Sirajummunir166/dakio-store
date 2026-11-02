@@ -1,7 +1,7 @@
-import { getProducts, getCategories, getPublishedSite } from '../../../../lib/api'
+import { getProducts, CATALOG_MAX, getCategories, getPublishedSite } from '../../../../lib/api'
 import StoreUnavailable from '../../../../components/StoreUnavailable'
 import PublicSite from '../../../../components/studio/PublicSite'
-import { toStudioCatalog, collectionPage } from '../../../../components/studio/publicCatalog'
+import { toStudioCatalog, collectionPage, studioMetadata } from '../../../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
 import { canonicalHostOf, canonicalMeta } from '../../../../lib/seo'
 
@@ -17,6 +17,9 @@ export async function generateMetadata({ params }) {
   const col = categories.find((c) => c.slug === colSlug)
   if (!col) return { title: 'Not Found' }
   return {
+    // The store's SEO switches (noindex, Search Console) apply here as on
+    // every other studio route (SST-33: this one stayed indexable).
+    ...studioMetadata(siteData.site, null),
     title: `${col.name} — ${siteData.site.theme?.brandName || 'Store'}`,
     description: `Shop ${col.name} online.`,
     // The /shop/<collection> template is the collection's one address.
@@ -34,7 +37,7 @@ export default async function StudioCollectionPage({ params }) {
     return <StoreUnavailable />
   }
 
-  const [products, categories] = await Promise.all([getProducts(slug), getCategories(slug)])
+  const [products, categories] = await Promise.all([getProducts(slug, { limit: CATALOG_MAX }), getCategories(slug)])
   const catalog = toStudioCatalog(products, categories)
   const col = catalog.collections.find((c) => c.slug === colSlug)
   if (!col) notFound()

@@ -16,6 +16,7 @@ import { useCheckoutTracking } from '../../tracking/useCheckoutTracking';
 import { useTracking } from '../../tracking/TrackingRoot';
 import { itemFromStudio } from '../../../lib/tracking/items';
 import { siteText } from '../siteText';
+import { freeDeliveryOver, deliveryCharge } from '../delivery';
 
 function isValidBDPhone(raw) {
   const p = String(raw || '').replace(/[\s\-().]/g, '');
@@ -28,6 +29,8 @@ export const SYS10_DEFAULTS = {
   account: { head: 'Your orders', sub: 'Enter the phone number you order with — we’ll text a code, no password needed.' },
 };
 export const sys10 = (sys, k) => ({ ...SYS10_DEFAULTS[k], ...((sys || {})[k] || {}) });
+// The payment methods the store's checkout offers, in its order (cod / bkash / nagad).
+export const checkoutPays = (cs) => (cs.payOrder || ['cod', 'bkash', 'nagad']).filter((k) => (cs.pays || {})[k] !== false);
 // The same, with the starter words in the site's language — the merchant's own words still win.
 const SYS10_TEXT = { cart: { head: 'cart.head', note: 'cart.note' }, checkout: { note: 'checkout.defaultNote' }, account: { head: 'account.head', sub: 'account.sub' } };
 const sys10t = (sys, k, tx) => ({ ...SYS10_DEFAULTS[k], ...Object.fromEntries(Object.entries(SYS10_TEXT[k] || {}).map(([f, key]) => [f, tx(key)])), ...((sys || {})[k] || {}) });
@@ -38,16 +41,9 @@ const PAY_TYPE = { cod: 'COD', bkash: 'bKash', nagad: 'Nagad' };
 // Payment labels in the site's language (siteText checkout.pay.<k>.n / .d).
 const payLbl = (tx, k) => ({ n: tx('checkout.pay.' + k + '.n'), d: tx('checkout.pay.' + k + '.d') });
 
-// Delivery is charged by district at checkout — Dhaka district at the store's
-// inside rate, every other district at its outside rate (dakio-api
-// lib/deliveryZone.js, the one rule) — and free once the goods reach the
-// store's `freeDeliveryOver`, which the server applies to every order too.
+// Delivery is charged by district at checkout (../delivery.js, the one rule).
 // The bag pages never invent a charge or a threshold the server won't honour;
 // they say what the rates are.
-export function freeDeliveryOver(ctx) {
-  const n = Number(ctx && ctx.store && ctx.store.freeDeliveryOver);
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
 export function deliveryRates(ctx) {
   const s = ctx && ctx.store;
   if (!s || s.deliveryInsideDhaka == null || s.deliveryOutsideDhaka == null) return null;
@@ -69,6 +65,10 @@ export function deliveryNote(ctx, goods = null) {
 export function useBag(ctx) {
   const [tick, setTick] = useState(0);
   const [mounted, setMounted] = useState(false);
+  // Products of bag lines the page's catalogue does not hold, read by id —
+  // a line added on a product page outside the list used to vanish from the
+  // drawer, /cart and /checkout (Store Studio audit SST-30). id → product|null.
+  const [fetched, setFetched] = useState({});
   useEffect(() => {
     setMounted(true);
     if (!ctx.storeSlug) return;
@@ -76,12 +76,24 @@ export function useBag(ctx) {
     window.addEventListener('studio-cart-change', h);
     return () => window.removeEventListener('studio-cart-change', h);
   }, [ctx.storeSlug]);
+  useEffect(() => {
+    if (!mounted || !ctx.storeSlug || !ctx.fetchProducts) return;
+    const missing = [...new Set(getCart(ctx.storeSlug).map((l) => l.pid))].filter((pid) => !catProduct(ctx.cat, pid) && !(pid in fetched));
+    if (!missing.length) return;
+    let dead = false;
+    ctx.fetchProducts(missing).then((list) => {
+      if (dead) return;
+      setFetched((f) => ({ ...f, ...Object.fromEntries(missing.map((id) => [id, (list || []).find((p) => p.id === id) || null])) }));
+    }).catch(() => {});
+    return () => { dead = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, ctx.storeSlug, ctx.cat, tick, fetched]);
   return useMemo(() => {
     const lines = ctx.storeSlug ? (mounted ? getCart(ctx.storeSlug) : []) : (ctx.demoBag || []);
     const bag = lines
       .map((l) => {
         // The catalog, else an add-on the pairings carried (Goes well with).
-        const p = catProduct(ctx.cat, l.pid);
+        const p = catProduct(ctx.cat, l.pid) || fetched[l.pid] || null;
         // A size's variant can carry its own price — the order charges it, so
         // every bag total (drawer, /cart, /checkout) shows that price too.
         return { ...l, p: p ? { ...p, pr: priceFor(p, l.size) } : p };
@@ -90,7 +102,7 @@ export function useBag(ctx) {
     // An add-on beside its main product: the together price, by the server's rule.
     return priceAddOns(bag, ctx.cat);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx.storeSlug, ctx.cat, tick, mounted, ctx.demoBag]);
+  }, [ctx.storeSlug, ctx.cat, tick, mounted, ctx.demoBag, fetched]);
 }
 
 // A bag line's quantity; the public store's ctx.setLineQty also reports
@@ -205,7 +217,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
   // no real card-payment capability anywhere in the platform to back that up —
   // every method here (COD, bKash, Nagad) is still "pay manually, we record
   // which one for the merchant to reconcile," not a live charge.
-  const pays = (cs.payOrder || ['cod', 'bkash', 'nagad']).filter((k) => (cs.pays || {})[k] !== false);
+  const pays = checkoutPays(cs);
   const [pay, setPay] = useState(null);
   const payK = pay && pays.includes(pay) ? pay : pays[0];
   const onlineMethods = pays.filter((k) => k === 'bkash' || k === 'nagad');
@@ -238,11 +250,9 @@ export function CheckoutPage({ ctx, sys, edit }) {
 
   const sub = bag.reduce((n, l) => n + l.p.pr * l.qty, 0);
   const insideDhaka = DHAKA_DISTRICTS.includes(district);
-  const insideCharge = ctx.store && ctx.store.deliveryInsideDhaka != null ? Number(ctx.store.deliveryInsideDhaka) : 60;
-  const outsideCharge = ctx.store && ctx.store.deliveryOutsideDhaka != null ? Number(ctx.store.deliveryOutsideDhaka) : 120;
   const freeOver = freeDeliveryOver(ctx);
   const freeByAmount = freeOver != null && sub >= freeOver;
-  const dlv = district && !freeByAmount ? (insideDhaka ? insideCharge : outsideCharge) : 0;
+  const dlv = deliveryCharge(ctx, district, sub);
   const total = sub + dlv - (couponDiscount || 0);
 
   // begin_checkout → add_shipping_info (+ the Incomplete Order) →
@@ -587,8 +597,6 @@ export function CheckoutPage({ ctx, sys, edit }) {
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', maxWidth: 150, justifyContent: 'flex-end' }}>
                       {onlineMethods.includes('bkash') && <img src="/payments/bkash.png" alt="bKash" style={{ height: 20, width: 'auto' }} />}
                       {onlineMethods.includes('nagad') && <img src="/payments/nagad.svg" alt="Nagad" style={{ height: 20, width: 'auto' }} />}
-                      <img src="/payments/visa.png" alt="Visa" style={{ height: 20, width: 'auto' }} />
-                      <img src="/payments/mastercard.png" alt="Mastercard" style={{ height: 20, width: 'auto' }} />
                     </div>
                   </div>
                   {payGroup === 'online' && onlineMethods.length > 1 && (
@@ -606,7 +614,7 @@ export function CheckoutPage({ ctx, sys, edit }) {
             </div>
             {cs.trust !== false && (
               <div style={sx('margin-top:18px; display:flex; flex-wrap:wrap; gap:10px 22px; align-items:center;')}>
-                {['ssl', 'verified', 'exchange'].map((t) => (
+                {['ssl', 'exchange'].map((t) => (
                   <div key={t} style={sx('display:flex; align-items:center; gap:7px; font-family:' + F.b + '; font-size:12px; font-weight:600; color:' + c.sub + ';')}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={P.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5" /></svg>{tx('checkout.trust.' + t)}
                   </div>

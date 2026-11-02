@@ -9,7 +9,9 @@ import { hostOf, isCustomDomain } from '../../lib/hosts'
 // One sitemap per store, on its canonical host: the other address redirects
 // there, and a store the merchant hid from search engines has none.
 
-const SITEMAP_PRODUCTS = 500 // the public list endpoint's ceiling
+// getProducts walks the API's 100-per-page list, so this is the real ceiling
+// (SST-32: one request was capped at 100 and older products were left out).
+const SITEMAP_PRODUCTS = 5000
 
 export async function GET(req) {
   const host = hostOf(req)
