@@ -44,7 +44,7 @@ export default async function StudioSubPage({ params }) {
   const [storeData, products, categories, services] = await Promise.all([getStoreBySlug(slug), getProducts(slug, { limit: CATALOG_MAX }), getCategories(slug), getServices(slug)])
   const servicesPage = !page && pageSlug === 'services' && services.length > 0
   if (!page && !servicesPage) notFound()
-  const catalog = toStudioCatalog(products, categories)
+  const catalog = toStudioCatalog(products, categories, { list: true })
 
   return (
     <>

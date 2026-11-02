@@ -31,7 +31,7 @@ export default async function ShopRoute({ params, searchParams }) {
   }
 
   const [products, categories] = await Promise.all([getProducts(slug, { limit: CATALOG_MAX }), getCategories(slug)])
-  const catalog = toStudioCatalog(products, categories)
+  const catalog = toStudioCatalog(products, categories, { list: true })
 
   return (
     <PublicSite

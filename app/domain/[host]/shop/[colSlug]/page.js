@@ -31,7 +31,7 @@ export default async function DomainCollectionRoute({ params }) {
   if (!siteData.site) notFound()
 
   const [products, categories] = await Promise.all([getProducts(slug, { limit: CATALOG_MAX }), getCategories(slug)])
-  const catalog = toStudioCatalog(products, categories)
+  const catalog = toStudioCatalog(products, categories, { list: true })
   const col = catalog.collections.find((c) => c.slug === colSlug)
   if (!col) notFound()
 

@@ -32,7 +32,7 @@ export default async function DomainShopRoute({ params, searchParams }) {
   if (!siteData.site) notFound()
 
   const [products, categories] = await Promise.all([getProducts(slug, { limit: CATALOG_MAX }), getCategories(slug)])
-  const catalog = toStudioCatalog(products, categories)
+  const catalog = toStudioCatalog(products, categories, { list: true })
 
   return (
     <PublicSite storeSlug={slug} doc={siteData.site} pageId="home" basePath="" products={catalog.products} collections={catalog.collections} extra={catalog.extra} system={{ kind: 'shop', q }} />
