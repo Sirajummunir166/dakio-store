@@ -1,4 +1,4 @@
-import { getProducts, getCategories } from '../../../lib/api'
+import { getProducts, CATALOG_MAX, getCategories } from '../../../lib/api'
 import PublicSite from '../../../components/studio/PublicSite'
 import PreviewComments from '../../../components/studio/PreviewComments'
 import { toStudioCatalog } from '../../../components/studio/publicCatalog'
@@ -31,7 +31,7 @@ export default async function StudioPreviewPage({ params, searchParams }) {
   // reviewer stays in the draft (SST-45: a click left for the live store).
   const pageId = (site.pages || []).some((p) => p.id === pageParam) ? pageParam : 'home'
 
-  const [products, categories] = await Promise.all([getProducts(slug), getCategories(slug)])
+  const [products, categories] = await Promise.all([getProducts(slug, { limit: CATALOG_MAX }), getCategories(slug)])
   const catalog = toStudioCatalog(products, categories)
 
   return (

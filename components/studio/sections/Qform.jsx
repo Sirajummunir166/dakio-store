@@ -13,7 +13,8 @@ import { sizeInStock, firstInStockSize, priceFor, soldOutSize } from '../variant
 import { useCheckoutTracking, isValidBDPhone } from '../../tracking/useCheckoutTracking';
 import { itemFromStudio } from '../../../lib/tracking/items';
 import { siteText } from '../siteText';
-import { DISTRICTS, DHAKA_DISTRICTS } from '../../../lib/bd-locations';
+import { DISTRICTS } from '../../../lib/bd-locations';
+import { deliveryCharge } from '../delivery';
 
 // payment_type as the order records it (FunnelSite's label)
 const PAY_TYPE = { cod: 'COD', bkash: 'bKash', nagad: 'Nagad' };
@@ -55,15 +56,10 @@ export default function Qform({ sec, ctx }) {
   const curSize = bp ? ((size && sizeInStock(bp, size) ? size : null) || firstInStockSize(bp, sizes)) : null;
   const unitPr = bp ? priceFor(bp, curSize) : 0;
 
-  // Delivery by district with the store's own rates — the rule checkout and
-  // the server use (Dhaka district inside, every other outside; free over the
-  // store's threshold). Shown before the order, charged the same (SST-47).
-  const st = ctx.store || {};
+  // Delivery by district with the store's own rates — checkout's rule
+  // (../delivery.js). Shown before the order, charged the same (SST-47).
   const goods = unitPr * qty;
-  const freeOver = Number(st.freeDeliveryOver) > 0 ? Number(st.freeDeliveryOver) : null;
-  const rateIn = st.deliveryInsideDhaka != null ? Number(st.deliveryInsideDhaka) : 60;
-  const rateOut = st.deliveryOutsideDhaka != null ? Number(st.deliveryOutsideDhaka) : 120;
-  const dlv = !district || (freeOver != null && goods >= freeOver) ? 0 : (DHAKA_DISTRICTS.includes(district) ? rateIn : rateOut);
+  const dlv = deliveryCharge(ctx, district, goods);
 
   // begin_checkout on the first keystroke, add_shipping_info (+ the Incomplete
   // Order) once name + phone + address are in, then add_payment_info → purchase.

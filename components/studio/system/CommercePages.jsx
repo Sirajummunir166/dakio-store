@@ -16,6 +16,7 @@ import { useCheckoutTracking } from '../../tracking/useCheckoutTracking';
 import { useTracking } from '../../tracking/TrackingRoot';
 import { itemFromStudio } from '../../../lib/tracking/items';
 import { siteText } from '../siteText';
+import { freeDeliveryOver, deliveryCharge } from '../delivery';
 
 function isValidBDPhone(raw) {
   const p = String(raw || '').replace(/[\s\-().]/g, '');
@@ -40,16 +41,9 @@ const PAY_TYPE = { cod: 'COD', bkash: 'bKash', nagad: 'Nagad' };
 // Payment labels in the site's language (siteText checkout.pay.<k>.n / .d).
 const payLbl = (tx, k) => ({ n: tx('checkout.pay.' + k + '.n'), d: tx('checkout.pay.' + k + '.d') });
 
-// Delivery is charged by district at checkout — Dhaka district at the store's
-// inside rate, every other district at its outside rate (dakio-api
-// lib/deliveryZone.js, the one rule) — and free once the goods reach the
-// store's `freeDeliveryOver`, which the server applies to every order too.
+// Delivery is charged by district at checkout (../delivery.js, the one rule).
 // The bag pages never invent a charge or a threshold the server won't honour;
 // they say what the rates are.
-export function freeDeliveryOver(ctx) {
-  const n = Number(ctx && ctx.store && ctx.store.freeDeliveryOver);
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
 export function deliveryRates(ctx) {
   const s = ctx && ctx.store;
   if (!s || s.deliveryInsideDhaka == null || s.deliveryOutsideDhaka == null) return null;
@@ -256,11 +250,9 @@ export function CheckoutPage({ ctx, sys, edit }) {
 
   const sub = bag.reduce((n, l) => n + l.p.pr * l.qty, 0);
   const insideDhaka = DHAKA_DISTRICTS.includes(district);
-  const insideCharge = ctx.store && ctx.store.deliveryInsideDhaka != null ? Number(ctx.store.deliveryInsideDhaka) : 60;
-  const outsideCharge = ctx.store && ctx.store.deliveryOutsideDhaka != null ? Number(ctx.store.deliveryOutsideDhaka) : 120;
   const freeOver = freeDeliveryOver(ctx);
   const freeByAmount = freeOver != null && sub >= freeOver;
-  const dlv = district && !freeByAmount ? (insideDhaka ? insideCharge : outsideCharge) : 0;
+  const dlv = deliveryCharge(ctx, district, sub);
   const total = sub + dlv - (couponDiscount || 0);
 
   // begin_checkout → add_shipping_info (+ the Incomplete Order) →
