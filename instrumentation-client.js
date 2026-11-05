@@ -18,7 +18,13 @@ const storeTag = (() => {
   return window.location.pathname.split('/')[1] || undefined
 })()
 
+// Local development used most of the shared monthly error quota: locally,
+// errors and error logs stay out of Sentry unless *_SENTRY_DEV_ERRORS=true.
+const DROP_LOCAL_ERRORS = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_SENTRY_DEV_ERRORS !== 'true'
+
 Sentry.init({
+  beforeSend: (event) => (DROP_LOCAL_ERRORS ? null : event),
+  beforeSendLog: (log) => (DROP_LOCAL_ERRORS && (log.level === 'error' || log.level === 'warn') ? null : log),
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   environment: process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.NODE_ENV,
   sendDefaultPii: false,
