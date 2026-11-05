@@ -12,5 +12,6 @@ Sentry.init({
   sendDefaultPii: false,
   enableLogs: true,
   integrations: [Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] })],
-  tracesSampleRate: rate(process.env.SENTRY_TRACES_SAMPLE_RATE, 0.05),
+  // 1% of server renders (was 5%); the quota ran out on 2026-10-14.
+  tracesSampleRate: rate(process.env.SENTRY_TRACES_SAMPLE_RATE, 0.01),
 })

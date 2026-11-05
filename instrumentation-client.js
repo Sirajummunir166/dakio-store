@@ -30,7 +30,18 @@ Sentry.init({
     Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] }),
   ],
   // Shopper traffic is far larger than merchant traffic — trace less of it.
-  tracesSampleRate: rate(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE, 0.05),
+  tracesSampleRate: rate(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE, 0.01),
+  // Not our code: browser extensions and in-app browser bridges inject scripts
+  // into the shopper's page (848 "M_ID" errors in 5 minutes from one extension
+  // on 2026-10-09). Old tabs after a deploy fail to load chunks; not a bug.
+  denyUrls: [/^chrome-extension:\/\//, /^moz-extension:\/\//, /^safari(-web)?-extension:/, /\/executors\//],
+  ignoreErrors: [
+    'Java object is gone',
+    "Cannot read properties of undefined (reading 'M_ID')",
+    'ChunkLoadError',
+    'Loading chunk',
+    'Failed to fetch dynamically imported module',
+  ],
   // Checkout / coupon calls continue their trace in dakio-api. That API must
   // allow the sentry-trace + baggage headers on public store routes first.
   tracePropagationTargets: apiOrigin ? [apiOrigin, /^\//] : [/^\//],
