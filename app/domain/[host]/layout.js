@@ -1,3 +1,5 @@
+import { headers } from 'next/headers'
+import { permanentRedirect } from 'next/navigation'
 import { getStoreByDomain } from '../../../lib/api'
 import StorePaused from '../../../components/StorePaused'
 import TrackingBootstrap from '../../../components/tracking/TrackingBootstrap'
@@ -13,6 +15,12 @@ import { buildTrackingConfig } from '../../../lib/tracking/config'
 export default async function DomainStoreLayout({ children, params }) {
   const { host } = await params
   const data = await getStoreByDomain(host)
+  // The store's plan no longer includes this custom domain and its 14 days are
+  // over: the same page on the store's Dakio address, so no link breaks.
+  if (typeof data?.movedTo === 'string' && /^https:\/\/[a-z0-9-]+\.dakio\.shop$/.test(data.movedTo)) {
+    const path = (await headers()).get('x-dakio-path') || '/'
+    permanentRedirect(`${data.movedTo}${path.startsWith('/') ? path : '/'}`)
+  }
   if (data?.store?.paused) return <StorePaused store={data.store} />
   const tracking = buildTrackingConfig(data?.store, 'domain')
   // The chat bubble, when the owner switched it on (DAKIO_WEBCHAT_PLAN.md).

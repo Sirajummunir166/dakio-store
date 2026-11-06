@@ -8,7 +8,12 @@ export async function middleware(req) {
   if (isCustomDomain(hostname)) {
     const url = req.nextUrl.clone()
     url.pathname = pathname === '/' ? `/domain/${hostname}` : `/domain/${hostname}${pathname}`
-    return NextResponse.rewrite(url)
+    // The address the visitor asked for, so the domain layout can send them to
+    // the same page on the store's Dakio address once the custom domain moved
+    // (the API's `movedTo`, growth system §6.1).
+    const headers = new Headers(req.headers)
+    headers.set('x-dakio-path', `${pathname}${req.nextUrl.search || ''}`)
+    return NextResponse.rewrite(url, { request: { headers } })
   }
 
   return NextResponse.next()
