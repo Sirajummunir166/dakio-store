@@ -10,7 +10,7 @@ import ProductCard from '../ProductCard';
 import { co, btnColors, sx, SPM } from '../theme';
 import { fmtPr, colCount, liveProds, shortDesc } from '../catalog';
 import { getCart, onCartChange } from '../cartStore';
-import { sizeInStock, firstInStockSize, priceFor, soldOutSize } from '../variants';
+import { sizeInStock, firstInStockSize, priceFor, soldOutSize, variantFor } from '../variants';
 import RichContent, { RichContentStyles } from '../RichContent';
 import { resolveProductTabs } from '../productTabs';
 import { livePairs } from '../addOns';
@@ -500,6 +500,9 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const cAlso = co(also.bg || 'base', P);
   // Never preselect (or keep) a sold-out size — it would fail at checkout.
   const curSize = (selSize && sizeInStock(bp, selSize) ? selSize : null) || firstInStockSize(bp, sizes);
+  // "Only N left" counts the picked size when it has a stock of its own, not
+  // every size added up.
+  const leftNow = variantFor(bp, curSize)?.stock ?? bp.stock;
   const cartLine = ctx.storeSlug ? getCart(ctx.storeSlug).find((x) => x.pid === bp.id && !x.addOnOf && (x.size || null) === (curSize || null)) : null;
   const pairs = livePairs(bp);
   const col2 = cat.collections.find((x) => x.id === bp.col);
@@ -582,9 +585,9 @@ export function ProductPage({ ctx, sys, product, edit }) {
         <Editable secId={'__cat:' + bp.id} k="pr" value={fmtPr(ctx.isPublic ? priceFor(bp, curSize) : bp.pr)} style={'font-family:' + F.b + '; font-size:' + (mob ? 20 : 23) + 'px; font-weight:800; font-variant-numeric:tabular-nums;'} preview={ctx.preview} tag="span" />
         {bp.was ? <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 14 : 15) + 'px; color:' + cPd.sub + '; text-decoration:line-through; font-variant-numeric:tabular-nums;')}>{fmtPr(bp.was)}</div> : null}
       </div>
-      {pd.stock !== false && (bp.arch || bp.stock <= 3) && (
+      {pd.stock !== false && (bp.arch || leftNow <= 3) && (
         <div style={sx('margin-top:12px; font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + ((bp.arch || bp.stock === 0) ? '#B03A2E' : '#B07A2A') + ';')}>
-          {bp.arch ? 'Hidden from your store — unhide it in Catalog' : bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : tx('product.onlyLeft', { n: bp.stock })}
+          {bp.arch ? 'Hidden from your store — unhide it in Catalog' : bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : tx('product.onlyLeft', { n: leftNow })}
         </div>
       )}
       {/* Teaser beside the price: the rich short description, else the first
@@ -598,9 +601,21 @@ export function ProductPage({ ctx, sys, product, edit }) {
         <>
           <div style={sx(lbl)}>{tx('product.size')}</div>
           <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-            {sizes.map((z) => (
-              <div key={z} title={sizeInStock(bp, z) ? undefined : tx('product.soldOut')} onClick={ctx.preview && sizeInStock(bp, z) ? (e) => { e.stopPropagation(); setSelSize(z); } : undefined} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (z === curSize ? cPd.fg : cPd.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (z === curSize ? ' background:' + cPd.fg + '; color:' + cPd.bg + ';' : '') + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>
-            ))}
+            {sizes.map((z) => {
+              const chip = <div key={z} title={sizeInStock(bp, z) ? undefined : tx('product.soldOut')} onClick={ctx.preview && sizeInStock(bp, z) ? (e) => { e.stopPropagation(); setSelSize(z); } : undefined} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (z === curSize ? cPd.fg : cPd.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (z === curSize ? ' background:' + cPd.fg + '; color:' + cPd.bg + ';' : '') + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>;
+              // "Stock by size" (off by default): each size's own count under its
+              // chip. Only a size with a variant row has a count of its own.
+              const v = pd.sizeStock === true ? variantFor(bp, z) : null;
+              if (!v) return chip;
+              return (
+                <div key={z} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                  {chip}
+                  <div style={sx('font-family:' + F.b + '; font-size:11px; font-weight:600; font-variant-numeric:tabular-nums; color:' + (v.stock > 0 ? cPd.sub : '#B03A2E') + ';')}>
+                    {v.stock > 0 ? tx('product.sizeLeft', { n: v.stock }) : tx('product.soldOut')}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </>
       )}
