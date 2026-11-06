@@ -5,7 +5,7 @@ import Editable from '../Editable';
 import ImageSlot from '../ImageSlot';
 import { fmtPr } from '../catalog';
 import { sizeList } from '../system/SystemPages';
-import { sizeInStock, firstInStockSize, priceFor, soldOutSize } from '../variants';
+import { sizeInStock, firstInStockSize, priceFor, soldOutSize, variantFor } from '../variants';
 import { siteText } from '../siteText';
 
 // Product detail — bound to ONE real catalog product (props.pid). Name, price
@@ -27,11 +27,6 @@ export default function Pdp({ sec, ctx }) {
   if (!bp) return null; // empty catalog — nothing honest to render
 
   const soldOrHidden = bp.stock === 0 || bp.arch;
-  const stockOn = !isPublic && (!!bp.arch || bp.stock <= 3);
-  const stockTxt = bp.arch
-    ? 'Hidden from your store — unhide it in Catalog'
-    : (bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : 'Only ' + bp.stock + ' left in stock');
-  const pubStockOn = isPublic && bp.stock > 0 && bp.stock <= 3;
 
   const pdpGrid = 'display:grid; grid-template-columns:' + (mob ? '1fr' : '1.02fr 0.98fr') + '; gap:' + (mob ? 26 : 64) + 'px; align-items:start;';
   const pdpMain = 'aspect-ratio:4/5; border-radius:' + C.r + 'px; overflow:hidden; position:relative; background:' + c.card + ';';
@@ -45,6 +40,13 @@ export default function Pdp({ sec, ctx }) {
   const sizes = sizeList(bp);
   // Never preselect (or keep) a sold-out size — it would fail at checkout.
   const curSize = (sel && sizeInStock(bp, sel) ? sel : null) || firstInStockSize(bp, sizes);
+  // "Only N left" counts the picked size when it has a stock of its own.
+  const leftNow = variantFor(bp, curSize)?.stock ?? bp.stock;
+  const stockOn = !isPublic && (!!bp.arch || leftNow <= 3);
+  const stockTxt = bp.arch
+    ? 'Hidden from your store — unhide it in Catalog'
+    : (bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : 'Only ' + leftNow + ' left in stock');
+  const pubStockOn = isPublic && bp.stock > 0 && leftNow <= 3;
   const sizeStyle = (on) => 'min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (on ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (on ? ' background:' + c.fg + '; color:' + c.bg + ';' : '');
   const qtyBox = 'display:flex; align-items:center; gap:14px; padding:0 16px; border-radius:' + C.btn + '; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-size:14px; user-select:none; cursor:pointer;';
   const pdpBtn = 'flex:1; display:flex; align-items:center; justify-content:center; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:14.5px; cursor:pointer; white-space:nowrap;' + (soldOrHidden ? ' opacity:0.45;' : '');
@@ -108,7 +110,7 @@ export default function Pdp({ sec, ctx }) {
             <Editable secId={catId} k="pr" value={fmtPr(isPublic ? priceFor(bp, curSize) : bp.pr)} style={pdpPrice} preview={preview} />
             <Editable secId={catId} k="was" value={bp.was ? fmtPr(bp.was) : ''} style={pdpWas} preview={preview} />
           </div>
-          {(stockOn || pubStockOn) && <div style={sx(pdpStock)}>{isPublic ? tx('product.onlyLeft', { n: bp.stock }) : stockTxt}</div>}
+          {(stockOn || pubStockOn) && <div style={sx(pdpStock)}>{isPublic ? tx('product.onlyLeft', { n: leftNow }) : stockTxt}</div>}
           <Editable secId={sec.id} k="desc" value={p.desc} style={pdpDesc} multiline preview={preview} />
           {sizes.length > 0 && (
             <>
