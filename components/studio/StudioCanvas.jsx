@@ -165,6 +165,7 @@ export default function StudioCanvas() {
     P, F, C, tsM, denM, shCard, mob, padX, preview, theme,
     menus: doc.menus, assets: doc.assets || {},
     payMethods: checkoutPays(sys10(doc.sys, 'checkout')),
+    sizeStock: doc.sys?.prod?.pd?.sizeStock === true,
     cat,
     isSel: !preview && sel === (sec && sec.id),
     onGoPage: (id) => send('goPage', { id }),

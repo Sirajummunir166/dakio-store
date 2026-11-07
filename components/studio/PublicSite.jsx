@@ -167,6 +167,9 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     menus: doc.menus, assets,
     // The footer's payment marks are the checkout's own methods (SST-58).
     payMethods: checkoutPays(sys10(doc.sys, 'checkout')),
+    // "Stock by size" is set once on the product template and every product
+    // detail follows it, the Product detail section on any page too.
+    sizeStock: doc.sys?.prod?.pd?.sizeStock === true,
     cat,
     isSel: false,
     currency: tk.currency,
