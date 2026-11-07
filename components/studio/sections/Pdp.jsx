@@ -116,9 +116,20 @@ export default function Pdp({ sec, ctx }) {
             <>
               <div style={sx(pdpLbl)}>{tx('product.size')}</div>
               <div style={sx('display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;')}>
-                {sizes.map((z) => (
-                  <div key={z} title={sizeInStock(bp, z) ? undefined : tx('product.soldOut')} onClick={preview && sizeInStock(bp, z) ? (e) => { e.stopPropagation(); setSel(z); } : undefined} style={sx(sizeStyle(z === curSize) + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>
-                ))}
+                {sizes.map((z) => {
+                  const chip = <div key={z} title={sizeInStock(bp, z) ? undefined : tx('product.soldOut')} onClick={preview && sizeInStock(bp, z) ? (e) => { e.stopPropagation(); setSel(z); } : undefined} style={sx(sizeStyle(z === curSize) + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>;
+                  // "Stock by size", as on the product page (the template's switch, ctx.sizeStock).
+                  const v = ctx.sizeStock ? variantFor(bp, z) : null;
+                  if (!v) return chip;
+                  return (
+                    <div key={z} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                      {chip}
+                      <div style={sx('font-family:' + F.b + '; font-size:11px; font-weight:600; font-variant-numeric:tabular-nums; color:' + (v.stock > 0 ? c.sub : '#B03A2E') + ';')}>
+                        {v.stock > 0 ? tx('product.sizeLeft', { n: v.stock }) : tx('product.soldOut')}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
