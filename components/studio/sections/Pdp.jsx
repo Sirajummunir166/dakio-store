@@ -40,13 +40,13 @@ export default function Pdp({ sec, ctx }) {
   const sizes = sizeList(bp);
   // Never preselect (or keep) a sold-out size — it would fail at checkout.
   const curSize = (sel && sizeInStock(bp, sel) ? sel : null) || firstInStockSize(bp, sizes);
-  // "Only N left" counts the picked size when it has a stock of its own.
-  const leftNow = variantFor(bp, curSize)?.stock ?? bp.stock;
-  const stockOn = !isPublic && (!!bp.arch || leftNow <= 3);
+  // "Only N left" is the whole product (every size added up), as the Products
+  // list counts it; each size's own count sits under its chip.
+  const stockOn = !isPublic && (!!bp.arch || bp.stock <= 3);
   const stockTxt = bp.arch
     ? 'Hidden from your store — unhide it in Catalog'
-    : (bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : 'Only ' + leftNow + ' left in stock');
-  const pubStockOn = isPublic && bp.stock > 0 && leftNow <= 3;
+    : (bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : 'Only ' + bp.stock + ' left in stock');
+  const pubStockOn = isPublic && bp.stock > 0 && bp.stock <= 3;
   const sizeStyle = (on) => 'min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (on ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (on ? ' background:' + c.fg + '; color:' + c.bg + ';' : '');
   const qtyBox = 'display:flex; align-items:center; gap:14px; padding:0 16px; border-radius:' + C.btn + '; border:1.5px solid ' + c.line + '; font-family:' + F.b + '; font-size:14px; user-select:none; cursor:pointer;';
   const pdpBtn = 'flex:1; display:flex; align-items:center; justify-content:center; padding:15px 20px; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:14.5px; cursor:pointer; white-space:nowrap;' + (soldOrHidden ? ' opacity:0.45;' : '');
@@ -110,7 +110,7 @@ export default function Pdp({ sec, ctx }) {
             <Editable secId={catId} k="pr" value={fmtPr(isPublic ? priceFor(bp, curSize) : bp.pr)} style={pdpPrice} preview={preview} />
             <Editable secId={catId} k="was" value={bp.was ? fmtPr(bp.was) : ''} style={pdpWas} preview={preview} />
           </div>
-          {(stockOn || pubStockOn) && <div style={sx(pdpStock)}>{isPublic ? tx('product.onlyLeft', { n: leftNow }) : stockTxt}</div>}
+          {(stockOn || pubStockOn) && <div style={sx(pdpStock)}>{isPublic ? tx('product.onlyLeft', { n: bp.stock }) : stockTxt}</div>}
           <Editable secId={sec.id} k="desc" value={p.desc} style={pdpDesc} multiline preview={preview} />
           {sizes.length > 0 && (
             <>

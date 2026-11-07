@@ -500,9 +500,6 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const cAlso = co(also.bg || 'base', P);
   // Never preselect (or keep) a sold-out size — it would fail at checkout.
   const curSize = (selSize && sizeInStock(bp, selSize) ? selSize : null) || firstInStockSize(bp, sizes);
-  // "Only N left" counts the picked size when it has a stock of its own, not
-  // every size added up.
-  const leftNow = variantFor(bp, curSize)?.stock ?? bp.stock;
   const cartLine = ctx.storeSlug ? getCart(ctx.storeSlug).find((x) => x.pid === bp.id && !x.addOnOf && (x.size || null) === (curSize || null)) : null;
   const pairs = livePairs(bp);
   const col2 = cat.collections.find((x) => x.id === bp.col);
@@ -585,9 +582,11 @@ export function ProductPage({ ctx, sys, product, edit }) {
         <Editable secId={'__cat:' + bp.id} k="pr" value={fmtPr(ctx.isPublic ? priceFor(bp, curSize) : bp.pr)} style={'font-family:' + F.b + '; font-size:' + (mob ? 20 : 23) + 'px; font-weight:800; font-variant-numeric:tabular-nums;'} preview={ctx.preview} tag="span" />
         {bp.was ? <div style={sx('font-family:' + F.b + '; font-size:' + (mob ? 14 : 15) + 'px; color:' + cPd.sub + '; text-decoration:line-through; font-variant-numeric:tabular-nums;')}>{fmtPr(bp.was)}</div> : null}
       </div>
-      {pd.stock !== false && (bp.arch || leftNow <= 3) && (
+      {/* "Only N left" is the whole product (every size added up), as the
+          Products list counts it; each size's own count sits under its chip. */}
+      {pd.stock !== false && (bp.arch || bp.stock <= 3) && (
         <div style={sx('margin-top:12px; font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + ((bp.arch || bp.stock === 0) ? '#B03A2E' : '#B07A2A') + ';')}>
-          {bp.arch ? 'Hidden from your store — unhide it in Catalog' : bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : tx('product.onlyLeft', { n: leftNow })}
+          {bp.arch ? 'Hidden from your store — unhide it in Catalog' : bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : tx('product.onlyLeft', { n: bp.stock })}
         </div>
       )}
       {/* Teaser beside the price: the rich short description, else the first
