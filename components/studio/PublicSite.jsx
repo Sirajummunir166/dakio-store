@@ -45,7 +45,21 @@ const FONT_HREF = {
 // `services` (W1): the store's live Services for the Services section and pages; `business`: the store's business summary.
 // `previewToken`: the shared draft-preview link (app/[slug]/studio-preview) —
 // page links stay inside the preview so a reviewer sees draft pages (SST-45).
-export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], extra = [], system = null, storeSlug = null, store = null, services = [], business = null, previewToken = null }) {
+export default function PublicSite({ doc, pageId, basePath = '', products = [], collections = [], extra = [], system = null, storeSlug = null, store = null, services = [], business = null, previewToken = null, standalone = false, embed = false, carry = '' }) {
+  // The booking link (DAKIO_BOOKING_LINK_PLAN.md): `standalone` is a business with no
+  // website (a stand-in site: the name leads back to booking); `embed` is the page inside
+  // another site through book.js (no header or footer; it tells the outer page its height);
+  // `carry` is the query the next booking page keeps (?embed=1&lang=en).
+  useEffect(() => {
+    if (!embed || typeof window === 'undefined') return undefined;
+    window.__dkOff = true; // no chat bubble inside another site
+    if (window.parent === window) return undefined;
+    const send = () => window.parent.postMessage({ type: 'dakio-book-height', height: Math.ceil(document.documentElement.scrollHeight) }, '*');
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(send) : null;
+    ro?.observe(document.body);
+    send();
+    return () => ro?.disconnect();
+  }, [embed]);
   const [mob, setMob] = useState(false);
   // Tracking (components/tracking) — also where the store's currency comes
   // from: most Studio routes never receive the store object.
@@ -216,7 +230,15 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         return res.ok ? { ok: true, ...data } : { ok: false, status: res.status, code: data.code, field: data.field, error: data.error };
       } catch { return { ok: false, status: 0 }; }
     } : undefined,
-    onBooked: (token) => { window.location.href = `${basePath}/b/${token}`; },
+    onBooked: (token) => { window.location.href = `${basePath}/b/${token}${carry}`; },
+    // The business's booking questions (the client fields Nova asks), asked on the form too.
+    getQuestions: storeSlug ? async () => {
+      try {
+        const res = await fetch(API + '/store/' + storeSlug + '/booking-questions', { cache: 'no-store' });
+        const data = await res.json().catch(() => ({}));
+        return res.ok && Array.isArray(data.questions) ? data.questions : [];
+      } catch { return []; }
+    } : undefined,
     // Phase 10 — the buying path. Adding to the bag or opening the cart from
     // the header/product page shows the preview panel in place rather than
     // navigating away; /cart stays a real page (direct links, no-JS).
@@ -442,7 +464,8 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
 
   return (
     <ImgCtx.Provider value={{ crops: doc.crops || {}, cropTarget: null, setCropTarget: null, onCrop: null }}>
-    <div lang={theme.lang === 'bn' ? 'bn' : 'en'} {...(theme.lang === 'bn' ? { 'data-bn-site': '' } : {})} style={{ background: P.bg, color: P.ink, fontFamily: F.b, overflow: 'hidden', minHeight: '100vh' }}>
+    <div lang={theme.lang === 'bn' ? 'bn' : 'en'} {...(theme.lang === 'bn' ? { 'data-bn-site': '' } : {})} style={{ background: P.bg, color: P.ink, fontFamily: F.b, overflow: 'hidden', minHeight: embed ? 0 : '100vh' }}>
+      {embed ? <style>{`html,body{background:${P.bg};margin:0}`}</style> : null}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link href={`https://fonts.googleapis.com/css2?${FONT_HREF[theme.f] || FONT_HREF.clean}&display=swap`} rel="stylesheet" />
       <style>{`
@@ -461,9 +484,10 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         .studio-nav-link { color: inherit; text-decoration: none; }
       `}</style>
 
+      {embed ? null : (<>
       {/* store nav */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, padding: mob ? '15px 20px' : `18px max(${padX}px, calc((100% - 1120px)/2))`, borderBottom: '1px solid ' + base.line }}>
-        <a href={basePath || '/'} className="studio-nav-link" style={{ display: 'block' }}>
+        <a href={standalone ? `${basePath}/book${carry}` : (basePath || '/')} className="studio-nav-link" style={{ display: 'block' }}>
           {brandText ? (
             <div style={{ fontFamily: F.h, fontWeight: Math.max(F.hw, 600), fontSize: mob ? 20 : 23, letterSpacing: F.ls }}>
               {brandName}
@@ -536,6 +560,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         )}
       </div>
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} items={navItems.map(navEntry)} P={P} F={F} C={C} base={base} words={words} footer={menuFooter} />
+      </>)}
 
       {system ? (
         system.kind === 'shop' ? <ShopPage ctx={ctx} sys={doc.sys || {}} q={system.q} />
@@ -552,7 +577,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
       ) : (
         (page.sections || []).map(renderSection)
       )}
-      {doc.footer && renderSection(doc.footer)}
+      {doc.footer && !embed && renderSection(doc.footer)}
       <CartPanel ctx={ctx} open={cartOpen} onClose={() => setCartOpen(false)} />
     </div>
     </ImgCtx.Provider>

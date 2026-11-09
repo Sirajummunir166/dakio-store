@@ -1,4 +1,5 @@
 import { getStoreByDomain, getProducts, getCategories, getPublishedSite, getServices } from '../../../../lib/api'
+import { bookingDocOf, bookingLang, isEmbed, carryQuery } from '../../../../lib/bookingSite'
 import StoreUnavailable from '../../../../components/StoreUnavailable'
 import PublicSite from '../../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../../components/studio/publicCatalog'
@@ -15,7 +16,7 @@ export async function generateMetadata({ params }) {
   if (!data?.store) return { title: 'Not Found' }
   const slug = data.store.slug
   const siteData = await getPublishedSite(slug)
-  if (!siteData?.site) return { title: 'Not Found' }
+  if (!siteData?.site) return { title: 'Book', robots: { index: false, follow: false } }
   const brand = siteData.site.theme?.brandName || 'Store'
   const title = `${siteText(siteData.site.theme?.lang)('meta.book')} — ${brand}`
   return { ...studioMetadata(siteData.site, null), title, ...canonicalMeta(canonicalHostOf(data, slug), '/book') }
@@ -31,13 +32,16 @@ export default async function BookRoute({ params, searchParams }) {
   const slug = storeData.store.slug
   const siteData = await getPublishedSite(slug)
   if (siteData.unavailable) return <StoreUnavailable />
-  if (siteData.notFound || !siteData.site) notFound()
+  // No website yet: the booking page still opens, in a stand-in site (DAKIO_BOOKING_LINK_PLAN.md).
+  const shown = bookingDocOf(siteData, storeData.store, { lang: bookingLang(sp) })
+  if (!shown) notFound()
   const [services, products, categories] = await Promise.all([getServices(slug), getProducts(slug), getCategories(slug)])
   const catalog = toStudioCatalog(products, categories)
   return (
     <PublicSite
       storeSlug={slug}
-      doc={siteData.site}
+      doc={shown.doc}
+      standalone={shown.standalone} embed={isEmbed(sp)} carry={carryQuery(sp)}
       pageId="home"
       basePath={""}
       products={catalog.products}

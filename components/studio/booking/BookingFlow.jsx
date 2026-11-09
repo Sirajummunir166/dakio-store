@@ -34,6 +34,18 @@ export default function BookingFlow({ ctx, c, s, initialService = null }) {
   const [time, setTime] = useState(null);
   const [f, setF] = useState({ name: '', phone: '', note: '', website: '' });
   const [state, setState] = useState({ busy: false, err: null, done: false });
+  // The business's questions (DAKIO_BOOKING_LINK_PLAN.md): the client fields Nova asks in chat, asked here too.
+  const [qs, setQs] = useState([]);
+  const [ans, setAns] = useState({});
+  useEffect(() => {
+    if (!live || typeof ctx.getQuestions !== 'function') return;
+    let alive = true;
+    ctx.getQuestions().then((list) => { if (alive && Array.isArray(list)) setQs(list); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live]);
+  const qLabel = (q) => (q.label && (q.label[lang] || q.label.en || q.label.bn)) || q.key;
+  const answered = (v) => (Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && String(v).trim() !== '');
   const { today, tomorrow } = dhakaToday();
 
   // ctx is a new object every render: read it through a ref so loading runs once per service.
@@ -69,8 +81,12 @@ export default function BookingFlow({ ctx, c, s, initialService = null }) {
     if (!day || !time) return setState({ busy: false, err: tx('book.pickTime') });
     if (!f.name.trim()) return setState({ busy: false, err: tx('form.needName') });
     if (!f.phone.trim()) return setState({ busy: false, err: tx('form.needReach') });
+    const missing = qs.find((q) => q.required && !answered(ans[q.key]));
+    if (missing) return setState({ busy: false, err: tx('book.answer', { q: qLabel(missing) }) });
     setState({ busy: true, err: null });
-    const r = await ctx.book({ service: svc.slug || svc.id, date: day, time, name: f.name, phone: f.phone, note: f.note, website: f.website });
+    // `fields` always goes (even empty) so the server holds this form to its questions.
+    const fields = Object.fromEntries(qs.filter((q) => answered(ans[q.key])).map((q) => [q.key, q.type === 'boolean' ? ans[q.key] === 'yes' : ans[q.key]]));
+    const r = await ctx.book({ service: svc.slug || svc.id, date: day, time, name: f.name, phone: f.phone, note: f.note, website: f.website, ...(live && typeof ctx.getQuestions === 'function' ? { fields } : {}) });
     if (r.ok) {
       if (r.token && ctx.onBooked) { ctx.onBooked(r.token); return; }
       setState({ busy: false, err: null, done: true });
@@ -164,6 +180,29 @@ export default function BookingFlow({ ctx, c, s, initialService = null }) {
           <div style={sx(label + 'margin:0;')}>{tx('book.you')}</div>
           <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} onClick={(e) => e.stopPropagation()} placeholder={tx('form.name')} autoComplete="name" style={sx(inp)} />
           <input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} onClick={(e) => e.stopPropagation()} placeholder={tx('form.phone')} type="tel" inputMode="tel" autoComplete="tel" style={sx(inp)} />
+          {qs.map((q) => {
+            const v = ans[q.key];
+            const set = (val) => setAns((a) => ({ ...a, [q.key]: val }));
+            const lab = <div style={sx(muted + 'font-size:12.5px; margin:4px 0 -4px;')}>{qLabel(q)}</div>;
+            if (q.type === 'select' || q.type === 'boolean') {
+              const opts = q.type === 'boolean' ? [['yes', tx('book.yes')], ['no', tx('book.no')]] : (q.options || []).map((o) => [o, o]);
+              return <div key={q.key} data-book-q={q.key} style={{ display: 'contents' }}>{lab}<select value={v || ''} onChange={(e) => set(e.target.value)} onClick={(e) => e.stopPropagation()} style={sx(inp)}><option value="">{tx('book.choose')}</option>{opts.map(([val, txt]) => <option key={val} value={val}>{txt}</option>)}</select></div>;
+            }
+            if (q.type === 'multiselect') {
+              const list = Array.isArray(v) ? v : [];
+              return (
+                <div key={q.key} data-book-q={q.key} style={{ display: 'contents' }}>
+                  {lab}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {(q.options || []).map((o) => <div key={o} role="button" tabIndex={0} onClick={stop(() => set(list.includes(o) ? list.filter((x) => x !== o) : [...list, o]))} style={sx(chip(list.includes(o)) + 'min-width:0;')}>{o}</div>)}
+                  </div>
+                </div>
+              );
+            }
+            const typ = q.type === 'date' ? 'date' : q.type === 'phone' ? 'tel' : q.type === 'url' ? 'url' : 'text';
+            const mode = q.type === 'number' || q.type === 'money' ? 'decimal' : q.type === 'phone' ? 'tel' : undefined;
+            return <div key={q.key} data-book-q={q.key} style={{ display: 'contents' }}>{lab}<input value={v || ''} type={typ} inputMode={mode} onChange={(e) => set(e.target.value)} onClick={(e) => e.stopPropagation()} placeholder={qLabel(q)} style={sx(inp)} /></div>;
+          })}
           <textarea value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} onClick={(e) => e.stopPropagation()} placeholder={tx('book.note')} rows={2} style={sx(inp + 'resize:vertical;')} />
           {/* People never see this; a bot that fills it is thanked and forgotten. */}
           <input name="website" value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} tabIndex={-1} autoComplete="off" aria-hidden="true" style={{ position: 'absolute', left: -9999, width: 1, height: 1, opacity: 0 }} />
