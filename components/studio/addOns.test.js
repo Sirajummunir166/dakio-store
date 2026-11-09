@@ -80,6 +80,6 @@ test('final check FC-SST-02: a list route catalogue leaves out the product page 
   assert.equal(pdp.desc, '<p>Long text</p>')
   assert.equal(pdp.tabs.length, 1)
   const listed = toStudioCatalog(api, [], { list: true }).products[0]
-  assert.equal('desc' in listed || 'shortDesc' in listed || 'tabs' in listed, false)
-  assert.deepEqual({ ...listed }, (({ desc, shortDesc, tabs, ...rest }) => rest)(pdp))
+  assert.equal('desc' in listed || 'shortDesc' in listed || 'tabs' in listed || 'imgs' in listed, false)
+  assert.deepEqual({ ...listed }, (({ desc, shortDesc, tabs, imgs, ...rest }) => rest)(pdp))
 })

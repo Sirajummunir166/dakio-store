@@ -7,6 +7,7 @@ import { fmtPr } from '../catalog';
 import { sizeList } from '../system/SystemPages';
 import { sizeInStock, firstInStockSize, priceFor, soldOutSize, variantFor } from '../variants';
 import { siteText } from '../siteText';
+import { productPhotos, photoSlotId } from '../productPhotos';
 
 // Product detail — bound to ONE real catalog product (props.pid). Name, price
 // and compare-at render from the catalog; editing them on the canvas edits the
@@ -79,6 +80,35 @@ export default function Pdp({ sec, ctx }) {
       <div style={sx(pdpGrid)}>
         <div style={{ minWidth: 0 }}>
           {(() => {
+            // The product's own photos are the gallery when it has more than one
+            // (productPhotos.js); the shared alt-view slots are the fallback.
+            const photos = productPhotos(bp);
+            if (photos.length > 1) {
+              const at = Math.min(activeThumb || 0, photos.length - 1);
+              const pa = (w) => photos.reduce((m, u, i) => {
+                const id = photoSlotId(mainSlot, bp.id, i);
+                m[id] = assets[id] || (ctx.optImg ? ctx.optImg(u, w) : u);
+                return m;
+              }, { ...assets });
+              const big = (
+                <div style={sx(pdpMain + (thumbsLeft ? ' flex:1; min-width:0;' : ''))}>
+                  <ImageSlot slotId={photoSlotId(mainSlot, bp.id, at)} assets={pa(1200)} placeholder="Main product photo" fit="cover" preview={preview} aspect="4/5" hint="Portrait, ~1200×1500px (4:5). Center the product with margin on all sides." />
+                </div>
+              );
+              const small = pa(360);
+              const row = (
+                <div style={{ display: 'flex', flexDirection: thumbsLeft ? 'column' : 'row', gap: 10, ...(thumbsLeft ? { width: 76, flexShrink: 0 } : { marginTop: 10, overflowX: 'auto' }) }}>
+                  {photos.map((u, i) => (
+                    <div key={u + i} onClick={(e) => { if (preview) e.stopPropagation(); setActiveThumb(i); }} style={sx((thumbsLeft ? '' : 'flex:0 0 calc((100% - 30px) / 4); ') + pdpThumb(at === i))}>
+                      <ImageSlot slotId={photoSlotId(mainSlot, bp.id, i)} assets={small} fit="cover" preview />
+                    </div>
+                  ))}
+                </div>
+              );
+              return thumbsLeft
+                ? <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>{row}{big}</div>
+                : <>{big}{row}</>;
+            }
             const mainImg = (
               <div style={sx(pdpMain + (thumbsLeft ? ' flex:1; min-width:0;' : ''))}>
                 {activeThumb === null && !assets[mainSlot] && bp.img

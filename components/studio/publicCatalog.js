@@ -4,6 +4,7 @@
 // the canvas showed. Public products are always PUBLISHED, so arch is false.
 
 import { toStudioPairs } from './addOns.js';
+import { parsePhotoList, MAX_PHOTOS } from './productPhotos.js';
 
 // SEO hierarchy for published studio pages: a page's own title/desc wins,
 // otherwise the store default (doc.seo) fills in. Favicon + social image are
@@ -30,10 +31,11 @@ export function studioMetadata(site, page) {
 
 // Image delivery honoring the store's speed switches: Cloudinary sources get
 // f_auto/q_auto + a width cap when "compress" is on; other hosts pass through.
-export function optImg(url, seo) {
+// `w` caps the width (gallery thumbnails ask for less than the 1200 default).
+export function optImg(url, seo, w = 1200) {
   if (!url || typeof url !== 'string') return url;
   if ((seo?.compress ?? true) && url.includes('res.cloudinary.com') && url.includes('/upload/') && !url.includes('/upload/f_auto')) {
-    return url.replace('/upload/', '/upload/f_auto,q_auto,w_1200/');
+    return url.replace('/upload/', '/upload/f_auto,q_auto,w_' + w + '/');
   }
   return url;
 }
@@ -60,7 +62,11 @@ export function collectionPage(col, catalog) {
 export function toStudioCatalog(products = [], categories = [], { list = false } = {}) {
   const ranked = products.filter((p) => p.rank != null).length;
   let unrankedNext = ranked;
-  const mapped = products.map((p) => ({
+  const mapped = products.map((p) => {
+    // Product.images arrives as the raw DB value, a JSON string, so it is
+    // parsed (productPhotos.js); the first photo matches the builder's.
+    const photos = parsePhotoList(p.images, p.imageUrl);
+    return {
       id: p.id,
       n: p.name,
       sku: p.sku || '',
@@ -71,9 +77,11 @@ export function toStudioCatalog(products = [], categories = [], { list = false }
       rank: p.rank != null ? p.rank : ++unrankedNext,
       isNew: !!p.isNew,
       arch: false,
-      img: (Array.isArray(p.images) && p.images[0]) || p.imageUrl || null,
+      img: photos[0] || null,
       slug: p.slug,
       ...(list ? null : {
+        // Every photo, for the product page gallery. Lists only need the first.
+        imgs: photos.slice(0, MAX_PHOTOS),
         desc: p.description || '',
         shortDesc: p.shortDescription || '',
         // Product-page tabs (specs / size guide / shipping / custom), rich HTML
@@ -117,7 +125,8 @@ export function toStudioCatalog(products = [], categories = [], { list = false }
       // Goes well with: the merchant's add-ons, each carrying its own product
       // so it renders and prices even outside this page of the catalog.
       pairs: toStudioPairs(p.pairings),
-    }));
+    };
+  });
   // Add-ons not among the listed products, so the bag can still resolve them
   // (useBag looks here after `products`) without showing them in any grid.
   const listed = new Set(mapped.map((p) => p.id));

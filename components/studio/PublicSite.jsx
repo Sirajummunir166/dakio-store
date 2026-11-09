@@ -188,7 +188,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     isSel: false,
     currency: tk.currency,
     lazyImgs: seoF.lazy !== false,
-    optImg: (u) => optImg(u, seoF),
+    optImg: (u, w) => optImg(u, seoF, w),
     onGoPage: (id) => { window.location.href = pageHref(id); },
     onLink,
     // System-page navigation (Phase 8) — real URLs

@@ -130,7 +130,7 @@ export default function FunnelSite({ doc, fn, storeSlug, store = null, products 
     cat: { products, collections },
     isSel: false,
     lazyImgs: seoF.lazy !== false,
-    optImg: (u) => optImg(u, seoF),
+    optImg: (u, w) => optImg(u, seoF, w),
     onLink: () => scrollToForm(), // every unlinked/linked button safely reaches the form
     onOrderForm: scrollToForm,
     fnPid: fn.pid,

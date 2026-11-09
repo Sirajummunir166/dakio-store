@@ -14,6 +14,7 @@ import { sizeInStock, firstInStockSize, priceFor, soldOutSize, variantFor } from
 import RichContent, { RichContentStyles } from '../RichContent';
 import { resolveProductTabs } from '../productTabs';
 import { livePairs } from '../addOns';
+import { productPhotos, photoSlotId } from '../productPhotos';
 import { siteText } from '../siteText';
 
 export const SYS_DEFAULTS = {
@@ -524,18 +525,51 @@ export function ProductPage({ ctx, sys, product, edit }) {
   };
 
   const mainSlotId = 'st-prod-' + bp.id;
-  const thumbSlotIds = [0, 1, 2].map((i) => 'st-pdpt-' + i);
-  const shownSlotId = activeThumb !== null ? thumbSlotIds[activeThumb] : mainSlotId;
-  const shownAssets = activeThumb !== null
-    ? (ctx.assets || {})
-    : { ...(ctx.assets || {}), [mainSlotId]: (ctx.assets || {})[mainSlotId] || bp.img };
-
   const thumbsLeft = pd.thumbPos === 'left' && !mob;
+  const thumbBox = (on) => sx((thumbsLeft ? '' : 'flex:0 0 calc((100% - 24px) / 4); ') + 'aspect-ratio:1/1; border-radius:' + Math.min(C.rs, 10) + 'px; overflow:hidden; position:relative; background:' + cPd.card + '; cursor:pointer;' + (on ? ' outline:2px solid ' + cPd.fg + '; outline-offset:-2px;' : ''));
 
-  // Preview/public: only show alt-view tiles that actually have a photo — an
-  // empty "upload here" placeholder isn't something a customer can act on.
-  const thumbIs = [0, 1, 2].filter((i) => !ctx.preview || !!(ctx.assets || {})['st-pdpt-' + i]);
-  const thumbsEl = pd.thumbs !== false && thumbIs.length > 0 && (
+  // The product's own photos are the gallery when it has more than one
+  // (productPhotos.js). Each photo keeps a slot of its own, so Studio can still
+  // swap or crop it; the live site serves Cloudinary photos sized for the frame.
+  const photos = productPhotos(bp);
+  const ownGallery = photos.length > 1;
+  const photoAt = Math.min(activeThumb || 0, photos.length - 1);
+  const pimg = (u, w) => (ctx.optImg ? ctx.optImg(u, w) : u);
+  const photoAssets = (w) => photos.reduce((m, u, i) => {
+    const id = photoSlotId(mainSlotId, bp.id, i);
+    m[id] = (ctx.assets || {})[id] || pimg(u, w);
+    return m;
+  }, { ...(ctx.assets || {}) });
+
+  const thumbSlotIds = [0, 1, 2].map((i) => 'st-pdpt-' + i);
+  const altShown = !ownGallery && activeThumb !== null;
+  const shownSlotId = ownGallery ? photoSlotId(mainSlotId, bp.id, photoAt) : (altShown ? thumbSlotIds[activeThumb] : mainSlotId);
+  const shownAssets = ownGallery
+    ? photoAssets(1200)
+    : altShown
+      ? (ctx.assets || {})
+      : { ...(ctx.assets || {}), [mainSlotId]: (ctx.assets || {})[mainSlotId] || bp.img };
+
+  // One tile per photo. A tap shows it in the big frame, on the live site and
+  // in the builder alike (the builder still selects the page around it).
+  const ownThumbsEl = ownGallery && pd.thumbs !== false && (() => {
+    const small = photoAssets(360);
+    return (
+      <div style={{ display: 'flex', flexDirection: thumbsLeft ? 'column' : 'row', gap: 8, ...(thumbsLeft ? { width: 76, flexShrink: 0 } : { marginTop: 10, overflowX: 'auto' }) }}>
+        {photos.map((u, i) => (
+          <div key={u + i} onClick={(e) => { if (ctx.preview) e.stopPropagation(); setActiveThumb(i); }} style={thumbBox(photoAt === i)}>
+            <ImageSlot slotId={photoSlotId(mainSlotId, bp.id, i)} assets={small} fit="cover" preview />
+          </div>
+        ))}
+      </div>
+    );
+  })();
+
+  // One photo or none: the template's shared alt-view slots. Preview/public
+  // shows only the tiles that have a photo; an empty "upload here" placeholder
+  // isn't something a customer can act on.
+  const thumbIs = ownGallery ? [] : [0, 1, 2].filter((i) => !ctx.preview || !!(ctx.assets || {})['st-pdpt-' + i]);
+  const thumbsEl = ownThumbsEl || (pd.thumbs !== false && thumbIs.length > 0 && (
     <div style={{ display: 'flex', flexDirection: thumbsLeft ? 'column' : 'row', gap: 8, ...(thumbsLeft ? { width: 76, flexShrink: 0 } : { marginTop: 10 }) }}>
       {thumbIs.map((i) => (
         <div
@@ -547,11 +581,11 @@ export function ProductPage({ ctx, sys, product, edit }) {
         </div>
       ))}
     </div>
-  );
+   ));
 
   const mainEl = (
     <div style={sx('aspect-ratio:4/5; border-radius:' + C.r + 'px; overflow:hidden; position:relative; background:' + cPd.card + ';' + (ctx.shCard || '') + (thumbsLeft ? ' flex:1; min-width:0;' : ''))}>
-      <ImageSlot slotId={shownSlotId} assets={shownAssets} fit="cover" placeholder={activeThumb !== null ? 'Alt view' : 'Main product photo'} preview={ctx.preview} aspect={activeThumb !== null ? '1/1' : '4/5'} hint={activeThumb !== null ? 'Square, ~800×800px alt view.' : 'Portrait, ~1200×1500px (4:5). Also shown at 3:4 in your Shop grid — keep the product centered with margin.'} />
+      <ImageSlot slotId={shownSlotId} assets={shownAssets} fit="cover" placeholder={altShown ? 'Alt view' : 'Main product photo'} preview={ctx.preview} aspect={altShown ? '1/1' : '4/5'} hint={altShown ? 'Square, ~800×800px alt view.' : 'Portrait, ~1200×1500px (4:5). Also shown at 3:4 in your Shop grid — keep the product centered with margin.'} />
     </div>
   );
 
