@@ -1,6 +1,7 @@
 import { getStoreBySlug, getProductBySlug, getProducts, getPublishedSite } from '../../../../lib/api'
 import ProductDetailClient from '../../../../components/ProductDetailClient'
-import { notFound, permanentRedirect } from 'next/navigation'
+import { notFound, permanentRedirect, redirect } from 'next/navigation'
+import { showsLaunchPage } from '../../../../lib/launch'
 import { htmlToText } from '../../../../lib/theme/sanitizeHtml'
 import ProductJsonLd from '../../../../components/ProductJsonLd'
 import { canonicalHostOf, canonicalMeta, productPath } from '../../../../lib/seo'
@@ -22,6 +23,8 @@ export default async function ProductPage({ params }) {
   // Store Studio stores show products at /p/<slug>; the legacy URL redirects there.
   const siteData = await getPublishedSite(slug)
   if (siteData?.site) permanentRedirect(`/${slug}${productPath(productSlug, true)}`)
+  // No website yet: old product links lead to the launch page (lib/launch.js).
+  if (showsLaunchPage(siteData)) redirect(`/${slug}`)
   const [storeData, product, allProducts] = await Promise.all([
     getStoreBySlug(slug),
     getProductBySlug(slug, productSlug),

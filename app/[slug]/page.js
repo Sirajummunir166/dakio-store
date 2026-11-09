@@ -6,6 +6,8 @@ import PublicSite from '../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../components/studio/publicCatalog'
 import { notFound } from 'next/navigation'
 import { canonicalHostOf, canonicalMeta, businessJsonLd, faqJsonLd } from '../../lib/seo'
+import LaunchPage from '../../components/LaunchPage'
+import { showsLaunchPage, launchMetadata } from '../../lib/launch'
 
 export async function generateMetadata({ params }) {
   const { slug } = await params
@@ -18,6 +20,7 @@ export async function generateMetadata({ params }) {
   }
   const data = await getStoreBySlug(slug)
   if (!data?.store) return { title: 'Store Not Found' }
+  if (showsLaunchPage(siteData)) return launchMetadata(siteData.launch, data.store)
   const s = data.store
   return {
     title: s.name,
@@ -70,6 +73,11 @@ export default async function StorePage({ params }) {
       </>
     )
   }
+
+  // No published website: the store's launch page. The old theme pages below
+  // are retired (lib/launch.js); a store still in its grace keeps them.
+  if (showsLaunchPage(siteData)) return <LaunchPage launch={siteData.launch} store={storeData.store} />
+  if (siteData.unavailable) return <StoreUnavailable />
 
   const isFashionV1 = true // Fashion V1 is now the universal theme engine
 

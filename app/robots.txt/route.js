@@ -1,4 +1,5 @@
 import { getStoreByDomain, getPublishedSite } from '../../lib/api'
+import { showsLaunchPage } from '../../lib/launch'
 import { robotsTxt, canonicalHostOf } from '../../lib/seo'
 import { hostOf, isCustomDomain } from '../../lib/hosts'
 
@@ -15,7 +16,7 @@ export async function GET(req) {
     const data = await getStoreByDomain(host)
     if (data?.store) {
       const siteData = await getPublishedSite(data.store.slug)
-      if (!siteData?.site?.seo?.noindex) sitemapUrl = `https://${canonicalHostOf(data, data.store.slug)}/sitemap.xml`
+      if (!siteData?.site?.seo?.noindex && !showsLaunchPage(siteData)) sitemapUrl = `https://${canonicalHostOf(data, data.store.slug)}/sitemap.xml`
     }
   }
   return new Response(robotsTxt({ sitemapUrl }), {

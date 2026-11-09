@@ -6,6 +6,8 @@ import StoreNotFound from '../../../components/StoreNotFound'
 import PublicSite from '../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../components/studio/publicCatalog'
 import { canonicalHostOf, canonicalMeta, businessJsonLd, faqJsonLd } from '../../../lib/seo'
+import LaunchPage from '../../../components/LaunchPage'
+import { showsLaunchPage, launchMetadata } from '../../../lib/launch'
 
 export async function generateMetadata({ params }) {
   const { host } = await params
@@ -25,6 +27,7 @@ export async function generateMetadata({ params }) {
     const home = siteData.site.pages.find((p) => p.id === 'home') || siteData.site.pages[0]
     return { ...studioMetadata(siteData.site, home), ...seo }
   }
+  if (showsLaunchPage(siteData)) return launchMetadata(siteData.launch, s)
   return {
     title: s.name,
     description: s.description || `Shop at ${s.name}`,
@@ -78,6 +81,10 @@ export default async function DomainStorePage({ params }) {
       </>
     )
   }
+
+  // No published website: the store's launch page (lib/launch.js).
+  if (showsLaunchPage(siteData)) return <LaunchPage launch={siteData.launch} store={storeData.store} />
+  if (siteData.unavailable) return <StoreUnavailable />
 
   const isFashionV1 = true // Fashion V1 is now the universal theme engine
 

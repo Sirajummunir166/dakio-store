@@ -1,6 +1,7 @@
 import { getStoreByDomain, getProducts, getCategories, getPublishedSite, getServices } from '../../lib/api'
 import { storeUrls, sitemapXml, canonicalHostOf } from '../../lib/seo'
 import { hostOf, isCustomDomain } from '../../lib/hosts'
+import { showsLaunchPage } from '../../lib/launch'
 
 // /sitemap.xml on a store's own host (custom domain or <slug>.dakio.shop).
 // The middleware leaves dotted paths alone, so every host lands here and the
@@ -32,6 +33,8 @@ export async function GET(req) {
   ])
   const site = siteData?.site || null
   if (site?.seo?.noindex) return new Response('Not found', { status: 404 })
+  // A store showing its launch page has nothing to index yet (lib/launch.js).
+  if (showsLaunchPage(siteData)) return new Response('Not found', { status: 404 })
 
   const xml = sitemapXml(storeUrls({ origin: `https://${host}`, site, products, categories, services, booking: data.store.business?.booking?.on === true }))
   return new Response(xml, {

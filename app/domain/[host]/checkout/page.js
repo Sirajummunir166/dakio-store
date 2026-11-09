@@ -2,7 +2,8 @@ import { getStoreByDomain, getProducts, getCategories, getPublishedSite } from '
 import CheckoutClient from '../../../../components/CheckoutClient'
 import PublicSite from '../../../../components/studio/PublicSite'
 import { toStudioCatalog, studioMetadata } from '../../../../components/studio/publicCatalog'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import { showsLaunchPage } from '../../../../lib/launch'
 import { siteText } from '../../../../components/studio/siteText'
 
 export async function generateMetadata({ params }) {
@@ -33,5 +34,7 @@ export default async function DomainCheckoutPage({ params }) {
     )
   }
 
+  // No website, no checkout: the address shows the launch page (lib/launch.js).
+  if (showsLaunchPage(siteData)) redirect('/')
   return <CheckoutClient store={data.store} slug={slug} />
 }

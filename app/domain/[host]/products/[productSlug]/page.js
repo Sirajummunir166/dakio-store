@@ -1,6 +1,7 @@
 import { getStoreByDomain, getProductBySlug, getProducts, getPublishedSite } from '../../../../../lib/api'
 import ProductDetailClient from '../../../../../components/ProductDetailClient'
-import { notFound, permanentRedirect } from 'next/navigation'
+import { notFound, permanentRedirect, redirect } from 'next/navigation'
+import { showsLaunchPage } from '../../../../../lib/launch'
 import { htmlToText } from '../../../../../lib/theme/sanitizeHtml'
 import ProductJsonLd from '../../../../../components/ProductJsonLd'
 import { canonicalHostOf, canonicalMeta, productPath } from '../../../../../lib/seo'
@@ -28,6 +29,8 @@ export default async function DomainProductPage({ params }) {
   // working for old links (Facebook posts, bookmarks) and hands its ranking on.
   const siteData = await getPublishedSite(slug)
   if (siteData?.site) permanentRedirect(productPath(productSlug, true))
+  // No website yet: old product links lead to the launch page (lib/launch.js).
+  if (showsLaunchPage(siteData)) redirect('/')
   const [product, allProducts] = await Promise.all([
     getProductBySlug(slug, productSlug),
     getProducts(slug, { limit: 48 }),
