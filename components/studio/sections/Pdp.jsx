@@ -8,6 +8,7 @@ import { sizeList } from '../system/SystemPages';
 import { sizeInStock, firstInStockSize, priceFor, soldOutSize, variantFor } from '../variants';
 import { siteText } from '../siteText';
 import { productPhotos, photoSlotId } from '../productPhotos';
+import { usePreload, warm, underlay, GALLERY_CSS } from '../gallery';
 
 // Product detail — bound to ONE real catalog product (props.pid). Name, price
 // and compare-at render from the catalog; editing them on the canvas edits the
@@ -25,6 +26,9 @@ export default function Pdp({ sec, ctx }) {
   const [open, setOpen] = useState({});
   const [activeThumb, setActiveThumb] = useState(null);
   useEffect(() => { setActiveThumb(null); }, [bp && bp.id]);
+  // The gallery's big photos, fetched once the page has loaded (gallery.js).
+  const bigUrls = bp ? productPhotos(bp).map((u, i) => (assets || {})[photoSlotId('st-pdp-' + bp.id, bp.id, i)] || (ctx.optImg ? ctx.optImg(u, 1200) : u)) : [];
+  usePreload(bigUrls.length > 1 ? bigUrls : []);
   if (!bp) return null; // empty catalog — nothing honest to render
 
   const soldOrHidden = bp.stock === 0 || bp.arch;
@@ -90,24 +94,42 @@ export default function Pdp({ sec, ctx }) {
                 m[id] = assets[id] || (ctx.optImg ? ctx.optImg(u, w) : u);
                 return m;
               }, { ...assets });
+              const bigA = pa(1200);
+              const small = pa(360);
+              const shown = photoSlotId(mainSlot, bp.id, at);
+              // A new layer per photo: the small copy paints at once, the big
+              // one covers it when it arrives (gallery.js).
               const big = (
                 <div style={sx(pdpMain + (thumbsLeft ? ' flex:1; min-width:0;' : ''))}>
-                  <ImageSlot slotId={photoSlotId(mainSlot, bp.id, at)} assets={pa(1200)} placeholder="Main product photo" fit="cover" preview={preview} aspect="4/5" hint="Portrait, ~1200×1500px (4:5). Center the product with margin on all sides." />
+                  <div key={shown} className="dk-gal-in" style={{ position: 'absolute', inset: 0, ...underlay(small[shown]) }}>
+                    <ImageSlot slotId={shown} assets={bigA} placeholder="Main product photo" fit="cover" preview={preview} aspect="4/5" hint="Portrait, ~1200×1500px (4:5). Center the product with margin on all sides." />
+                  </div>
                 </div>
               );
-              const small = pa(360);
               const row = (
                 <div style={{ display: 'flex', flexDirection: thumbsLeft ? 'column' : 'row', gap: 10, ...(thumbsLeft ? { width: 76, flexShrink: 0 } : { marginTop: 10, overflowX: 'auto' }) }}>
-                  {photos.map((u, i) => (
-                    <div key={u + i} onClick={(e) => { if (preview) e.stopPropagation(); setActiveThumb(i); }} style={sx((thumbsLeft ? '' : 'flex:0 0 calc((100% - 30px) / 4); ') + pdpThumb(at === i))}>
-                      <ImageSlot slotId={photoSlotId(mainSlot, bp.id, i)} assets={small} fit="cover" preview />
-                    </div>
-                  ))}
+                  {photos.map((u, i) => {
+                    const slot = photoSlotId(mainSlot, bp.id, i);
+                    return (
+                      <div key={u + i} className="dk-gal-thumb" role="button" aria-label={(bp.n || '') + ' ' + (i + 1)} aria-pressed={at === i}
+                        onPointerEnter={() => warm(bigA[slot])}
+                        onPointerDown={(e) => { if (e.pointerType === 'mouse' && e.button === 0) setActiveThumb(i); }}
+                        onClick={(e) => { if (preview) e.stopPropagation(); setActiveThumb(i); }}
+                        style={sx((thumbsLeft ? '' : 'flex:0 0 calc((100% - 30px) / 4); ') + pdpThumb(at === i))}>
+                        <ImageSlot slotId={slot} assets={small} fit="cover" preview />
+                      </div>
+                    );
+                  })}
                 </div>
               );
-              return thumbsLeft
-                ? <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>{row}{big}</div>
-                : <>{big}{row}</>;
+              return (
+                <>
+                  <style>{GALLERY_CSS}</style>
+                  {thumbsLeft
+                    ? <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>{row}{big}</div>
+                    : <>{big}{row}</>}
+                </>
+              );
             }
             const mainImg = (
               <div style={sx(pdpMain + (thumbsLeft ? ' flex:1; min-width:0;' : ''))}>

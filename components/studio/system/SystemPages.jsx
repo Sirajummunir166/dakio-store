@@ -15,6 +15,7 @@ import RichContent, { RichContentStyles } from '../RichContent';
 import { resolveProductTabs } from '../productTabs';
 import { livePairs } from '../addOns';
 import { productPhotos, photoSlotId } from '../productPhotos';
+import { usePreload, warm, underlay, GALLERY_CSS } from '../gallery';
 import { siteText } from '../siteText';
 
 export const SYS_DEFAULTS = {
@@ -493,6 +494,10 @@ export function ProductPage({ ctx, sys, product, edit }) {
     if (!ctx.storeSlug) return undefined;
     return onCartChange(() => setBagTick((t) => t + 1));
   }, [ctx.storeSlug]);
+  // The gallery's big photos, fetched once the page has loaded so a tap on a
+  // thumbnail shows its photo at once (gallery.js).
+  const bigUrls = bp ? productPhotos(bp).map((u, i) => (ctx.assets || {})[photoSlotId('st-prod-' + bp.id, bp.id, i)] || (ctx.optImg ? ctx.optImg(u, 1200) : u)) : [];
+  usePreload(bigUrls.length > 1 ? bigUrls : []);
   if (!bp) return null;
   const pd = { v: 'left', bg: 'base', stock: true, sizes: true, note: true, thumbs: true, thumbPos: 'bottom', ...(pp.pd || {}) };
   const cPd = co(pd.bg || 'base', P);
@@ -541,29 +546,37 @@ export function ProductPage({ ctx, sys, product, edit }) {
     return m;
   }, { ...(ctx.assets || {}) });
 
+  const bigAssets = ownGallery ? photoAssets(1200) : null;
+  const smallAssets = ownGallery ? photoAssets(360) : null;
   const thumbSlotIds = [0, 1, 2].map((i) => 'st-pdpt-' + i);
   const altShown = !ownGallery && activeThumb !== null;
   const shownSlotId = ownGallery ? photoSlotId(mainSlotId, bp.id, photoAt) : (altShown ? thumbSlotIds[activeThumb] : mainSlotId);
   const shownAssets = ownGallery
-    ? photoAssets(1200)
+    ? bigAssets
     : altShown
       ? (ctx.assets || {})
       : { ...(ctx.assets || {}), [mainSlotId]: (ctx.assets || {})[mainSlotId] || bp.img };
 
   // One tile per photo. A tap shows it in the big frame, on the live site and
   // in the builder alike (the builder still selects the page around it).
-  const ownThumbsEl = ownGallery && pd.thumbs !== false && (() => {
-    const small = photoAssets(360);
-    return (
-      <div style={{ display: 'flex', flexDirection: thumbsLeft ? 'column' : 'row', gap: 8, ...(thumbsLeft ? { width: 76, flexShrink: 0 } : { marginTop: 10, overflowX: 'auto' }) }}>
-        {photos.map((u, i) => (
-          <div key={u + i} onClick={(e) => { if (ctx.preview) e.stopPropagation(); setActiveThumb(i); }} style={thumbBox(photoAt === i)}>
-            <ImageSlot slotId={photoSlotId(mainSlotId, bp.id, i)} assets={small} fit="cover" preview />
+  // A mouse picks on press, not on release; a finger on tap (so a swipe along
+  // the row never picks). Resting the pointer on a tile starts its big photo.
+  const ownThumbsEl = ownGallery && pd.thumbs !== false && (
+    <div style={{ display: 'flex', flexDirection: thumbsLeft ? 'column' : 'row', gap: 8, ...(thumbsLeft ? { width: 76, flexShrink: 0 } : { marginTop: 10, overflowX: 'auto' }) }}>
+      {photos.map((u, i) => {
+        const slot = photoSlotId(mainSlotId, bp.id, i);
+        return (
+          <div key={u + i} className="dk-gal-thumb" role="button" aria-label={(bp.n || '') + ' ' + (i + 1)} aria-pressed={photoAt === i}
+            onPointerEnter={() => warm(bigAssets[slot])}
+            onPointerDown={(e) => { if (e.pointerType === 'mouse' && e.button === 0) setActiveThumb(i); }}
+            onClick={(e) => { if (ctx.preview) e.stopPropagation(); setActiveThumb(i); }}
+            style={thumbBox(photoAt === i)}>
+            <ImageSlot slotId={slot} assets={smallAssets} fit="cover" preview />
           </div>
-        ))}
-      </div>
-    );
-  })();
+        );
+      })}
+    </div>
+  );
 
   // One photo or none: the template's shared alt-view slots. Preview/public
   // shows only the tiles that have a photo; an empty "upload here" placeholder
@@ -585,12 +598,21 @@ export function ProductPage({ ctx, sys, product, edit }) {
 
   const mainEl = (
     <div style={sx('aspect-ratio:4/5; border-radius:' + C.r + 'px; overflow:hidden; position:relative; background:' + cPd.card + ';' + (ctx.shCard || '') + (thumbsLeft ? ' flex:1; min-width:0;' : ''))}>
+      {ownGallery ? (
+        // A new layer per photo: the small copy paints at once underneath and
+        // the big one covers it when it arrives (gallery.js).
+        <div key={shownSlotId} className="dk-gal-in" style={{ position: 'absolute', inset: 0, ...underlay(smallAssets[shownSlotId]) }}>
+          <ImageSlot slotId={shownSlotId} assets={shownAssets} fit="cover" placeholder="Main product photo" preview={ctx.preview} aspect="4/5" hint="Portrait, ~1200×1500px (4:5). Also shown at 3:4 in your Shop grid — keep the product centered with margin." />
+        </div>
+      ) : (
       <ImageSlot slotId={shownSlotId} assets={shownAssets} fit="cover" placeholder={altShown ? 'Alt view' : 'Main product photo'} preview={ctx.preview} aspect={altShown ? '1/1' : '4/5'} hint={altShown ? 'Square, ~800×800px alt view.' : 'Portrait, ~1200×1500px (4:5). Also shown at 3:4 in your Shop grid — keep the product centered with margin.'} />
+      )}
     </div>
   );
 
   const galleryBlock = (
     <div key="gallery" style={{ minWidth: 0 }}>
+      {ownGallery && <style>{GALLERY_CSS}</style>}
       {thumbsLeft ? (
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           {thumbsEl}
