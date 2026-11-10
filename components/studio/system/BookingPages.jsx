@@ -52,7 +52,9 @@ export function BookingStatusPage({ ctx, booking, store, phoneDigits = null, pay
           {row(tx('bstatus.who'), booking.name)}
         </div>
         <div style={{ marginTop: 22, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {phoneDigits ? <a href={`tel:+${phoneDigits}`} style={sx(s.btn + 'text-decoration:none;')}>{headerWords(lang).call}</a> : null}
+          {/* An online service (Google Meet): joining is the main thing to do here. */}
+          {booking.meet ? <a data-booking-meet href={booking.meet} target="_blank" rel="noopener" style={sx(s.btn + 'text-decoration:none;')}>{tx('bstatus.meet')}</a> : null}
+          {phoneDigits ? <a href={`tel:+${phoneDigits}`} style={sx((booking.meet ? btn2 : s.btn + 'text-decoration:none;'))}>{headerWords(lang).call}</a> : null}
           {phoneDigits ? <a href={`https://wa.me/${phoneDigits}`} target="_blank" rel="noopener" style={sx(btn2)}>{tx('form.whatsapp')}</a> : null}
           {st === 'cancelled' || st === 'done' || st === 'no_show' ? <a href={ctx.bookHref ? ctx.bookHref() : '#'} style={sx(btn2)}>{tx('bstatus.again')}</a> : null}
         </div>
