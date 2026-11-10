@@ -6,6 +6,7 @@ import { SEC_NAMES, DEMO_CATALOG, colCount, liveProds, fmtPr } from './catalog';
 import Editable from './Editable';
 import ImageSlot, { ImgCtx } from './ImageSlot';
 import { SECTION_COMPONENTS } from './sections';
+import { annFor, annEnded } from './annBar';
 import { ShopPage, CollectionPage, ProductPage } from './system/SystemPages';
 import { CartPage, CheckoutPage, AccountPage, sys10, checkoutPays } from './system/CommercePages';
 import { ServicesPage } from './system/ServicePages';
@@ -154,6 +155,11 @@ export default function StudioCanvas() {
   const fn = String(curPage || '').startsWith('fn-') ? (doc.funnels || []).find((f2) => f2.id === curPage.slice(3)) : null;
   const page = doc.pages.find((p) => p.id === curPage) || doc.pages[0];
   const sections = fn ? fn.sections : sysKind ? [] : page.sections;
+  // The site-wide announcement bar (annBar.js): this page's, or null; annGone
+  // = it would show here but its end time has passed.
+  const annWhere = { home: !fn && !sysKind && page.id === 'home', checkout: sysKind === 'checkout' };
+  const annBar = annFor(doc, { ...annWhere, now: Date.now() });
+  const annGone = !annBar && !!annFor(doc, annWhere) && annEnded(doc.ann, Date.now());
   const base = co('base', P);
   const brandText = (theme.brandMode ?? 'text') !== 'image';
   const brandName = theme.brandName ?? 'Shahrqee';
@@ -192,7 +198,10 @@ export default function StudioCanvas() {
     } : undefined,
   });
 
-  const renderSection = (sec, i, last, isFooter) => {
+  // glob: 'footer' or 'ann' for the two site-wide sections (no insert zone,
+  // no move, duplicate or delete), false for a page's own sections.
+  const renderSection = (sec, i, last, glob) => {
+    const isFooter = !!glob;
     const Comp = SECTION_COMPONENTS[sec.type];
     if (!Comp) return null;
     const isSel = !preview && sel === sec.id;
@@ -223,7 +232,7 @@ export default function StudioCanvas() {
           <div onClick={() => send('act', { a: 'show', id: sec.id })}
             style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, borderTop: '1.5px dashed rgba(128,128,128,0.3)', borderBottom: '1.5px dashed rgba(128,128,128,0.3)', opacity: 0.55, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
             <Icon d={I.eyeOff} sw={1.8} size={12} />
-            {name} is hidden — click to show
+            {name} is hidden · click to show
           </div>
         )}
 
@@ -231,7 +240,7 @@ export default function StudioCanvas() {
           <div onClick={() => send('act', { a: 'mobShow', id: sec.id })}
             style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, borderTop: '1.5px dashed rgba(128,128,128,0.3)', borderBottom: '1.5px dashed rgba(128,128,128,0.3)', opacity: 0.55, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M4 4l16 16" /></svg>
-            {name} is hidden on phones — click to show it here too
+            {name} is hidden on phones · click to show it here too
           </div>
         )}
 
@@ -301,7 +310,7 @@ export default function StudioCanvas() {
             {isSel && (
               <>
                 <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 22, padding: '4px 10px', borderRadius: 99, background: '#1A1D12', color: '#C6F035', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 10.5, fontWeight: 800, letterSpacing: '0.6px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {isFooter ? 'FOOTER — ALL PAGES' : name.toUpperCase()}
+                  {glob === 'ann' ? (sec.props.where === 'home' ? 'ANNOUNCEMENT BAR · HOME PAGE ONLY' : 'ANNOUNCEMENT BAR · ALL PAGES') : glob ? 'FOOTER · ALL PAGES' : name.toUpperCase()}
                 </div>
                 <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 22, display: 'flex', gap: 2, padding: 3, borderRadius: 11, background: '#1A1D12', boxShadow: '0 8px 22px rgba(26,29,18,0.35)' }}>
                   <ToolBtn d={I.up} sw={2.2} title="Move up" disabled={isFooter || i === 0} onClick={() => send('act', { a: 'up', id: sec.id })} />
@@ -356,6 +365,17 @@ export default function StudioCanvas() {
               Chrome-free ad page — no header, footer or menus to leak clicks. Hidden from search engines.
             </span>
             <div onClick={() => send('fnSettings', { id: fn.id })} style={{ flexShrink: 0, padding: '5px 11px', borderRadius: 99, background: '#C6F035', color: '#1A1D12', fontSize: 10.5, fontWeight: 800, cursor: 'pointer' }}>Funnel settings</div>
+          </div>
+        )}
+
+        {/* The site-wide announcement bar, above the header on every page it
+            shows on. Past its end time it is a strip here, so it can be found. */}
+        {!fn && annBar && renderSection(annBar, 0, 0, 'ann')}
+        {!fn && annGone && !preview && (
+          <div onClick={(e) => { e.stopPropagation(); send('sel', { id: doc.ann.id }); }}
+            style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, borderBottom: '1.5px dashed rgba(128,128,128,0.3)', opacity: 0.55, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+            <Icon d={I.eyeOff} sw={1.8} size={12} />
+            Announcement bar has ended · click to change its end time
           </div>
         )}
 
@@ -527,7 +547,7 @@ export default function StudioCanvas() {
         )}
 
         {sections.map((sec, i) => renderSection(sec, i, sections.length - 1, false))}
-        {!fn && doc.footer && renderSection(doc.footer, sections.length, sections.length, true)}
+        {!fn && doc.footer && renderSection(doc.footer, sections.length, sections.length, 'footer')}
 
         {/* Funnel sticky order bar — price + Order now pinned while scrolling */}
         {fn && fn.bar !== false && (() => {

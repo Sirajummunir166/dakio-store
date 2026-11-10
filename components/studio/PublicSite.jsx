@@ -18,6 +18,7 @@ import { optImg, toStudioCatalog } from './publicCatalog';
 import { sanitizeThemeUrl } from '../../lib/theme/sanitizeThemeUrl';
 import { siteText } from './siteText';
 import { barOf, contactDigits, ctaLinkOf, ctaLabelOf, headerWords, ServiceActions, MobileMenu, MenuIcon, WaIcon, CallIcon } from './SiteHeaderParts';
+import { annFor } from './annBar';
 
 // Public renderer for a published Store Studio site — the same section components
 // the studio canvas uses, in preview mode (no editing affordances), with real
@@ -61,6 +62,8 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     return () => ro?.disconnect();
   }, [embed]);
   const [mob, setMob] = useState(false);
+  const [annNow, setAnnNow] = useState(null);
+  useEffect(() => { setAnnNow(Date.now()); }, []);
   // Tracking (components/tracking) — also where the store's currency comes
   // from: most Studio routes never receive the store object.
   const tk = useTracking();
@@ -434,6 +437,9 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
   // row wraps, the phone drawer lists them all. A 7th link and on were dropped
   // without a word (Store Studio audit SST-57).
   const navItems = doc.menus?.header || [];
+  // The site-wide announcement bar (doc.ann) sits above the header. Its end
+  // time is checked once mounted: the first render matches the server's.
+  const annSec = embed ? null : annFor(doc, { home: !system && page.id === 'home', checkout: system?.kind === 'checkout', now: annNow });
   // Asking about a service (W1, before booking): the header's main button, else WhatsApp, else the Contact section.
   function ctaLinkOfDoc() { return ctaLinkOf(doc, barOf(doc), business); }
   // The header's mode (W0): a shop keeps search, cart and account; a business
@@ -485,6 +491,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
       `}</style>
 
       {embed ? null : (<>
+      {annSec && renderSection(annSec)}
       {/* store nav */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, padding: mob ? '15px 20px' : `18px max(${padX}px, calc((100% - 1120px)/2))`, borderBottom: '1px solid ' + base.line }}>
         <a href={standalone ? `${basePath}/book${carry}` : (basePath || '/')} className="studio-nav-link" style={{ display: 'block' }}>
