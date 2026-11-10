@@ -64,7 +64,9 @@ export default function Pdp({ sec, ctx }) {
   const catId = '__cat:' + bp.id;
   const mainSlot = 'st-pdp-' + bp.id;
   const thumbSlots = [0, 1, 2].map((ti) => 'st-pdpt-' + ti);
-  const shownSlot = activeThumb !== null ? thumbSlots[activeThumb] : mainSlot;
+  // A removed alt view falls back to the main photo instead of an empty frame.
+  const altOn = activeThumb !== null && !!assets[thumbSlots[activeThumb]];
+  const shownSlot = altOn ? thumbSlots[activeThumb] : mainSlot;
   const thumbsLeft = p.thumbPos === 'left' && !mob;
 
   const chev = (on) => (
@@ -116,7 +118,7 @@ export default function Pdp({ sec, ctx }) {
                         onPointerDown={(e) => { if (e.pointerType === 'mouse' && e.button === 0) setActiveThumb(i); }}
                         onClick={(e) => { if (preview) e.stopPropagation(); setActiveThumb(i); }}
                         style={sx((thumbsLeft ? '' : 'flex:0 0 calc((100% - 30px) / 4); ') + pdpThumb(at === i))}>
-                        <ImageSlot slotId={slot} assets={small} fit="cover" preview />
+                        <ImageSlot slotId={slot} assets={small} fit="contain" preview />
                       </div>
                     );
                   })}
@@ -133,9 +135,9 @@ export default function Pdp({ sec, ctx }) {
             }
             const mainImg = (
               <div style={sx(pdpMain + (thumbsLeft ? ' flex:1; min-width:0;' : ''))}>
-                {activeThumb === null && !assets[mainSlot] && bp.img
+                {!altOn && !assets[mainSlot] && bp.img
                   ? <img src={ctx.optImg ? ctx.optImg(bp.img) : bp.img} alt={bp.n} loading={ctx.lazyImgs ? 'lazy' : undefined} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <ImageSlot slotId={shownSlot} assets={assets} placeholder={activeThumb === null ? 'Main product photo' : 'Alt view'} fit="cover" preview={preview} aspect={activeThumb === null ? '4/5' : '1/1'} hint={activeThumb === null ? 'Portrait, ~1200×1500px (4:5). Center the product with margin on all sides.' : 'Square, ~800×800px alt view.'} />}
+                  : <ImageSlot slotId={shownSlot} assets={assets} placeholder={altOn ? 'Alt view' : 'Main product photo'} fit={altOn ? 'contain' : 'cover'} preview={preview} aspect={altOn ? null : '4/5'} hint={altOn ? 'Alt view' : 'Portrait, ~1200×1500px (4:5). Center the product with margin on all sides.'} />}
               </div>
             );
             // In preview/public, an empty alt-view slot has nothing for a customer to
@@ -145,8 +147,9 @@ export default function Pdp({ sec, ctx }) {
             const thumbs = thumbTi.length > 0 && (
               <div style={{ display: 'flex', flexDirection: thumbsLeft ? 'column' : 'row', gap: 10, ...(thumbsLeft ? { width: 76, flexShrink: 0 } : { marginTop: 10 }) }}>
                 {thumbTi.map((ti) => (
-                  <div key={ti} onClick={preview ? (e) => { e.stopPropagation(); setActiveThumb(ti); } : undefined} style={sx((thumbsLeft ? '' : 'flex:1; ') + pdpThumb(activeThumb === ti))}>
-                    <ImageSlot slotId={'st-pdpt-' + ti} assets={assets} placeholder="Alt view" fit="cover" preview={preview} aspect="1/1" hint="Square, ~800×800px." />
+                  <div key={ti} onClick={preview ? (e) => { e.stopPropagation(); setActiveThumb(ti); } : undefined} style={sx((thumbsLeft ? '' : 'flex:0 0 calc((100% - 20px) / 3); min-width:0; ') + pdpThumb(altOn && activeThumb === ti))}>
+                    {/* contain: the whole photo shows, never cropped, whatever its shape */}
+                    <ImageSlot slotId={'st-pdpt-' + ti} assets={assets} placeholder="Alt view" fit="contain" preview={preview} aspect="1/1" hint="Any shape — the full photo shows." removable />
                   </div>
                 ))}
               </div>

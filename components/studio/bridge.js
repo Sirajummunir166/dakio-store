@@ -2,7 +2,7 @@
 // Canvas-side (iframe child) postMessage bridge to the Store Studio chrome (dakio-merchant).
 // Protocol (child → parent):
 //   ready | editStart | prop {id,key,val} | brand {val} | sel {id} | act {a,id}
-//   lib {at} | navMenus {label?} | goPage {id} | img {slotId,dataUrl} | height {px}
+//   lib {at} | navMenus {label?} | goPage {id} | img {slotId,dataUrl} | imgDel {slotId} | height {px}
 //   secOffset {id,top} | undo | redo
 // Parent → child: state {doc,curPage,device,preview,sel,building} | scrollToSec {id}
 

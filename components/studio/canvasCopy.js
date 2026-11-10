@@ -24,6 +24,7 @@ const BN = {
   'Portrait, ~1200×1500px (4:5). Center the product with margin on all sides.': 'লম্বালম্বি, ~1200×1500px (4:5)। পণ্যটি মাঝখানে রাখুন, চারপাশে জায়গা রেখে।',
   'Square, ~800×800px alt view.': 'বর্গাকার, ~800×800px — অন্য দিক থেকে ছবি।',
   'Square, ~800×800px.': 'বর্গাকার, ~800×800px।',
+  'Any shape — the full photo shows.': 'যেকোনো মাপ — পুরো ছবিটাই দেখা যাবে।',
   'Landscape-ish, ~1200×1030px. Keep the subject centered.': 'প্রায় আড়াআড়ি, ~1200×1030px। বিষয়টি মাঝখানে রাখুন।',
   'Widescreen, ~1600×900px — the thumbnail shown before play.': 'চওড়া, ~1600×900px — ভিডিও চালুর আগে যে ছবি দেখায়।',
   'Wide, ~1600×1000px (16:10). Also used as this collection’s page banner — keep the subject centered with margin.': 'চওড়া, ~1600×1000px (16:10)। এই কালেকশনের পেজের ব্যানারেও এটি দেখাবে — বিষয়টি মাঝখানে, চারপাশে জায়গা রেখে।',
@@ -34,6 +35,7 @@ const BN = {
   '⚠ Recenter photo': '⚠ ছবি মাঝখানে আনুন',
   'DRAG TO REFRAME · SCROLL TO ZOOM': 'টেনে ফ্রেম ঠিক করুন · স্ক্রল করে জুম',
   'Done': 'হয়েছে',
+  'Remove image': 'ছবি সরান',
 };
 
 // The full-bleed hero's guide carries its height (mobile / desktop).

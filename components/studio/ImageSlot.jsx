@@ -40,7 +40,9 @@ function ratioNum(aspect) {
 // on the empty placeholder so merchants know what to shoot BEFORE they upload, and used to
 // flag a photo whose native shape doesn't match this frame so they can recenter before
 // publishing rather than discover the crop on the live site.
-export default function ImageSlot({ slotId, assets, placeholder = '', fit = 'cover', preview = false, aspect = null, hint = '' }) {
+// removable: edit mode shows a × on a filled slot that clears it (optional photos,
+// e.g. the PDP's alt views — a required slot like the hero stays swap-only).
+export default function ImageSlot({ slotId, assets, placeholder = '', fit = 'cover', preview = false, aspect = null, hint = '', removable = false }) {
   const inputRef = useRef(null);
   const boxRef = useRef(null);
   const img = useContext(ImgCtx);
@@ -182,6 +184,19 @@ export default function ImageSlot({ slotId, assets, placeholder = '', fit = 'cov
           style={{ position: 'absolute', bottom: 8, left: 8, zIndex: 2, padding: '5px 10px', borderRadius: 99, background: '#B07A2A', color: '#fff', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 10, fontWeight: 800, letterSpacing: '0.3px', cursor: 'pointer', boxShadow: '0 6px 16px rgba(20,22,14,0.3)' }}
         >
           {tx('⚠ Recenter photo')}
+        </div>
+      )}
+      {!preview && !cropping && removable && src && (
+        <div
+          role="button"
+          aria-label={tx('Remove image')}
+          title={tx('Remove image')}
+          onClick={(e) => { e.stopPropagation(); send('imgDel', { slotId }); }}
+          onDoubleClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          style={{ position: 'absolute', top: 6, right: 6, zIndex: 3, width: 24, height: 24, borderRadius: 99, background: 'rgba(26,29,18,0.78)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(20,22,14,0.3)' }}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
         </div>
       )}
       {cropping && (
