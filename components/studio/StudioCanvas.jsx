@@ -228,11 +228,13 @@ export default function StudioCanvas() {
           </div>
         )}
 
+        {/* A hidden site-wide bar sits where people click (top of every page):
+            its strip opens its settings, it never comes back on one stray click. */}
         {hid && (
-          <div onClick={() => send('act', { a: 'show', id: sec.id })}
+          <div onClick={(e) => { if (glob === 'ann') { e.stopPropagation(); send('sel', { id: sec.id }); } else send('act', { a: 'show', id: sec.id }); }}
             style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, borderTop: '1.5px dashed rgba(128,128,128,0.3)', borderBottom: '1.5px dashed rgba(128,128,128,0.3)', opacity: 0.55, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
             <Icon d={I.eyeOff} sw={1.8} size={12} />
-            {name} is hidden · click to show
+            {glob === 'ann' ? 'Announcement bar is hidden on every page · click for its settings' : name + ' is hidden · click to show'}
           </div>
         )}
 
