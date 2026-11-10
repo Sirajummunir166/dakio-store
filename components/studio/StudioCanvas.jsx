@@ -371,9 +371,11 @@ export default function StudioCanvas() {
         )}
 
         {/* The site-wide announcement bar, above the header on every page it
-            shows on. Past its end time it is a strip here, so it can be found. */}
-        {!fn && annBar && renderSection(annBar, 0, 0, 'ann')}
-        {!fn && annGone && !preview && (
+            shows on. Hidden or past its end time it takes no room on the
+            canvas (its row in Sections says so); a strip shows only while the
+            bar is selected, so its place is visible as its settings change. */}
+        {!fn && annBar && (!annBar.hidden || sel === annBar.id) && renderSection(annBar, 0, 0, 'ann')}
+        {!fn && annGone && !preview && sel === doc.ann.id && (
           <div onClick={(e) => { e.stopPropagation(); send('sel', { id: doc.ann.id }); }}
             style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, borderBottom: '1.5px dashed rgba(128,128,128,0.3)', opacity: 0.55, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
             <Icon d={I.eyeOff} sw={1.8} size={12} />
