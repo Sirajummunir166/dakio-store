@@ -216,10 +216,12 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
     serviceActionLabel: () => (business?.booking?.on ? tx('svc.book') : tx('svc.ask')),
     // Booking (W2): free times, the booking itself, then the client's status page.
     bookHref: () => (basePath || '') + '/book',
-    getSlots: storeSlug ? async (service, date) => {
+    getSlots: storeSlug ? async (service, date, except = null) => {
       try {
         const q = new URLSearchParams({ service: String(service) });
         if (date) q.set('date', date);
+        // Moving a booking (its private link): its own time does not block the new one.
+        if (except) q.set('except', except);
         const res = await fetch(API + '/store/' + storeSlug + '/slots?' + q.toString(), { cache: 'no-store' });
         const data = await res.json().catch(() => ({}));
         return res.ok ? { ok: true, data } : { ok: false, status: res.status, code: data.code, error: data.error };
@@ -234,6 +236,14 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
       } catch { return { ok: false, status: 0 }; }
     } : undefined,
     onBooked: (token) => { window.location.href = `${basePath}/b/${token}${carry}`; },
+    // The client changes their own booking from its page: 'cancel', or 'move' with { date, time }.
+    changeBooking: storeSlug ? async (token, action, body = {}) => {
+      try {
+        const res = await fetch(API + '/store/' + storeSlug + '/bookings/' + encodeURIComponent(token) + '/' + (action === 'move' ? 'move' : 'cancel'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const data = await res.json().catch(() => ({}));
+        return res.ok ? { ok: true, ...data } : { ok: false, status: res.status, code: data.code, error: data.error };
+      } catch { return { ok: false, status: 0 }; }
+    } : undefined,
     // The business's booking questions (the client fields Nova asks), asked on the form too.
     getQuestions: storeSlug ? async () => {
       try {
@@ -579,7 +589,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         : system.kind === 'service' ? <ServicePage ctx={ctx} service={system.service} />
         : system.kind === 'book' ? <BookPage ctx={ctx} service={system.service || null} />
         : system.kind === 'enquire' ? <EnquirePage ctx={ctx} service={system.service || null} />
-        : system.kind === 'booking' ? <BookingStatusPage ctx={ctx} booking={system.booking} store={system.store} phoneDigits={system.phoneDigits || waDigits()} pay={system.pay || null} calendar={system.calendar || null} />
+        : system.kind === 'booking' ? <BookingStatusPage ctx={ctx} booking={system.booking} store={system.store} phoneDigits={system.phoneDigits || waDigits()} pay={system.pay || null} calendar={system.calendar || null} token={system.token || null} />
         : <ProductPage ctx={ctx} sys={doc.sys || {}} product={system.product} />
       ) : (
         (page.sections || []).map(renderSection)

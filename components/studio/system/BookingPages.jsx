@@ -9,6 +9,7 @@ import Enq from '../sections/Enq';
 import { baseStyles, sx } from '../theme';
 import { siteText } from '../siteText';
 import { dayWords, timeWords } from '../booking/bookingText';
+import BookingChange from '../booking/BookingChange';
 import { headerWords } from '../SiteHeaderParts';
 
 export function BookPage({ ctx, service = null }) {
@@ -22,7 +23,7 @@ export function EnquirePage({ ctx, service = null }) {
 
 const TONE = { requested: '#B7791F', confirmed: '#2F855A', cancelled: '#B03A2E', done: '#2F855A', no_show: '#6B6B6B' };
 
-export function BookingStatusPage({ ctx, booking, store, phoneDigits = null, pay = null, calendar = null }) {
+export function BookingStatusPage({ ctx, booking, store, phoneDigits = null, pay = null, calendar = null, token = null }) {
   const sec = { id: 'sys-booking', type: 'book', props: { bg: 'base', sp: 'normal' } };
   const s = baseStyles(sec, ctx);
   const { c } = s;
@@ -58,6 +59,8 @@ export function BookingStatusPage({ ctx, booking, store, phoneDigits = null, pay
           {phoneDigits ? <a href={`https://wa.me/${phoneDigits}`} target="_blank" rel="noopener" style={sx(btn2)}>{tx('form.whatsapp')}</a> : null}
           {st === 'cancelled' || st === 'done' || st === 'no_show' ? <a href={ctx.bookHref ? ctx.bookHref() : '#'} style={sx(btn2)}>{tx('bstatus.again')}</a> : null}
         </div>
+        {/* Another time, or cancel it: the client does it here, until the store's notice before the booking. */}
+        <BookingChange ctx={ctx} c={c} s={s} booking={booking} token={token} />
         {calendar ? (
           // Add to my calendar (DAKIO_ONE_PLACE_PLAN.md C3): Google's link, and an .ics file for iPhone and the rest.
           <div data-booking-calendar style={sx('margin-top:18px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-family:' + F.b + ';')}>
