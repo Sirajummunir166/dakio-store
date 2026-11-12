@@ -469,7 +469,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
   ) : null;
 
   return (
-    <ImgCtx.Provider value={{ crops: doc.crops || {}, cropTarget: null, setCropTarget: null, onCrop: null }}>
+    <ImgCtx.Provider value={{ crops: doc.crops || {}, cropTarget: null, setCropTarget: null, onCrop: null, seo: seoF, lazy: seoF.lazy !== false }}>
     <div lang={theme.lang === 'bn' ? 'bn' : 'en'} {...(theme.lang === 'bn' ? { 'data-bn-site': '' } : {})} style={{ background: P.bg, color: P.ink, fontFamily: F.b, overflow: 'hidden', minHeight: embed ? 0 : '100vh' }}>
       {embed ? <style>{`html,body{background:${P.bg};margin:0}`}</style> : null}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -502,7 +502,7 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
           ) : (
             <div style={{ height: mob ? 26 : 32, width: mob ? 110 : 150, position: 'relative' }}>
               {assets['st-brand-logo'] ? (
-                <img src={assets['st-brand-logo']} alt={brandName} style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'left', display: 'block' }} />
+                <img src={optImg(assets['st-brand-logo'], seoF, 480)} alt={brandName} decoding="async" style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'left', display: 'block' }} />
               ) : (
                 <div style={{ fontFamily: F.h, fontWeight: Math.max(F.hw, 600), fontSize: mob ? 20 : 23, letterSpacing: F.ls }}>{brandName}</div>
               )}

@@ -47,7 +47,7 @@ test('the public catalog carries every photo on the product page (Salt, 2026-11-
 });
 
 test('optImg takes a width for thumbnails', () => {
-  assert.equal(optImg(A, {}), 'https://res.cloudinary.com/x/image/upload/f_auto,q_auto,w_1200/v1/a.jpg');
-  assert.equal(optImg(A, {}, 360), 'https://res.cloudinary.com/x/image/upload/f_auto,q_auto,w_360/v1/a.jpg');
+  assert.equal(optImg(A, {}), 'https://res.cloudinary.com/x/image/upload/f_auto,q_auto,c_limit,w_1200/v1/a.jpg');
+  assert.equal(optImg(A, {}, 360), 'https://res.cloudinary.com/x/image/upload/f_auto,q_auto,c_limit,w_360/v1/a.jpg');
   assert.equal(optImg(A, { compress: false }, 360), A);
 });

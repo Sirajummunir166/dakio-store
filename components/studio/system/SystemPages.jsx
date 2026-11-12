@@ -374,7 +374,7 @@ function PairCard({ ctx, pp, bp, a, c, B }) {
   return (
     <div style={sx('display:flex; gap:12px; align-items:center; padding:12px; border-radius:' + Math.min(C.r, 16) + 'px; border:1px solid ' + c.line + '; background:' + c.card + '; min-width:0;')}>
       <div style={sx('width:64px; height:80px; flex-shrink:0; border-radius:' + Math.min(C.rs, 10) + 'px; overflow:hidden; background:' + c.bg + ';')}>
-        {a.p.img ? <img src={a.p.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : null}
+        {a.p.img ? <img src={ctx.optImg ? ctx.optImg(a.p.img, 240) : a.p.img} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : null}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div onClick={ctx.preview && ctx.onProduct ? (e) => { e.stopPropagation(); ctx.onProduct(a.p); } : undefined} style={sx('font-family:' + F.b + '; font-size:13.5px; font-weight:700; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;')}>{a.p.n}</div>
@@ -441,7 +441,7 @@ function ReviewsBlock({ reviews, ctx, c, headFont }) {
           <div key={r.id} style={sx('display:flex; gap:12px; padding:16px; border:1px solid ' + c.line + '; border-radius:' + Math.min(C.rs, 14) + 'px; background:' + (c.card || 'transparent') + ';')}>
             {r.photoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={r.photoUrl} alt="" loading="lazy" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: Math.min(C.rs, 10), flexShrink: 0 }} />
+              <img src={ctx.optImg ? ctx.optImg(r.photoUrl, 160) : r.photoUrl} alt="" loading="lazy" decoding="async" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: Math.min(C.rs, 10), flexShrink: 0 }} />
             )}
             <div style={{ minWidth: 0 }}>
               <div style={sx('font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + c.fg + ';')}>{tx(REVIEW_BADGE[r.rating] || REVIEW_BADGE[3])}</div>

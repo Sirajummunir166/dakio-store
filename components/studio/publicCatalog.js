@@ -29,16 +29,10 @@ export function studioMetadata(site, page) {
   };
 }
 
-// Image delivery honoring the store's speed switches: Cloudinary sources get
-// f_auto/q_auto + a width cap when "compress" is on; other hosts pass through.
-// `w` caps the width (gallery thumbnails ask for less than the 1200 default).
-export function optImg(url, seo, w = 1200) {
-  if (!url || typeof url !== 'string') return url;
-  if ((seo?.compress ?? true) && url.includes('res.cloudinary.com') && url.includes('/upload/') && !url.includes('/upload/f_auto')) {
-    return url.replace('/upload/', '/upload/f_auto,q_auto,w_' + w + '/');
-  }
-  return url;
-}
+// Image delivery honoring the store's speed switches: imageDelivery.js
+// (f_auto/q_auto/c_limit + a width for Cloudinary photos; other hosts pass
+// through). `w` caps the width (gallery thumbnails ask for less).
+export { optImg } from './imageDelivery.js';
 
 // Synthetic page for /collections/{slug} — a live product grid bound to one
 // collection by id, rendered through the same PublicSite pipeline as real pages.

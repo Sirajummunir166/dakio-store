@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { send } from './bridge';
 import { canvasCopy } from './canvasCopy';
+import { optImg, optSrcSet } from './imageDelivery';
 
 // Shared image-slot context: crops (slotId → {x,y,z}) applied everywhere the
 // slot renders, plus the crop-editor wiring (canvas edit mode only).
@@ -42,7 +43,10 @@ function ratioNum(aspect) {
 // publishing rather than discover the crop on the live site.
 // removable: edit mode shows a × on a filled slot that clears it (optional photos,
 // e.g. the PDP's alt views — a required slot like the hero stays swap-only).
-export default function ImageSlot({ slotId, assets, placeholder = '', fit = 'cover', preview = false, aspect = null, hint = '', removable = false }) {
+// sizes / priority (live store only): how wide the slot is on screen, so the
+// browser downloads the right size from the srcset (imageDelivery.js), and
+// whether it is above the fold (the hero loads at once; everything else lazily).
+export default function ImageSlot({ slotId, assets, placeholder = '', fit = 'cover', preview = false, aspect = null, hint = '', removable = false, sizes = '100vw', priority = false }) {
   const inputRef = useRef(null);
   const boxRef = useRef(null);
   const img = useContext(ImgCtx);
@@ -160,7 +164,16 @@ export default function ImageSlot({ slotId, assets, placeholder = '', fit = 'cov
       title={preview || cropping ? undefined : tx('Click to swap image · double-click to set focus & crop')}
     >
       {src ? (
-        <img src={src} alt="" draggable={false} onLoad={(e) => setNat({ w: e.target.naturalWidth, h: e.target.naturalHeight })} style={cropStyle(active, fit)} />
+        <img
+          // The live store (PublicSite/FunnelSite pass `seo`) asks Cloudinary
+          // for the size this spot needs; the builder shows the file as is.
+          src={img.seo ? optImg(src, img.seo, 1280) : src}
+          srcSet={img.seo ? optSrcSet(src, img.seo) : undefined}
+          sizes={img.seo ? sizes : undefined}
+          loading={img.seo && img.lazy && !priority ? 'lazy' : undefined}
+          fetchPriority={img.seo && priority ? 'high' : undefined}
+          decoding="async"
+          alt="" draggable={false} onLoad={(e) => setNat({ w: e.target.naturalWidth, h: e.target.naturalHeight })} style={cropStyle(active, fit)} />
       ) : preview ? (
         // Live store / preview: an empty slot is a quiet block — the builder's
         // "Hero image — your best product shot" guidance never reaches shoppers (SST-46).
