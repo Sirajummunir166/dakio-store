@@ -4,11 +4,14 @@ import Editable from '../Editable';
 import { siteText } from '../siteText';
 import { headerWords } from '../SiteHeaderParts';
 import { hoursRows } from '../hoursText';
-import { subStyle } from './kit';
+import { cardLook, oneOf, subStyle } from './kit';
 
 // Hours & location (W3): the opening hours — live from the store's booking
 // hours when it has them, so the website never disagrees with what Nova
 // books — the address with a map, and Call / Directions.
+// Layouts: split (details beside the map), stack (the map under the
+// details, full width), card (the details in a box beside the map). The
+// map, the Call button and the Directions button are each on or off.
 
 export default function Hours({ sec, ctx }) {
   const s = baseStyles(sec, ctx);
@@ -22,6 +25,8 @@ export default function Hours({ sec, ctx }) {
   const phone = String(p.phone || '').replace(/\D/g, '');
   const tel = phone ? (phone.startsWith('0') ? '+88' + phone : '+' + phone) : null;
   const mapOn = p.map !== false && addr;
+  const v = oneOf(sec.v, ['split', 'stack', 'card']);
+  const side = v !== 'stack' && mapOn && !mob;
   const lbl = 'font-family:' + F.b + '; font-size:11px; font-weight:800; letter-spacing:1.4px; text-transform:uppercase; color:' + c.sub + ';';
   const val = 'font-family:' + F.b + '; font-size:14.5px; line-height:1.55; white-space:pre-wrap;';
   const link = (href, children, primary) => (preview
@@ -29,8 +34,8 @@ export default function Hours({ sec, ctx }) {
     : <span style={sx(primary ? s.btn : s.btnGhost)}>{children}</span>);
   return (
     <div style={sx(s.pad)}>
-      <div style={sx('display:grid; gap:' + (mob ? 26 : 56) + 'px; grid-template-columns:' + (mob || !mapOn ? '1fr' : '0.9fr 1.1fr') + '; align-items:start;')}>
-        <div style={{ minWidth: 0 }}>
+      <div data-hours-layout={v} style={sx('display:grid; gap:' + (mob ? 26 : v === 'stack' ? 32 : 56) + 'px; grid-template-columns:' + (side ? '0.9fr 1.1fr' : '1fr') + '; align-items:start;')}>
+        <div style={sx('min-width:0;' + (v === 'card' ? cardLook('box', { C, c, s }, 'padding:' + (mob ? '22px 20px' : '30px 32px') + ';') : ''))}>
           <Editable secId={sec.id} k="head" value={p.head} style={s.h2} preview={preview} />
           {(p.sub || !preview) ? <Editable secId={sec.id} k="sub" value={p.sub} style={subStyle(F, c, mob)} multiline preview={preview} /> : null}
           <div style={sx(lbl + 'margin-top:26px;')}>{tx('hours.hours')}</div>
@@ -49,12 +54,12 @@ export default function Hours({ sec, ctx }) {
           <Editable secId={sec.id} k="addr" value={p.addr} style={val + 'margin-top:8px;'} multiline preview={preview} />
           {(p.phone || !preview) ? <Editable secId={sec.id} k="phone" value={p.phone} style={val + 'margin-top:6px; font-weight:600;'} preview={preview} /> : null}
           <div style={{ marginTop: 22, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {tel ? link('tel:' + tel, headerWords(lang).call, true) : null}
-            {addr ? link('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addr), tx('hours.directions'), !tel) : null}
+            {tel && p.callOn !== false ? link('tel:' + tel, headerWords(lang).call, true) : null}
+            {addr && p.dirOn !== false ? link('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addr), tx('hours.directions'), !(tel && p.callOn !== false)) : null}
           </div>
         </div>
         {mapOn ? (
-          <div style={{ position: 'relative', aspectRatio: mob ? '4/3' : '5/4', borderRadius: C.r, overflow: 'hidden', background: c.card, border: '1px solid ' + c.line }}>
+          <div style={{ position: 'relative', aspectRatio: mob ? '4/3' : v === 'stack' ? '21/9' : '5/4', borderRadius: C.r, overflow: 'hidden', background: c.card, border: '1px solid ' + c.line }}>
             <iframe title={addr} src={'https://www.google.com/maps?q=' + encodeURIComponent(addr) + '&output=embed'} loading="lazy" referrerPolicy="no-referrer-when-downgrade"
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0, pointerEvents: preview ? 'auto' : 'none' }} />
           </div>

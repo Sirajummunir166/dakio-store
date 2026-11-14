@@ -31,3 +31,33 @@ export function groupServices(list) {
   }
   return out;
 }
+
+/**
+ * The services a section shows (Store Studio's "Which services" control):
+ *   from 'all'   — every service, in the store's order (the default)
+ *   from 'cat'   — one category (`cat`, its name)
+ *   from 'picks' — hand-picked ids (`picks`), in the picked order; a service
+ *                  that was hidden or deleted since simply drops out
+ * `max` (1–24) cuts the list; 0 or nothing shows them all. A section whose
+ * choice matches nothing shows nothing, never "all" by surprise.
+ */
+export function pickServices(all, p) {
+  const list = Array.isArray(all) ? all : [];
+  const from = p && p.from;
+  let out = list;
+  if (from === 'cat') {
+    const cat = String((p && p.cat) || '').trim().toLowerCase();
+    out = cat ? list.filter((s) => String(s.category || '').trim().toLowerCase() === cat) : list;
+  } else if (from === 'picks') {
+    const ids = Array.isArray(p && p.picks) ? p.picks : [];
+    out = ids.map((id) => list.find((s) => s.id === id || s.slug === id)).filter(Boolean);
+  }
+  const max = Number(p && p.max);
+  return Number.isInteger(max) && max > 0 ? out.slice(0, Math.min(max, 24)) : out;
+}
+
+/** The service an item or a section is tied to (by id or website address), or null. */
+export function serviceOf(all, ref) {
+  if (!ref || ref === 'any') return null;
+  return (Array.isArray(all) ? all : []).find((s) => s.id === ref || s.slug === ref) || null;
+}

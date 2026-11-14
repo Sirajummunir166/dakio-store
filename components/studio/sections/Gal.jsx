@@ -4,7 +4,7 @@ import { baseStyles, sx } from '../theme';
 import Editable from '../Editable';
 import ImageSlot from '../ImageSlot';
 import { siteText } from '../siteText';
-import { itemsOf, subStyle } from './kit';
+import { colsOf, itemsOf, subStyle } from './kit';
 
 // Gallery / portfolio (W3). Variants:
 //   grid  — a photo grid with captions (bridal looks, finished rooms)
@@ -12,6 +12,8 @@ import { itemsOf, subStyle } from './kit';
 //   proj  — project cards: photo, title, a line (area, budget band)
 // Photos are image slots keyed by the item's stable key, so removing one
 // never moves another's picture.
+// Look: 2 to 4 columns, the photo's shape (square, tall, wide) and the
+// captions on or off.
 
 function BeforeAfter({ slot, assets, preview, tx, c, F, radius }) {
   const [x, setX] = useState(50);
@@ -52,7 +54,9 @@ export default function Gal({ sec, ctx }) {
   const tx = siteText(ctx.theme?.lang);
   const items = itemsOf(p);
   const v = sec.v || 'grid';
-  const cols = v === 'ba' ? (mob ? 1 : 2) : (mob ? 2 : 3);
+  const cols = v === 'ba' ? (mob ? 1 : Math.min(colsOf(p.cols, 2, false), 3)) : colsOf(p.cols, 3, mob, 2);
+  const shape = { square: '1/1', tall: '4/5', wide: '4/3' }[p.shape] || (v === 'proj' ? '4/3' : '1/1');
+  const caps = p.caps !== false;
   const slot = (it) => 'st-gal-' + sec.id + '-' + it.k;
   const cap = 'font-family:' + F.b + '; font-size:13.5px; font-weight:600; margin-top:10px;';
   const meta = 'font-family:' + F.b + '; font-size:12.5px; color:' + c.sub + '; margin-top:3px;';
@@ -60,18 +64,18 @@ export default function Gal({ sec, ctx }) {
     <div style={sx(s.pad)}>
       <Editable secId={sec.id} k="head" value={p.head} style={s.h2} preview={preview} />
       <Editable secId={sec.id} k="sub" value={p.sub} style={subStyle(F, c, mob)} multiline preview={preview} />
-      <div style={sx('margin-top:' + (mob ? 22 : 32) + 'px; display:grid; gap:' + (mob ? 10 : 18) + 'px; grid-template-columns:repeat(' + cols + ', minmax(0,1fr));')}>
+      <div data-gal-cols={cols} style={sx('margin-top:' + (mob ? 22 : 32) + 'px; display:grid; gap:' + (mob ? 10 : 18) + 'px; grid-template-columns:repeat(' + cols + ', minmax(0,1fr));')}>
         {items.map((it, i) => (
           <div key={it.k} data-gal-item style={{ minWidth: 0 }}>
             {v === 'ba' ? (
               <BeforeAfter slot={slot(it)} assets={assets} preview={preview} tx={tx} c={c} F={F} radius={C.r} />
             ) : (
-              <div style={{ position: 'relative', aspectRatio: v === 'proj' ? '4/3' : '1/1', borderRadius: C.r, overflow: 'hidden', background: c.card }}>
-                <ImageSlot slotId={slot(it)} assets={assets} fit="cover" placeholder={v === 'proj' ? 'Project photo' : 'Photo'} preview={preview} aspect={v === 'proj' ? '4/3' : '1/1'} hint="Your own work, well lit" />
+              <div style={{ position: 'relative', aspectRatio: shape, borderRadius: C.r, overflow: 'hidden', background: c.card }}>
+                <ImageSlot slotId={slot(it)} assets={assets} fit="cover" placeholder={v === 'proj' ? 'Project photo' : 'Photo'} preview={preview} aspect={shape} hint="Your own work, well lit" />
               </div>
             )}
-            {(it.t || !preview) ? <Editable secId={sec.id} k={['items', i, 't']} value={it.t} style={cap} preview={preview} /> : null}
-            {v !== 'grid' && (it.m || !preview) ? <Editable secId={sec.id} k={['items', i, 'm']} value={it.m} style={meta} preview={preview} /> : null}
+            {caps && (it.t || !preview) ? <Editable secId={sec.id} k={['items', i, 't']} value={it.t} style={cap} preview={preview} /> : null}
+            {caps && v !== 'grid' && (it.m || !preview) ? <Editable secId={sec.id} k={['items', i, 'm']} value={it.m} style={meta} preview={preview} /> : null}
           </div>
         ))}
       </div>

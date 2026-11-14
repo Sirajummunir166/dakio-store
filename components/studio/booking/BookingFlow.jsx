@@ -17,11 +17,12 @@ import { dayWords, timeWords, dhakaToday, nextDate } from './bookingText';
 
 const SAMPLE_TIMES = ['10:00', '11:00', '12:00', '15:00', '16:30', '18:00'];
 
-export default function BookingFlow({ ctx, c, s, initialService = null }) {
+export default function BookingFlow({ ctx, c, s, initialService = null, only = null }) {
   const { F, C, mob } = ctx;
   const lang = ctx.theme?.lang;
   const tx = siteText(lang);
-  const services = (ctx.cat && ctx.cat.services) || [];
+  // `only`: the services this section books (Studio's Which services); the /book page passes none and offers them all.
+  const services = Array.isArray(only) ? only : ((ctx.cat && ctx.cat.services) || []);
   const live = typeof ctx.getSlots === 'function' && typeof ctx.book === 'function';
   const startSvc = initialService ? services.find((x) => x.slug === initialService || x.id === initialService) || null : (services.length === 1 ? services[0] : null);
 
