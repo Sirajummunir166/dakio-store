@@ -296,6 +296,8 @@ const EN = {
   'product.soldOut': 'Sold out',
   'product.viewCart': 'View cart',
   'product.inCart': 'In cart',
+  // The buy button with Goes well with add-ons ticked: how many go in (the total follows).
+  'product.addN': 'Add {n} to bag',
   'product.returns': '7-day easy returns',
   'product.payLine': 'bKash · Nagad · COD',
   'product.tab.desc': 'Description',
@@ -639,6 +641,7 @@ const BN = {
   'product.soldOut': 'স্টক শেষ',
   'product.viewCart': 'কার্ট দেখুন',
   'product.inCart': 'কার্টে আছে',
+  'product.addN': '{n}টি কার্টে যোগ করুন',
   'product.returns': '৭ দিনের সহজ রিটার্ন',
   'product.payLine': 'bKash · Nagad · ক্যাশ অন ডেলিভারি',
   'product.tab.desc': 'বিবরণ',

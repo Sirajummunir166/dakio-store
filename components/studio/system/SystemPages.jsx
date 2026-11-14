@@ -13,7 +13,7 @@ import { getCart, onCartChange } from '../cartStore';
 import { sizeInStock, firstInStockSize, priceFor, soldOutSize, variantFor } from '../variants';
 import RichContent, { RichContentStyles } from '../RichContent';
 import { resolveProductTabs } from '../productTabs';
-import { livePairs } from '../addOns';
+import { livePairs, togetherUnit, buyTotal } from '../addOns';
 import { productPhotos, photoSlotId } from '../productPhotos';
 import { usePreload, warm, underlay, GALLERY_CSS } from '../gallery';
 import { siteText } from '../siteText';
@@ -67,7 +67,8 @@ const SORTS = [
 ];
 
 // Template pill + selection wrapper — canvas edit mode only
-function Part({ id, label, edit, children, style }) {
+// `labelRight`: the selected label sits top right (a small part whose title is top left).
+function Part({ id, label, edit, children, style, labelRight }) {
   const sel = edit && edit.sel === id;
   return (
     <div
@@ -81,7 +82,7 @@ function Part({ id, label, edit, children, style }) {
       className={edit && !sel ? 'st-sec' : undefined}
     >
       {sel && (
-        <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 22, padding: '4px 10px', borderRadius: 99, background: '#1A1D12', color: '#C6F035', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 10.5, fontWeight: 800, letterSpacing: '0.6px' }}>
+        <div style={{ position: 'absolute', top: 8, ...(labelRight ? { right: 8 } : { left: 8 }), zIndex: 22, padding: '4px 10px', borderRadius: 99, background: '#1A1D12', color: '#C6F035', fontFamily: "'Hanken Grotesk',sans-serif", fontSize: 10.5, fontWeight: 800, letterSpacing: '0.6px' }}>
           {label}
         </div>
       )}
@@ -351,70 +352,60 @@ function pickAlso(also, bp, cat) {
   return list.slice(0, Math.max(2, Math.min(8, also.count || 4)));
 }
 
-// ── Goes well with — the merchant's add-ons for this product ────────────────
-// Each card adds its add-on as its own bag line (`addOnOf` = this product), so
-// the together price applies while this product is in the bag too — the bag
-// and the server price it by the same rule (../addOns.js).
-function PairCard({ ctx, pp, bp, a, c, B }) {
-  const { F, C } = ctx;
-  const tx = siteText(ctx.theme?.lang);
-  const sizes = sizeList(a.p);
-  const [size, setSize] = useState(() => firstInStockSize(a.p, sizes));
-  const [added, setAdded] = useState(false);
-  const cur = (size && sizeInStock(a.p, size) ? size : null) || firstInStockSize(a.p, sizes);
-  const normal = priceFor(a.p, cur);
-  const deal = a.together != null && a.together < normal;
-  const canAdd = !!ctx.addToBag && (sizes.length === 0 || !!cur);
-  const add = (e) => {
-    e.stopPropagation();
-    if (!canAdd) return;
-    ctx.addToBag(a.p, 1, cur, bp.id);
-    setAdded(true);
-  };
+// ── Goes well with: the merchant's add-ons, right under the buy button ──────
+// (2026-11-14, owner: "put the add-ons close to add to cart … customer never
+// miss"). Each add-on is a tick row. Before this product is in the bag a tick
+// only marks it, and the buy button then adds this product and every ticked
+// add-on in one press, showing their total. Once this product (at this size)
+// is in the bag a tick adds the add-on at once, and unticking one that is in
+// the bag takes it out. An add-on is its own bag line (`addOnOf` = this
+// product), priced by the server's rule (../addOns.js). Nothing is ticked for
+// the buyer.
+function Tick({ on, c }) {
   return (
-    <div style={sx('display:flex; gap:12px; align-items:center; padding:12px; border-radius:' + Math.min(C.r, 16) + 'px; border:1px solid ' + c.line + '; background:' + c.card + '; min-width:0;')}>
-      <div style={sx('width:64px; height:80px; flex-shrink:0; border-radius:' + Math.min(C.rs, 10) + 'px; overflow:hidden; background:' + c.bg + ';')}>
-        {a.p.img ? <img src={ctx.optImg ? ctx.optImg(a.p.img, 240) : a.p.img} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : null}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div onClick={ctx.preview && ctx.onProduct ? (e) => { e.stopPropagation(); ctx.onProduct(a.p); } : undefined} style={sx('font-family:' + F.b + '; font-size:13.5px; font-weight:700; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;')}>{a.p.n}</div>
-        {a.reason ? <div style={sx('font-family:' + F.b + '; font-size:12px; color:' + c.sub + '; margin-top:2px; line-height:1.4;')}>{a.reason}</div> : null}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-          <span style={sx('font-family:' + F.b + '; font-size:13.5px; font-weight:800; font-variant-numeric:tabular-nums;')}>{fmtPr(deal ? a.together : normal)}</span>
-          {deal ? <span style={sx('font-family:' + F.b + '; font-size:12px; color:' + c.sub + '; text-decoration:line-through; font-variant-numeric:tabular-nums;')}>{fmtPr(normal)}</span> : null}
-          {deal ? <span style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + ';')}>{tx('product.withThis', { name: bp.n.length > 22 ? tx('product.item') : bp.n })}</span> : null}
-        </div>
-        {sizes.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-            {sizes.map((z) => (
-              <div key={z} onClick={ctx.preview && sizeInStock(a.p, z) ? (e) => { e.stopPropagation(); setSize(z); setAdded(false); } : undefined} style={sx('min-width:34px; padding:5px 8px; text-align:center; border-radius:' + Math.min(C.rs, 8) + 'px; border:1.5px solid ' + (z === cur ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:11.5px; font-weight:700; cursor:pointer;' + (z === cur ? ' background:' + c.fg + '; color:' + c.bg + ';' : '') + (sizeInStock(a.p, z) ? '' : soldOutSize))}>{z}</div>
-            ))}
-          </div>
-        )}
-      </div>
-      <div onClick={ctx.preview ? add : undefined} style={sx('flex-shrink:0; padding:10px 16px; border-radius:' + C.btn + '; background:' + (added ? 'transparent' : B.bg) + '; color:' + (added ? c.fg : B.fg) + '; border:1.5px solid ' + (added ? c.line : 'transparent') + '; font-family:' + F.b + '; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap;' + (canAdd || !ctx.preview ? '' : ' opacity:0.45;'))}>
-        {added ? tx('product.added') : pp.pairBtn}
-      </div>
+    <div aria-hidden="true" style={sx('width:20px; height:20px; flex-shrink:0; border-radius:6px; border:1.5px solid ' + (on ? c.fg : c.sub) + '; background:' + (on ? c.fg : 'transparent') + '; color:' + c.bg + '; display:flex; align-items:center; justify-content:center;')}>
+      {on && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
     </div>
   );
 }
 
-function PairBlock({ ctx, pp, bp, pairs, headFont, edit }) {
-  const { P, F, mob, padX } = ctx;
-  const c = co('base', P);
-  const B = btnColors('base', P);
+function PairRow({ ctx, bp, a, c, on, line, cur, onSize, onToggle }) {
+  const { F, C } = ctx;
+  const tx = siteText(ctx.theme?.lang);
+  const sizes = sizeList(a.p);
+  const normal = priceFor(a.p, cur);
+  const unit = togetherUnit(a, normal);
+  const deal = unit < normal;
+  const live = !!ctx.preview;
+  const toggle = (e) => { e.stopPropagation(); onToggle(a); };
   return (
-    <div style={sx('padding:' + (mob ? 30 : 44) + 'px max(' + padX + 'px, calc((100% - 1120px)/2)); background:' + c.bg + '; color:' + c.fg + '; border-top:1px solid ' + c.line + ';')}>
-      <Editable secId="__sys:prod" k="pairHead" value={pp.pairHead} style={headFont + 'font-size:' + (mob ? 20 : 24) + 'px; line-height:1.15;'} preview={ctx.preview} />
-      {pairs.length > 0 ? (
-        <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: mob ? '1fr' : 'repeat(' + Math.min(3, pairs.length) + ', minmax(0,1fr))', gap: 12 }}>
-          {pairs.map((a) => <PairCard key={a.id} ctx={ctx} pp={pp} bp={bp} a={a} c={c} B={B} />)}
+    <div
+      role="checkbox" aria-checked={on} tabIndex={live ? 0 : undefined}
+      onClick={live ? toggle : undefined}
+      onKeyDown={live ? (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(e); } } : undefined}
+      style={sx('display:flex; gap:12px; align-items:center; padding:12px 14px; border-top:1px solid ' + c.line + '; cursor:pointer;')}
+    >
+      <Tick on={on} c={c} />
+      <div style={sx('width:48px; height:60px; flex-shrink:0; border-radius:' + Math.min(C.rs, 8) + 'px; overflow:hidden; background:' + c.bg + ';')}>
+        {a.p.img ? <img src={ctx.optImg ? ctx.optImg(a.p.img, 360) : a.p.img} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : null}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={sx('font-family:' + F.b + '; font-size:13.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;')}>{a.p.n}</div>
+        {a.reason ? <div style={sx('font-family:' + F.b + '; font-size:12px; color:' + c.sub + '; margin-top:2px; line-height:1.4;')}>{a.reason}</div> : null}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+          <span style={sx('font-family:' + F.b + '; font-size:13.5px; font-weight:800; font-variant-numeric:tabular-nums;')}>{fmtPr(unit)}</span>
+          {deal ? <span style={sx('font-family:' + F.b + '; font-size:12px; color:' + c.sub + '; text-decoration:line-through; font-variant-numeric:tabular-nums;')}>{fmtPr(normal)}</span> : null}
+          {deal ? <span style={sx('font-family:' + F.b + '; font-size:11.5px; color:' + c.sub + ';')}>{tx('product.withThis', { name: bp.n.length > 22 ? tx('product.item') : bp.n })}</span> : null}
+          {line ? <span style={sx('font-family:' + F.b + '; font-size:11.5px; font-weight:700; color:' + c.fg + ';')}>{tx('product.inCart') + (line.size ? ' · ' + line.size : '')}</span> : null}
         </div>
-      ) : edit ? (
-        <div style={sx('margin-top:12px; font-family:' + F.b + '; font-size:13px; color:' + c.sub + '; opacity:0.7;')}>
-          Shows the products you pair with this one — open the product in your dashboard and use Goes well with. Nothing paired yet, so customers don’t see this.
-        </div>
-      ) : null}
+        {sizes.length > 0 && !line && (
+          <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+            {sizes.map((z) => (
+              <div key={z} onClick={live && sizeInStock(a.p, z) ? (e) => { e.stopPropagation(); onSize(a, z); } : undefined} style={sx('min-width:32px; padding:4px 8px; text-align:center; border-radius:' + Math.min(C.rs, 8) + 'px; border:1.5px solid ' + (z === cur ? c.fg : c.line) + '; font-family:' + F.b + '; font-size:11.5px; font-weight:700; cursor:pointer;' + (z === cur ? ' background:' + c.fg + '; color:' + c.bg + ';' : '') + (sizeInStock(a.p, z) ? '' : soldOutSize))}>{z}</div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -470,9 +461,13 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const [stickyOn, setStickyOn] = useState(false);
   const [activeTab, setActiveTab] = useState('desc');
   const [, setBagTick] = useState(0);
+  // Goes well with: the add-ons ticked to go in with the next press of the
+  // buy button, and the size picked on each add-on row (by add-on id).
+  const [picked, setPicked] = useState({});
+  const [pairSize, setPairSize] = useState({});
   const purchaseRef = useRef(null);
   const sizes = sizeList(bp);
-  useEffect(() => { setActiveThumb(null); setQtyN(1); setSelSize(bp ? firstInStockSize(bp, sizeList(bp)) : null); setStickyOn(false); }, [bp && bp.id]);
+  useEffect(() => { setActiveThumb(null); setQtyN(1); setSelSize(bp ? firstInStockSize(bp, sizeList(bp)) : null); setStickyOn(false); setPicked({}); setPairSize({}); }, [bp && bp.id]);
   // view_item at the preselected size's price, then the "You may also like" list.
   useEffect(() => {
     if (!bp || !ctx.trackItem) return;
@@ -523,10 +518,41 @@ export function ProductPage({ ctx, sys, product, edit }) {
   };
   const lbl = 'font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + cPd.sub + '; margin-top:24px;';
   const buyable = bp.stock > 0 && !bp.arch && (sizes.length === 0 || !!curSize);
+  // Goes well with, under the buy button (PairRow). The block shows on the live
+  // page only while this product can be bought; the builder always shows it.
+  const bag = ctx.storeSlug ? getCart(ctx.storeSlug) : [];
+  const pairLine = (a) => bag.find((l) => l.pid === a.id && l.addOnOf === bp.id) || null;
+  const pairCur = (a) => {
+    const z = pairSize[a.id];
+    return (z && sizeInStock(a.p, z) ? z : null) || firstInStockSize(a.p, sizeList(a.p));
+  };
+  const pairOk = (a) => sizeList(a.p).length === 0 || !!pairCur(a);
+  const pairsOn = !!pp.pairOn && (edit ? true : pairs.length > 0 && bp.stock > 0 && !bp.arch);
+  const goWith = pairsOn && !cartLine ? pairs.filter((a) => picked[a.id] && !pairLine(a) && pairOk(a)) : [];
+  const togglePair = (a) => {
+    const line = pairLine(a);
+    if (line) { if (ctx.setLineQty) ctx.setLineQty({ ...line, p: a.p }, 0); return; }
+    if (cartLine && ctx.addToBag) { if (pairOk(a)) ctx.addToBag(a.p, 1, pairCur(a), bp.id); return; }
+    setPicked((m) => ({ ...m, [a.id]: !m[a.id] }));
+  };
+  // Picking a size says "this one": before the product is in the bag it ticks the row too.
+  const sizePair = (a, z) => {
+    setPairSize((m) => ({ ...m, [a.id]: z }));
+    if (!cartLine && !pairLine(a)) setPicked((m) => ({ ...m, [a.id]: true }));
+  };
+  // With add-ons ticked the button says how many go in and what they cost
+  // together; the merchant's own button words stay, with the total after them.
+  const buyWords = goWith.length
+    ? (pp.btn === tx('product.btn') || pp.btn === SYS_DEFAULTS.prod.btn ? tx('product.addN', { n: qty + goWith.length }) : pp.btn)
+      + ' · ' + fmtPr(buyTotal(priceFor(bp, curSize), qty, goWith.map((a) => togetherUnit(a, priceFor(a.p, pairCur(a))))))
+    : null;
   const doBuy = () => {
     if (cartLine) { ctx.onCart ? ctx.onCart() : null; return; }
-    if (ctx.addToBag) ctx.addToBag(bp, qty, curSize);
-    else if (ctx.onCart) ctx.onCart();
+    if (ctx.addToBag) {
+      ctx.addToBag(bp, qty, curSize);
+      goWith.forEach((a) => ctx.addToBag(a.p, 1, pairCur(a), bp.id));
+      setPicked({});
+    } else if (ctx.onCart) ctx.onCart();
   };
 
   const mainSlotId = 'st-prod-' + bp.id;
@@ -686,9 +712,38 @@ export function ProductPage({ ctx, sys, product, edit }) {
         >
           {cartLine
             ? <span>{tx('product.viewCart')}{cartLine.qty > 1 ? ' (' + cartLine.qty + ')' : ''}</span>
-            : <Editable secId="__sys:prod" k="btn" value={pp.btn} style={''} preview={ctx.preview} tag="span" />}
+            : buyWords
+              ? <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'normal', textAlign: 'center', lineHeight: 1.25 }}>{buyWords}</span>
+              : <Editable secId="__sys:prod" k="btn" value={pp.btn} style={''} preview={ctx.preview} tag="span" />}
         </div>
       </div>
+      {pairsOn && (
+        <Part id="prod-pair" label="GOES WELL WITH · TEMPLATE" edit={edit} style={{ marginTop: 14 }} labelRight>
+          <div style={sx('border:1px solid ' + cPd.line + '; border-radius:' + Math.min(C.r, 14) + 'px; background:' + cPd.card + '; color:' + cPd.fg + '; overflow:hidden;')}>
+            <div style={{ padding: '11px 14px 10px' }}>
+              <Editable secId="__sys:prod" k="pairHead" value={pp.pairHead} style={'font-family:' + F.b + '; font-size:13.5px; font-weight:800;'} preview={ctx.preview} />
+            </div>
+            {pairs.length > 0
+              ? pairs.map((a) => {
+                const line = pairLine(a);
+                return <PairRow key={a.id} ctx={ctx} bp={bp} a={a} c={cPd} on={!!line || (!cartLine && !!picked[a.id])} line={line} cur={line ? line.size : pairCur(a)} onSize={sizePair} onToggle={togglePair} />;
+              })
+              : (
+                <div style={sx('padding:0 14px 13px; font-family:' + F.b + '; font-size:12.5px; line-height:1.55; color:' + cPd.sub + ';')}>
+                  Your add-ons for this product show here, right under the button: buyers tick the ones they want and they go into the bag with it. Pair them on the product in your dashboard (Goes well with). Nothing paired yet, so buyers don’t see this.
+                </div>
+              )}
+          </div>
+        </Part>
+      )}
+      {!pp.pairOn && edit && (
+        <div
+          onClick={(e) => { e.stopPropagation(); edit.onSysProp && edit.onSysProp('prod', 'pairOn', true); }}
+          style={{ marginTop: 14, padding: '9px 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, border: '1.5px dashed rgba(128,128,128,0.3)', borderRadius: 10, opacity: 0.55, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif" }}
+        >
+          Goes well with is hidden · click to show
+        </div>
+      )}
       {pd.note !== false && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', marginTop: 14 }}>
           <div style={sx('display:flex; align-items:center; gap:8px; font-family:' + F.b + '; font-size:12.5px; color:' + cPd.sub + ';')}>
@@ -755,19 +810,6 @@ export function ProductPage({ ctx, sys, product, edit }) {
           {Array.isArray(bp.reviews) && bp.reviews.length > 0 && <ReviewsBlock reviews={bp.reviews} ctx={ctx} c={cPd} headFont={headFont} />}
         </div>
       </Part>
-      {pp.pairOn && (pairs.length > 0 || edit) && (
-        <Part id="prod-pair" label="GOES WELL WITH — TEMPLATE" edit={edit}>
-          <PairBlock ctx={ctx} pp={pp} bp={bp} pairs={pairs} headFont={headFont} edit={edit} />
-        </Part>
-      )}
-      {!pp.pairOn && edit && (
-        <div
-          onClick={(e) => { e.stopPropagation(); edit.onSysProp && edit.onSysProp('prod', 'pairOn', true); }}
-          style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, borderTop: '1.5px dashed rgba(128,128,128,0.3)', borderBottom: '1.5px dashed rgba(128,128,128,0.3)', opacity: 0.55, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: "'Hanken Grotesk',sans-serif" }}
-        >
-          Goes well with is hidden — click to show
-        </div>
-      )}
       {!pp.alsoOn && edit && (
         <div
           onClick={(e) => { e.stopPropagation(); edit.onSysProp && edit.onSysProp('prod', 'alsoOn', true); }}
@@ -807,7 +849,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
               onClick={buyable ? (ev) => { ev.stopPropagation(); doBuy(); } : undefined}
               style={sx('flex-shrink:0; display:flex; align-items:center; gap:8px; padding:' + (mob ? '11px 18px' : '13px 24px') + '; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap;' + (!buyable ? ' opacity:0.45;' : ''))}
             >
-              {cartLine ? tx('product.viewCart') + (cartLine.qty > 1 ? ' (' + cartLine.qty + ')' : '') : pp.btn}
+              {cartLine ? tx('product.viewCart') + (cartLine.qty > 1 ? ' (' + cartLine.qty + ')' : '') : (buyWords || pp.btn)}
             </div>
           </div>
         </div>

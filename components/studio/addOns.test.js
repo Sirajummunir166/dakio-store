@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { catProduct, livePairs, priceAddOns, bagSuggestion, toStudioPairs } from './addOns.js'
+import { catProduct, livePairs, priceAddOns, bagSuggestion, toStudioPairs, togetherUnit, buyTotal } from './addOns.js'
 import { repriceCart } from '../../lib/addOnCart.js'
 import { toStudioCatalog } from './publicCatalog.js'
 
@@ -82,4 +82,17 @@ test('final check FC-SST-02: a list route catalogue leaves out the product page 
   const listed = toStudioCatalog(api, [], { list: true }).products[0]
   assert.equal('desc' in listed || 'shortDesc' in listed || 'tabs' in listed || 'imgs' in listed, false)
   assert.deepEqual({ ...listed }, (({ desc, shortDesc, tabs, imgs, ...rest }) => rest)(pdp))
+})
+
+test('the product page: a ticked add-on is priced together only when that is lower', () => {
+  assert.equal(togetherUnit({ together: 350 }, 450), 350)
+  // A sale price already below the together price wins.
+  assert.equal(togetherUnit({ together: 350 }, 300), 300)
+  assert.equal(togetherUnit({ together: null }, 450), 450)
+  assert.equal(togetherUnit(null, 450), 450)
+})
+
+test('the product page: one press adds the product times its quantity plus one of each ticked add-on', () => {
+  assert.equal(buyTotal(1480, 1, []), 1480)
+  assert.equal(buyTotal(1480, 2, [350, 650]), 3960)
 })

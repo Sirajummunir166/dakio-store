@@ -33,8 +33,22 @@ export function addOnUnit(bag, line, cat) {
   const addOnQty = bag.reduce((n, l) => (l.addOnOf === line.addOnOf && l.pid === line.pid ? n + l.qty : n), 0);
   const main = catProduct(cat, line.addOnOf);
   const pair = ((main && main.pairs) || []).find((a) => a.id === line.pid);
-  if (!pair || pair.together == null || mainQty <= 0 || addOnQty > mainQty) return unit;
-  return pair.together < unit ? pair.together : unit;
+  if (!pair || mainQty <= 0 || addOnQty > mainQty) return unit;
+  return togetherUnit(pair, unit);
+}
+
+/** An add-on's price beside its main product: the together price, only when lower. */
+export function togetherUnit(pair, unit) {
+  return pair && pair.together != null && pair.together < unit ? pair.together : unit;
+}
+
+/**
+ * What one press of the product page's buy button adds (2026-11-14): `qty` of
+ * the product at `mainUnit`, plus one of each ticked add-on at `addOnUnits`
+ * (their togetherUnit). One of each never beats "no more than the main".
+ */
+export function buyTotal(mainUnit, qty, addOnUnits = []) {
+  return mainUnit * qty + addOnUnits.reduce((n, u) => n + u, 0);
 }
 
 /** Re-price a resolved bag's add-on lines (lines are `{ pid, qty, size, addOnOf, p }`). */
