@@ -550,6 +550,59 @@ function ReviewsBlock({ reviews, ctx, c, headFont }) {
   );
 }
 
+// Back in stock (dakio-api lib/restockWaits.js): where the buy button would
+// be on a sold-out product, or after a tap on a sold-out size, the shopper
+// leaves a mobile number and is told once when it is back (ctx.restockWait →
+// POST /store/:slug/restock-waits). In the builder it shows as the shopper
+// sees it, without sending.
+function RestockAsk({ ctx, bp, size, cPd, tx, inputRef }) {
+  const { F, C, mob } = ctx;
+  const B = btnColors('base', ctx.P);
+  const live = ctx.preview && typeof ctx.restockWait === 'function';
+  const [phone, setPhone] = useState('');
+  const [hp, setHp] = useState('');
+  const [st, setSt] = useState({ busy: false, done: null, err: null });
+  useEffect(() => { setSt({ busy: false, done: null, err: null }); }, [bp && bp.id, size]);
+  const v = size ? variantFor(bp, size) : null;
+  const head = size ? tx('restock.sizeOut', { size }) : tx('restock.allOut');
+  const send = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!live || st.busy) return;
+    if (!phone.trim()) return setSt({ busy: false, done: null, err: tx('restock.errPhone') });
+    setSt({ busy: true, done: null, err: null });
+    const r = await ctx.restockWait({ productId: bp.id, variantId: v ? v.id : null, phone, website: hp });
+    if (r.ok) return setSt({ busy: false, done: r.already ? 'already' : 'done', err: null });
+    setSt({ busy: false, done: null, err: r.field === 'phone' ? tx('restock.errPhone') : r.code === 'in_stock' ? tx('restock.inStock') : tx('restock.err') });
+  };
+  const box = 'margin-top:24px; padding:' + (mob ? '16px' : '18px 20px') + '; border-radius:' + Math.min(C.r || 14, 16) + 'px; border:1.5px solid ' + cPd.line + '; background:' + cPd.card + ';';
+  const bell = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>;
+  if (st.done) {
+    return (
+      <div data-restock-done style={sx(box + 'display:flex; gap:10px; align-items:flex-start; font-family:' + F.b + '; font-size:14px; line-height:1.5; color:' + cPd.fg + ';')}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }}><path d="M20 6L9 17l-5-5" /></svg>
+        <span>{st.done === 'already' ? tx('restock.already') : tx('restock.done', { phone: phone.trim() })}</span>
+      </div>
+    );
+  }
+  return (
+    <form data-restock onSubmit={send} noValidate onClick={(e) => e.stopPropagation()} style={sx(box)}>
+      <div style={sx('display:flex; align-items:center; gap:8px; font-family:' + F.b + '; font-size:14px; font-weight:700; color:' + cPd.fg + ';')}>{bell}{head}</div>
+      <div style={sx('font-family:' + F.b + '; font-size:12.5px; line-height:1.5; color:' + cPd.sub + '; margin-top:4px;')}>{tx('restock.note')}</div>
+      <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+        <input ref={inputRef} value={phone} onChange={(e) => setPhone(e.target.value)} disabled={!live} inputMode="tel" autoComplete="tel" placeholder={tx('restock.phone')} aria-label={tx('restock.phone')}
+          style={sx('flex:1 1 180px; min-width:0; padding:13px 16px; border-radius:' + C.btn + '; border:1.5px solid ' + cPd.line + '; background:' + cPd.bg + '; color:' + cPd.fg + '; font-family:' + F.b + '; font-size:14.5px; outline:none; box-sizing:border-box;')} />
+        <input name="website" value={hp} onChange={(e) => setHp(e.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true" style={{ position: 'absolute', left: -9999, width: 1, height: 1, opacity: 0 }} />
+        <button type="submit" disabled={st.busy}
+          style={sx('flex:1 1 180px; padding:14px 18px; border:none; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:14px; line-height:1.25; cursor:' + (live ? 'pointer' : 'default') + ';' + (st.busy ? ' opacity:0.7;' : ''))}>
+          {st.busy ? tx('form.sending') : tx('restock.btn')}
+        </button>
+      </div>
+      {st.err ? <div role="alert" style={sx('font-family:' + F.b + '; font-size:13px; color:#B03A2E; margin-top:8px;')}>{st.err}</div> : null}
+    </form>
+  );
+}
+
 export function ProductPage({ ctx, sys, product, edit }) {
   const { P, F, C, mob, padX, cat } = ctx;
   const c = co('base', P);
@@ -560,6 +613,9 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const [activeThumb, setActiveThumb] = useState(null);
   const [qty, setQtyN] = useState(1);
   const [selSize, setSelSize] = useState(null);
+  // A sold-out size the shopper tapped: the buy button gives way to "Tell me when it's back" for it.
+  const [wantSize, setWantSize] = useState(null);
+  const restockRef = useRef(null);
   const [stickyOn, setStickyOn] = useState(false);
   const [activeTab, setActiveTab] = useState('desc');
   const [, setBagTick] = useState(0);
@@ -569,7 +625,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
   const [pairSize, setPairSize] = useState({});
   const purchaseRef = useRef(null);
   const sizes = sizeList(bp);
-  useEffect(() => { setActiveThumb(null); setQtyN(1); setSelSize(bp ? firstInStockSize(bp, sizeList(bp)) : null); setStickyOn(false); setPicked({}); setPairSize({}); }, [bp && bp.id]);
+  useEffect(() => { setActiveThumb(null); setQtyN(1); setSelSize(bp ? firstInStockSize(bp, sizeList(bp)) : null); setWantSize(null); setStickyOn(false); setPicked({}); setPairSize({}); }, [bp && bp.id]);
   // view_item at the preselected size's price, then the "You may also like" list.
   useEffect(() => {
     if (!bp || !ctx.trackItem) return;
@@ -620,6 +676,10 @@ export function ProductPage({ ctx, sys, product, edit }) {
   };
   const lbl = 'font-family:' + F.b + '; font-size:10.5px; font-weight:800; letter-spacing:1.4px; color:' + cPd.sub + '; margin-top:24px;';
   const buyable = bp.stock > 0 && !bp.arch && (sizes.length === 0 || !!curSize);
+  // Back in stock: the whole product sold out, or a sold-out size picked.
+  const wanted = wantSize && sizes.includes(wantSize) && !sizeInStock(bp, wantSize) ? wantSize : null;
+  const askBack = !bp.arch && (bp.stock <= 0 || !!wanted);
+  const shownSize = wanted || curSize;
   // Goes well with, under the buy button (PairBox). The block shows on the live
   // page only while this product can be bought; the builder always shows it.
   const bag = ctx.storeSlug ? getCart(ctx.storeSlug) : [];
@@ -777,7 +837,8 @@ export function ProductPage({ ctx, sys, product, edit }) {
           Products list counts it; each size's own count sits under its chip. */}
       {pd.stock !== false && (bp.arch || bp.stock <= 3) && (
         <div style={sx('margin-top:12px; font-family:' + F.b + '; font-size:12px; font-weight:700; color:' + ((bp.arch || bp.stock === 0) ? '#B03A2E' : '#B07A2A') + ';')}>
-          {bp.arch ? 'Hidden from your store — unhide it in Catalog' : bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : tx('product.onlyLeft', { n: bp.stock })}
+          {/* The builder's hints are for the merchant; a shopper reads "Sold out" in the site's language. */}
+          {bp.arch ? 'Hidden from your store — unhide it in Catalog' : bp.stock <= 0 ? (ctx.preview ? tx('product.soldOut') : 'Sold out — restock in Catalog to sell') : tx('product.onlyLeft', { n: bp.stock })}
         </div>
       )}
       {/* Warranty (dakio-api lib/warranty.js): how long and what kind, from delivery, and what it covers. */}
@@ -803,7 +864,7 @@ export function ProductPage({ ctx, sys, product, edit }) {
           <div style={sx(lbl)}>{tx('product.size')}</div>
           <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
             {sizes.map((z) => {
-              const chip = <div key={z} title={sizeInStock(bp, z) ? undefined : tx('product.soldOut')} onClick={ctx.preview && sizeInStock(bp, z) ? (e) => { e.stopPropagation(); setSelSize(z); } : undefined} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px solid ' + (z === curSize ? cPd.fg : cPd.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (z === curSize ? ' background:' + cPd.fg + '; color:' + cPd.bg + ';' : '') + (sizeInStock(bp, z) ? '' : soldOutSize))}>{z}</div>;
+              const chip = <div key={z} title={sizeInStock(bp, z) ? undefined : tx('product.soldOut')} onClick={ctx.preview ? (e) => { e.stopPropagation(); if (sizeInStock(bp, z)) { setSelSize(z); setWantSize(null); } else if (ctx.restockWait) setWantSize(z); } : undefined} style={sx('min-width:44px; padding:10px 0; text-align:center; border-radius:' + Math.min(C.rs, 12) + 'px; border:1.5px ' + (z === wanted ? 'dashed' : 'solid') + ' ' + (z === shownSize ? cPd.fg : cPd.line) + '; font-family:' + F.b + '; font-size:13px; font-weight:700; cursor:pointer;' + (z === shownSize && z !== wanted ? ' background:' + cPd.fg + '; color:' + cPd.bg + ';' : '') + (sizeInStock(bp, z) ? '' : soldOutSize + (ctx.restockWait ? ' cursor:pointer;' : '') + (z === wanted ? ' opacity:0.8;' : '')))}>{z}</div>;
               // "Stock by size" (off by default): each size's own count under its
               // chip. Only a size with a variant row has a count of its own.
               const v = pd.sizeStock === true ? variantFor(bp, z) : null;
@@ -820,7 +881,9 @@ export function ProductPage({ ctx, sys, product, edit }) {
           </div>
         </>
       )}
-      <div ref={purchaseRef} style={{ display: 'flex', gap: 10, marginTop: 24, alignItems: 'stretch' }}>
+      <div ref={purchaseRef}>
+      {askBack ? <RestockAsk ctx={ctx} bp={bp} size={wanted} cPd={cPd} tx={tx} inputRef={restockRef} /> : (
+      <div style={{ display: 'flex', gap: 10, marginTop: 24, alignItems: 'stretch' }}>
         <div style={sx('display:flex; align-items:center; gap:14px; padding:0 16px; border-radius:' + C.btn + '; border:1.5px solid ' + cPd.line + '; font-family:' + F.b + '; font-size:14px; user-select:none;')}>
           <span onClick={ctx.preview ? (e) => { e.stopPropagation(); setQtyN((n) => Math.max(1, n - 1)); } : undefined} style={{ cursor: 'pointer' }}>−</span>
           <span style={{ fontWeight: 800 }}>{qty}</span>
@@ -836,6 +899,8 @@ export function ProductPage({ ctx, sys, product, edit }) {
               ? <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'normal', textAlign: 'center', lineHeight: 1.25 }}>{buyWords}</span>
               : <Editable secId="__sys:prod" k="btn" value={pp.btn} style={''} preview={ctx.preview} tag="span" />}
         </div>
+      </div>
+      )}
       </div>
       {pairsOn && (
         <Part id="prod-pair" label="GOES WELL WITH · TEMPLATE" edit={edit} style={{ marginTop: 14 }} labelRight>
@@ -948,14 +1013,14 @@ export function ProductPage({ ctx, sys, product, edit }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={sx('font-family:' + F.b + '; font-size:13.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;')}>{bp.n}</div>
               <div style={sx('font-family:' + F.b + '; font-size:12px; color:' + cPd.sub + '; margin-top:2px;')}>
-                {fmtPr(bp.pr)}{curSize ? ' · ' + curSize : ''}{cartLine ? ' · ' + tx('product.inCart') : ''}
+                {fmtPr(bp.pr)}{shownSize ? ' · ' + shownSize : ''}{askBack ? ' · ' + tx('product.soldOut') : cartLine ? ' · ' + tx('product.inCart') : ''}
               </div>
             </div>
             <div
-              onClick={buyable ? (ev) => { ev.stopPropagation(); doBuy(); } : undefined}
-              style={sx('flex-shrink:0; display:flex; align-items:center; gap:8px; padding:' + (mob ? '11px 18px' : '13px 24px') + '; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap;' + (!buyable ? ' opacity:0.45;' : ''))}
+              onClick={askBack ? (ev) => { ev.stopPropagation(); if (purchaseRef.current) purchaseRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => restockRef.current && restockRef.current.focus(), 350); } : buyable ? (ev) => { ev.stopPropagation(); doBuy(); } : undefined}
+              style={sx('flex-shrink:0; display:flex; align-items:center; gap:8px; padding:' + (mob ? '11px 18px' : '13px 24px') + '; border-radius:' + C.btn + '; background:' + B.bg + '; color:' + B.fg + '; font-family:' + F.b + '; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap;' + (!buyable && !askBack ? ' opacity:0.45;' : ''))}
             >
-              {cartLine ? tx('product.viewCart') + (cartLine.qty > 1 ? ' (' + cartLine.qty + ')' : '') : (buyWords || pp.btn)}
+              {askBack ? tx('restock.btn') : cartLine ? tx('product.viewCart') + (cartLine.qty > 1 ? ' (' + cartLine.qty + ')' : '') : (buyWords || pp.btn)}
             </div>
           </div>
         </div>

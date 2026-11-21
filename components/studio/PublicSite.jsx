@@ -362,6 +362,15 @@ export default function PublicSite({ doc, pageId, basePath = '', products = [], 
         return res.ok ? { ok: true } : { ok: false, status: res.status, error: data.error, field: data.field };
       } catch { return { ok: false, status: 0 }; }
     } : undefined,
+    // Back in stock: the product page's sold-out form → POST /store/:slug/restock-waits. { ok, already } or { ok:false, status, error, field, code }.
+    restockWait: storeSlug ? async ({ productId, variantId, phone, website }) => {
+      try {
+        const res = await fetch(API + '/store/' + storeSlug + '/restock-waits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId, variantId: variantId || undefined, phone: String(phone || '').trim(), lang: theme.lang === 'bn' ? 'bn' : 'en', website }) });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) tk.track('generate_lead', { form: 'restock' });
+        return res.ok ? { ok: true, already: !!data.already } : { ok: false, status: res.status, error: data.error, field: data.field, code: data.code };
+      } catch { return { ok: false, status: 0 }; }
+    } : undefined,
     subscribe: storeSlug ? async (value, website) => {
       try {
         const res = await fetch(API + '/store/' + storeSlug + '/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: String(value || '').trim(), website }) });
