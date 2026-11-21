@@ -80,8 +80,9 @@ test('final check FC-SST-02: a list route catalogue leaves out the product page 
   assert.equal(pdp.desc, '<p>Long text</p>')
   assert.equal(pdp.tabs.length, 1)
   const listed = toStudioCatalog(api, [], { list: true }).products[0]
-  assert.equal('desc' in listed || 'shortDesc' in listed || 'tabs' in listed || 'imgs' in listed, false)
-  assert.deepEqual({ ...listed }, (({ desc, shortDesc, tabs, imgs, ...rest }) => rest)(pdp))
+  // The warranty line is product page text too (dakio-api lib/warranty.js).
+  assert.equal('desc' in listed || 'shortDesc' in listed || 'tabs' in listed || 'imgs' in listed || 'warranty' in listed, false)
+  assert.deepEqual({ ...listed }, (({ desc, shortDesc, tabs, imgs, warranty, ...rest }) => rest)(pdp))
 })
 
 test('the product page: a ticked add-on is priced together only when that is lower', () => {

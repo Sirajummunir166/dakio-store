@@ -780,6 +780,17 @@ export function ProductPage({ ctx, sys, product, edit }) {
           {bp.arch ? 'Hidden from your store — unhide it in Catalog' : bp.stock === 0 ? 'Sold out — restock in Catalog to sell' : tx('product.onlyLeft', { n: bp.stock })}
         </div>
       )}
+      {/* Warranty (dakio-api lib/warranty.js): how long and what kind, from delivery, and what it covers. */}
+      {bp.warranty && (
+        <div style={sx('display:flex; align-items:flex-start; gap:8px; margin-top:12px; font-family:' + F.b + '; font-size:' + (mob ? 12.5 : 13) + 'px; line-height:1.45; color:' + cPd.fg + ';')}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }} aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="M9 12l2 2 4-4" /></svg>
+          <div>
+            <span style={{ fontWeight: 700 }}>{tx('product.warranty.' + bp.warranty.type, { len: tx('product.warranty.' + bp.warranty.unit, { n: bp.warranty.value }) })}</span>
+            <span style={sx('color:' + cPd.sub + ';')}>{' · ' + tx('product.warranty.from')}</span>
+            {bp.warranty.note ? <div style={sx('color:' + cPd.sub + '; font-size:' + (mob ? 12 : 12.5) + 'px; margin-top:2px;')}>{bp.warranty.note}</div> : null}
+          </div>
+        </div>
+      )}
       {/* Teaser beside the price: the rich short description, else the first
           words of the description. The hint shows only in the builder. */}
       {bp.shortDesc || shortDesc(bp.desc)

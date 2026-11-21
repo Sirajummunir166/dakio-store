@@ -81,6 +81,8 @@ export function toStudioCatalog(products = [], categories = [], { list = false }
         // Product-page tabs (specs / size guide / shipping / custom), rich HTML
         // from the merchant's product editor — see productTabs.js.
         tabs: Array.isArray(p.contentTabs) ? p.contentTabs : [],
+        // Warranty (dakio-api lib/warranty.js): { value, unit, type, note } or null.
+        warranty: p.warranty && p.warranty.value ? p.warranty : null,
       }),
       // Real variant rows, so a picked size maps to its stock, price and id
       // (components/studio/variants.js) instead of living only in a note.
