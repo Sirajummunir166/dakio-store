@@ -15,13 +15,13 @@ function amountWords(o, tx) {
 export function optionWords(o, tx) {
   const base = amountWords(o, tx);
   const every = (o && o.billEvery) || 'once';
-  if (every === 'once') return base;
+  if (every === 'once') return o && o.label ? o.label + ': ' + base : base;
   const quote = !o || o.priceType === 'quote' || o.price == null;
   let main = every === 'month'
     ? (quote ? tx('svc.quoteMonthly', { price: base }) : o.commitmentMonths ? tx('svc.monthFor', { price: base, n: o.commitmentMonths }) : tx('svc.month', { price: base }))
     : (quote ? tx('svc.quoteYearly', { price: base }) : tx('svc.year', { price: base }));
   if (o.setupFee) main += ' · ' + tx('svc.setup', { price: taka(o.setupFee) });
-  return main;
+  return o.label ? o.label + ': ' + main : main;
 }
 
 /** A service's ways to pay (the API's `options`), or its own one price. */
