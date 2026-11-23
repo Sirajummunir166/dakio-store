@@ -59,6 +59,30 @@ export function ServicePage({ ctx, service }) {
             {fact(tx('svc.delivery'), service.deliveryTime || null)}
             {fact(tx('svc.extra'), service.extraWork || null)}
           </div>
+          {/* Pictures and videos the business shows on its website (services page cut 4): our work, reviews, videos. */}
+          {Array.isArray(service.gallery) && service.gallery.length ? (
+            <div data-service-gallery style={sx('margin-top:22px; font-family:' + F.b + ';')}>
+              {['work', 'review', 'video', 'ad'].map((role) => {
+                const items = service.gallery.filter((g) => g.role === role);
+                if (!items.length) return null;
+                return (
+                  <div key={role} style={{ marginBottom: 16 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14.5, marginBottom: 8 }}>{tx('svc.gallery.' + role)}</div>
+                    <div style={sx('display:grid; grid-template-columns:repeat(auto-fill, minmax(' + (mob ? 130 : 160) + 'px, 1fr)); gap:10px;')}>
+                      {items.map((g, i) => (
+                        <figure key={i} style={{ margin: 0 }}>
+                          {g.kind === 'video'
+                            ? <video src={g.url} controls preload="metadata" playsInline style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: C.r, display: 'block', background: '#000' }} />
+                            : <img src={ctx.optImg ? ctx.optImg(g.url) : g.url} alt={g.caption || service.name} loading="lazy" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: C.r, display: 'block' }} />}
+                          {g.caption ? <figcaption style={{ fontSize: 12.5, color: c.sub, marginTop: 5, lineHeight: 1.4 }}>{g.caption}</figcaption> : null}
+                        </figure>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
           <div style={{ marginTop: 26, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <div onClick={() => ctx.onServiceAction && ctx.onServiceAction(service, { fromPage: true })} style={sx(s.btn)}>{ctx.serviceActionLabel ? ctx.serviceActionLabel(service) : tx('svc.ask')}</div>
           </div>
