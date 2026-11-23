@@ -7,7 +7,7 @@
 import Svc from '../sections/Svc';
 import { baseStyles, sx } from '../theme';
 import { siteText } from '../siteText';
-import { priceWords, durationWords } from '../servicesText';
+import { priceWords, durationWords, includeWords } from '../servicesText';
 
 export const SERVICES_DEFAULTS = { v: 'list', price: true, time: true, cats: true, bg: 'base', sp: 'normal' };
 
@@ -47,6 +47,18 @@ export function ServicePage({ ctx, service }) {
             {fact(tx('svc.time'), time)}
           </div>
           {service.description ? <div style={sx('margin-top:18px; font-family:' + F.b + '; font-size:15px; line-height:1.65; white-space:pre-wrap;')}>{service.description}</div> : null}
+          {/* What the client gets (services page cut 3), as the business wrote it. */}
+          {Array.isArray(service.includes) && service.includes.length ? (
+            <div style={sx('margin-top:18px; font-family:' + F.b + '; font-size:14.5px;')}>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>{tx('svc.includes')}</div>
+              <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7 }}>{service.includes.map((x, i) => <li key={i}>{includeWords(x, tx)}</li>)}</ul>
+            </div>
+          ) : null}
+          <div style={sx('margin-top:10px;')}>
+            {fact(tx('svc.excludes'), Array.isArray(service.excludes) && service.excludes.length ? service.excludes.join(', ') : null)}
+            {fact(tx('svc.delivery'), service.deliveryTime || null)}
+            {fact(tx('svc.extra'), service.extraWork || null)}
+          </div>
           <div style={{ marginTop: 26, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <div onClick={() => ctx.onServiceAction && ctx.onServiceAction(service, { fromPage: true })} style={sx(s.btn)}>{ctx.serviceActionLabel ? ctx.serviceActionLabel(service) : tx('svc.ask')}</div>
           </div>

@@ -172,7 +172,7 @@ test('service sections render in every layout and option', { skip: esbuild ? fal
     await t.test('Packages and Courses read the live service', () => {
       const html = draw('pack', 'cards', MATRIX.pack.props, pub);
       assert.equal(count(html, 'data-pack-live'), 1, 'only the package tied to a service that still exists');
-      assert.ok(html.includes('৳6,000–৳9,000') && html.includes('৳2,000') && html.includes('৳9,000'));
+      assert.ok(html.includes('৳6,000 to ৳9,000') && html.includes('৳2,000') && html.includes('৳9,000'));
       assert.match(draw('pack', 'rows', MATRIX.pack.props, pub), /data-pack-layout="rows"/);
       const live = draw('course', 'cards', { ...MATRIX.course.props, from: 'cat', cat: 'General' }, pub);
       assert.match(live, /data-course-from="services"/);

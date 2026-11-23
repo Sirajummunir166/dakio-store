@@ -48,3 +48,14 @@ test('groupServices still groups what was picked', () => {
   const g = groupServices(pickServices(S, { from: 'picks', picks: ['a', 'c'] }));
   assert.deepEqual(g.map((x) => x.name), ['Dental', 'Ortho']);
 });
+
+test('ways to pay with their period, in English and Bangla, no dash (services page cut 3)', async () => {
+  const { priceWords, includeWords } = await import('./servicesText.js');
+  const { siteText } = await import('./siteText.js');
+  const plan = { priceType: 'fixed', price: 2990, billEvery: 'month', options: [{ priceType: 'fixed', price: 2990, billEvery: 'month' }, { priceType: 'fixed', price: 23880, billEvery: 'year', commitmentMonths: 12 }] };
+  assert.equal(priceWords(plan, siteText('en')), '৳2,990 a month or ৳23,880 a year, paid upfront');
+  assert.equal(priceWords(plan, siteText('bn')), 'মাসে ৳2,990 অথবা বছরে ৳23,880, একসাথে');
+  assert.equal(priceWords({ priceType: 'fixed', price: 15000, billEvery: 'month', commitmentMonths: 6, setupFee: 5000 }, siteText('en')), '৳15,000 a month for 6 months · ৳5,000 setup');
+  assert.equal(priceWords({ priceType: 'range', price: 2000, priceMax: 5000 }, siteText('en')), '৳2,000 to ৳5,000');
+  assert.equal(includeWords({ what: 'posts', qty: 12, per: 'month' }, siteText('en')), '12 × posts a month');
+});
